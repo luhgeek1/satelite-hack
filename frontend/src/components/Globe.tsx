@@ -250,19 +250,34 @@ export const Globe: React.FC<GlobeProps> = ({
   // meshes per satellite, so playback does not churn objects 10x a second.
   const sphereGeometry = useMemo(() => new THREE.SphereGeometry(1, 12, 12), []);
   const sphereMaterials = useRef(new Map<string, THREE.MeshBasicMaterial>());
-  const sphereMeshes = useRef(new Map<string, THREE.Mesh>());
+  const satelliteGroups = useRef(new Map<string, THREE.Group>());
+  const lastClickRef = useRef<{ id: string; at: number }>({ id: '', at: 0 });
+
+  /**
+   * A satellite dot is about 1% of the globe radius — roughly three pixels at
+   * the default framing, which is near impossible to click. An invisible sphere
+   * around it widens the hit area without touching the picture. Doing this in
+   * the scene rather than with an HTML overlay matters: globe.gl raycasts on
+   * click only, so dragging the globe still works over every satellite.
+   */
+  const HIT_RADIUS_SCALE = 4.5;
+  const hitMaterial = useMemo(
+    () => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    []
+  );
 
   useEffect(() => {
     const materials = sphereMaterials.current;
-    const meshes = sphereMeshes.current;
+    const groups = satelliteGroups.current;
 
     return () => {
       materials.forEach(material => material.dispose());
       materials.clear();
-      meshes.clear();
+      groups.clear();
+      hitMaterial.dispose();
       sphereGeometry.dispose();
     };
-  }, [sphereGeometry]);
+  }, [sphereGeometry, hitMaterial]);
 
   const satelliteSphere = (d: any) => {
     let material = sphereMaterials.current.get(d.color);
@@ -271,15 +286,28 @@ export const Globe: React.FC<GlobeProps> = ({
       sphereMaterials.current.set(d.color, material);
     }
 
-    let mesh = sphereMeshes.current.get(d.id);
-    if (!mesh) {
-      mesh = new THREE.Mesh(sphereGeometry, material);
-      sphereMeshes.current.set(d.id, mesh);
+    let group = satelliteGroups.current.get(d.id);
+    if (!group) {
+      group = new THREE.Group();
+      const dot = new THREE.Mesh(sphereGeometry, material);
+      dot.name = 'dot';
+      const hit = new THREE.Mesh(sphereGeometry, hitMaterial);
+      hit.name = 'hit';
+      group.add(dot, hit);
+      satelliteGroups.current.set(d.id, group);
     }
 
-    mesh.material = material;
-    mesh.scale.setScalar(d.sphereRadius);
-    return mesh;
+    const dot = group.getObjectByName('dot') as THREE.Mesh;
+    const hit = group.getObjectByName('hit') as THREE.Mesh;
+
+    dot.material = material;
+    dot.scale.setScalar(d.sphereRadius);
+    // While paused the points layer draws the marker, so the group is then a
+    // hit target only.
+    dot.visible = d.sphereVisible;
+    hit.scale.setScalar(d.sphereRadius * HIT_RADIUS_SCALE);
+
+    return group;
   };
 
   useEffect(() => {
@@ -463,10 +491,11 @@ export const Globe: React.FC<GlobeProps> = ({
         color,
         globeAltitude: altitude,
         radius: emphasized ? 0.8 : 0.4,
-        sphereRadius: emphasized ? 1.5 : 0.95
+        sphereRadius: emphasized ? 1.5 : 0.95,
+        sphereVisible: playing
       };
     });
-  }, [satellites, selectedSatellite, activeRoute, mode]);
+  }, [satellites, selectedSatellite, activeRoute, mode, playing]);
 
   const highlightedPlane = useMemo(
     () => satellites.find(s => s.id === selectedSatellite)?.plane ?? null,
@@ -598,6 +627,7 @@ export const Globe: React.FC<GlobeProps> = ({
         alt: SATELLITE_ALTITUDE,
         type: 'sat',
         id: sat.id,
+        sat,
         accent: sat.status === 'failed' ? '#ef4444' : planeColors[sat.plane],
         emphasized: sat.status === 'failed' || sat.id === selectedSatellite || activeRoute.includes(sat.id)
       });
@@ -657,18 +687,14 @@ export const Globe: React.FC<GlobeProps> = ({
         pointResolution={32}
         pointsTransitionDuration={0}
         onPointClick={(pt: any) => onPointClick(pt)}
-        pointLabel={(pt: any) => `
-          <div style="background: rgba(15,23,42,0.9); padding: 4px 8px; border-radius: 4px; border: 1px solid #334155; font-family: monospace; font-size: 10px; color: #f8fafc;">
-            ${pt.id}<br/>
-            Alt: ${pt.altitude}km
-          </div>
-        `}
+        pointLabel={satelliteTooltip}
 
-        objectsData={playing ? pointsData : []}
+        objectsData={pointsData}
         objectLat="lat"
         objectLng="lon"
         objectAltitude="globeAltitude"
         objectThreeObject={satelliteSphere}
+        objectLabel={satelliteTooltip}
         onObjectClick={(obj: any) => onPointClick(obj)}
 
         arcsData={arcsData}
@@ -717,23 +743,49 @@ export const Globe: React.FC<GlobeProps> = ({
           // Satellites: a small ID plate next to the dot drawn by the points
           // layer. Kept secondary so 48 of them never turn into noise.
           if (d.type === 'sat') {
-            el.style.cssText = 'pointer-events:none;white-space:nowrap;font-family:ui-monospace, SFMono-Regular, Menlo, monospace';
+            el.style.cssText = 'pointer-events:none;white-space:nowrap;font-family:\'IBM Plex Mono\', ui-monospace, SFMono-Regular, Menlo, monospace';
 
+            const idleBorder = d.emphasized ? d.accent : 'rgba(63,63,70,0.9)';
             const chip = document.createElement('div');
             chip.textContent = d.id;
             chip.style.cssText = [
               'transform:translate(9px,-50%)',
-              'padding:1px 4px',
+              'padding:2px 5px',
               'border-radius:3px',
-              `border:1px solid ${d.emphasized ? d.accent : 'rgba(63,63,70,0.9)'}`,
+              `border:1px solid ${idleBorder}`,
               'background:rgba(3,7,18,0.82)',
               `color:${d.emphasized ? d.accent : '#a1a1aa'}`,
               'font-size:9px',
               'line-height:11px',
               'letter-spacing:0.04em',
               `font-weight:${d.emphasized ? 700 : 500}`,
+              'pointer-events:auto',
+              'cursor:pointer',
               d.emphasized ? `box-shadow:0 0 10px ${d.accent}55` : 'box-shadow:0 2px 6px rgba(0,0,0,0.5)'
             ].join(';');
+
+            chip.addEventListener('pointerenter', () => {
+              chip.style.borderColor = '#e4e4e7';
+              chip.style.color = '#fafafa';
+            });
+            chip.addEventListener('pointerleave', () => {
+              chip.style.borderColor = idleBorder;
+              chip.style.color = d.emphasized ? d.accent : '#a1a1aa';
+            });
+
+            // Only a tap counts. A drag that happens to start on a plate should
+            // not select anything.
+            let downAt: { x: number; y: number } | null = null;
+            chip.addEventListener('pointerdown', event => {
+              downAt = { x: event.clientX, y: event.clientY };
+            });
+            chip.addEventListener('click', event => {
+              if (!downAt) return;
+              const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
+              downAt = null;
+              if (moved > 4) return;
+              onPointClick(d.sat);
+            });
 
             el.appendChild(chip);
             return el;
@@ -792,9 +844,25 @@ export const Globe: React.FC<GlobeProps> = ({
     </div>
   );
 
+  function satelliteTooltip(sat: any) {
+    return `
+      <div style="background:#000;padding:4px 8px;border:1px solid #2e2e34;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:#e4e4e7;">
+        ${sat.id}<br/>
+        <span style="color:#71717a">Alt ${sat.altitude} km</span>
+      </div>
+    `;
+  }
+
   function onPointClick(pt: any) {
-    if (onSatelliteClick) {
-      onSatelliteClick(pt as Satellite);
-    }
+    if (!pt || !onSatelliteClick) return;
+
+    // One click can be reported by up to three paths: the ID plate, the points
+    // layer and the objects layer. Selection toggles, so a duplicate would undo
+    // the selection the user just made.
+    const now = Date.now();
+    if (lastClickRef.current.id === pt.id && now - lastClickRef.current.at < 300) return;
+    lastClickRef.current = { id: pt.id, at: now };
+
+    onSatelliteClick(pt as Satellite);
   }
 };
