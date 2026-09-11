@@ -188,3 +188,13 @@ test.py
 /.vscode
 deploy/.env
 deploy/secrets/
+
+# Reference backend template — kept locally as an architecture reference only.
+# Never committed: it carries its own .git plus real secrets
+# (backend/secrets/jwt_private_key.pem, backend/.env with a JWT secret).
+template/
+
+# Local backend virtualenv
+backend/.venv/
+
+.DS_Store

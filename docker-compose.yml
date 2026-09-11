@@ -1,0 +1,55 @@
+# Local and demo stack. One command from a clean checkout:
+#   cp .env.example .env && docker compose up -d --build
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: orbitguard-backend
+    env_file: [./.env]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-secret}@db:5432/${POSTGRES_DB:-orbitguard}
+      REDIS_URL: redis://redis:6379/0
+      SCENARIO_SEED_DIR: /app/data
+    volumes:
+      # Official case scenarios, seeded on startup. Read-only: the service
+      # never writes back to the case archive.
+      - ./data:/app/data:ro
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    container_name: orbitguard-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-orbitguard}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine
+    container_name: orbitguard-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
