@@ -36,6 +36,17 @@ const desktopQuery = '(min-width: 1024px)';
 const wideDesktopQuery = '(min-width: 1280px)';
 const ultraDesktopQuery = '(min-width: 1536px)';
 
+type ConfigGroupId = 'deployment' | 'planes' | 'failures' | 'satellites' | 'sites';
+
+/** Inputs the engineer edits come first; the read-only catalogs sit below. */
+const defaultOpenGroups: Record<ConfigGroupId, boolean> = {
+  deployment: true,
+  planes: true,
+  failures: true,
+  satellites: false,
+  sites: false
+};
+
 type AppTab = 'simulation' | 'resilience' | 'compare';
 type OptimizationState = 'none' | 'running' | 'done';
 /** The single right-hand column, shown as a drawer below `lg`. */
@@ -52,8 +63,7 @@ type PersistedAppState = {
   optimizationState: OptimizationState;
   deploymentStage: 1 | 2 | 3;
   showFailureSelect: boolean;
-  groundSitesExpanded: boolean;
-  satellitesExpanded: boolean;
+  openGroups: Record<ConfigGroupId, boolean>;
   networkHealthExpanded: boolean;
   leftSidebarHidden: boolean;
   dataPanelHidden: boolean;
@@ -103,8 +113,7 @@ const loadPersistedAppState = (): Partial<PersistedAppState> => {
       optimizationState: isOptimizationState(saved.optimizationState) ? saved.optimizationState : undefined,
       deploymentStage: isDeploymentStage(saved.deploymentStage) ? saved.deploymentStage : undefined,
       showFailureSelect: typeof saved.showFailureSelect === 'boolean' ? saved.showFailureSelect : undefined,
-      groundSitesExpanded: typeof saved.groundSitesExpanded === 'boolean' ? saved.groundSitesExpanded : undefined,
-      satellitesExpanded: typeof saved.satellitesExpanded === 'boolean' ? saved.satellitesExpanded : undefined,
+      openGroups: saved.openGroups ? { ...defaultOpenGroups, ...saved.openGroups } : undefined,
       networkHealthExpanded: typeof saved.networkHealthExpanded === 'boolean' ? saved.networkHealthExpanded : undefined,
       leftSidebarHidden: typeof saved.leftSidebarHidden === 'boolean' ? saved.leftSidebarHidden : undefined,
       dataPanelHidden: typeof saved.dataPanelHidden === 'boolean' ? saved.dataPanelHidden : undefined,
@@ -123,6 +132,51 @@ const tabMeta: { id: AppTab; label: string; icon: typeof GlobeIcon }[] = [
   { id: 'resilience', label: 'Resilience', icon: ShieldAlert },
   { id: 'compare', label: 'Compare', icon: BarChart3 },
 ];
+
+/**
+ * Every group in the configuration column shares one header grammar: name,
+ * current value, chevron. The value stays visible when the group is collapsed,
+ * so the column reads as a summary of the scenario rather than a stack of lids.
+ */
+const ConfigGroup: React.FC<{
+  title: string;
+  value: React.ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}> = ({ title, value, open, onToggle, children }) => (
+  <section className="border-t border-zinc-800/80 first:border-t-0">
+    <h3>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 rounded py-2.5 text-left transition-colors hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+      >
+        <span className="text-[13px] text-zinc-300">{title}</span>
+        <span className="ml-auto font-mono text-[11px] tabular-nums text-zinc-500">{value}</span>
+        <ChevronDown
+          size={14}
+          className={cn("flex-shrink-0 text-zinc-600 transition-transform duration-200", !open && "-rotate-90")}
+        />
+      </button>
+    </h3>
+
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="min-h-0 overflow-hidden"
+        >
+          <div className="pb-4">{children}</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </section>
+);
 
 const sidebarButtonClass =
   "hidden h-8 w-8 items-center justify-center rounded-md border border-zinc-800 bg-black/80 text-zinc-400 backdrop-blur transition-colors hover:border-zinc-600 hover:text-zinc-100 lg:flex";
@@ -206,8 +260,11 @@ export default function App() {
 
   const [deploymentStage, setDeploymentStage] = useState<1 | 2 | 3>(persistedAppState.deploymentStage ?? 3);
   const [showFailureSelect, setShowFailureSelect] = useState(persistedAppState.showFailureSelect ?? false);
-  const [groundSitesExpanded, setGroundSitesExpanded] = useState(persistedAppState.groundSitesExpanded ?? true);
-  const [satellitesExpanded, setSatellitesExpanded] = useState(persistedAppState.satellitesExpanded ?? false);
+  const [openGroups, setOpenGroups] = useState<Record<ConfigGroupId, boolean>>(
+    persistedAppState.openGroups ?? defaultOpenGroups
+  );
+  const toggleGroup = (group: ConfigGroupId) =>
+    setOpenGroups(current => ({ ...current, [group]: !current[group] }));
   const [networkHealthExpanded, setNetworkHealthExpanded] = useState(persistedAppState.networkHealthExpanded ?? true);
   const [leftSidebarHidden, setLeftSidebarHidden] = useState(persistedAppState.leftSidebarHidden ?? false);
   const [dataPanelHidden, setDataPanelHidden] = useState(persistedAppState.dataPanelHidden ?? false);
@@ -235,6 +292,20 @@ export default function App() {
 
     return visibleSats.map(sat => {
       const planeRaan = planesConfig[sat.plane]?.raan || 0;
+      const planePhase = planesConfig[sat.plane]?.phase;
+
+      // Phase slides a satellite along its own track, so latitude has to be
+      // recomputed from the track — shifting longitude alone would lift the
+      // whole plane off its orbit line.
+      if (sat.slotDeg !== undefined && planePhase !== undefined) {
+        const track = orbitTrackPoint(sat.slotDeg + planePhase);
+        return {
+          ...sat,
+          lat: track.lat,
+          lon: normalizeLongitude(track.lon + timeShift + planeRaan),
+        };
+      }
+
       return {
         ...sat,
         lon: normalizeLongitude(sat.lon + timeShift + planeRaan),
@@ -291,8 +362,7 @@ export default function App() {
       optimizationState,
       deploymentStage,
       showFailureSelect,
-      groundSitesExpanded,
-      satellitesExpanded,
+      openGroups,
       networkHealthExpanded,
       leftSidebarHidden,
       dataPanelHidden,
@@ -313,8 +383,7 @@ export default function App() {
     optimizationState,
     deploymentStage,
     showFailureSelect,
-    groundSitesExpanded,
-    satellitesExpanded,
+    openGroups,
     networkHealthExpanded,
     leftSidebarHidden,
     dataPanelHidden,
@@ -416,240 +485,257 @@ export default function App() {
 
   // --- Panel bodies (shared between desktop sidebars and mobile drawers) ---
 
-  const renderConfigSection = () => (
-    <div className="flex flex-col gap-4">
-      <div className="space-y-3">
-        <label className="text-xs text-zinc-500">Deployment Stage</label>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 relative w-full">
-            <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-zinc-700 -z-10"></div>
+  const renderConfigSection = () => {
+    const deployedCount = deploymentStage * 16;
+    const failedSatellites = satellites.filter(sat => sat.status === 'failed');
+    const allSites = [...gateways, ...groundStations];
 
-            <button onClick={() => setDeploymentStage(1)} className={cn("w-5 h-5 rounded-full border flex items-center justify-center text-[10px] transition-all", deploymentStage >= 1 ? "bg-blue-500 border-blue-500 text-zinc-900 font-bold" : "border-zinc-600 bg-[black]")}>1</button>
-
-            <div className="flex-1"></div>
-
-            <button onClick={() => setDeploymentStage(2)} className={cn("w-5 h-5 rounded-full border flex items-center justify-center text-[10px] transition-all", deploymentStage >= 2 ? "bg-blue-500 border-blue-500 text-zinc-900 font-bold" : "border-zinc-600 bg-[black]")}>2</button>
-
-            <div className="flex-1"></div>
-
-            <button onClick={() => setDeploymentStage(3)} className={cn("w-5 h-5 rounded-full border flex items-center justify-center text-[10px] transition-all", deploymentStage >= 3 ? "bg-blue-500 border-blue-500 text-zinc-900 font-bold" : "border-zinc-600 bg-[black]")}>3</button>
+    return (
+      <div className="flex flex-col">
+        <ConfigGroup
+          title="Deployment"
+          value={`${deployedCount} sats`}
+          open={openGroups.deployment}
+          onToggle={() => toggleGroup('deployment')}
+        >
+          {/* Stages are cumulative, so they read as a progress track rather than
+              three independent options. */}
+          <div className="relative flex items-center justify-between px-1">
+            <div className="absolute left-1 right-1 top-1/2 h-px -translate-y-1/2 bg-zinc-800" />
+            <div
+              className="absolute left-1 top-1/2 h-px -translate-y-1/2 bg-blue-500/70 transition-all duration-200"
+              style={{ width: `calc((100% - 0.5rem) * ${(deploymentStage - 1) / 2})` }}
+            />
+            {([1, 2, 3] as const).map(stage => (
+              <button
+                key={stage}
+                type="button"
+                onClick={() => setDeploymentStage(stage)}
+                aria-pressed={deploymentStage === stage}
+                aria-label={`Deploy stage ${stage}, ${stage * 16} satellites`}
+                className={cn(
+                  "relative flex h-7 w-7 items-center justify-center rounded-full border font-mono text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500",
+                  deploymentStage === stage
+                    ? "border-blue-500 bg-blue-500/15 font-semibold text-blue-300"
+                    : deploymentStage > stage
+                      ? "border-blue-500/60 bg-[black] text-blue-400/80"
+                      : "border-zinc-700 bg-[black] text-zinc-500 hover:border-zinc-500 hover:text-zinc-300"
+                )}
+              >
+                {stage}
+              </button>
+            ))}
           </div>
-        </div>
-        <div className="flex justify-between text-[10px] text-zinc-500">
-          <span className={deploymentStage >= 1 ? "text-blue-400" : ""}>16 sats</span>
-          <span className={deploymentStage >= 2 ? "text-blue-400" : ""}>32 sats</span>
-          <span className={deploymentStage >= 3 ? "text-blue-400" : ""}>48 sats</span>
-        </div>
-      </div>
+          <div className="mt-2 flex justify-between px-1 font-mono text-[10px] tabular-nums">
+            {[16, 32, 48].map((count, index) => (
+              <span key={count} className={deploymentStage >= index + 1 ? "text-blue-400" : "text-zinc-600"}>
+                {count}
+              </span>
+            ))}
+          </div>
+        </ConfigGroup>
 
-      <div className="flex flex-col border-t border-zinc-800 pt-3">
-        <button
-          type="button"
-          onClick={() => setSatellitesExpanded(expanded => !expanded)}
-          className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-1 text-left transition-colors hover:bg-zinc-900/70"
-          aria-expanded={satellitesExpanded}
+        <ConfigGroup
+          title="Orbital planes"
+          value={planeIds.map(plane => `${planesConfig[plane].raan}°`).join('  ')}
+          open={openGroups.planes}
+          onToggle={() => toggleGroup('planes')}
         >
-          <span className="text-xs text-zinc-500">Satellites</span>
-          <span className="flex items-center gap-2 font-mono text-[10px] text-zinc-500">
-            {satellites.length}
-            <ChevronDown
-              size={14}
-              className={cn("transition-transform duration-200", !satellitesExpanded && "-rotate-90")}
-            />
-          </span>
-        </button>
+          <div className="space-y-4">
+            {planeIds.map(plane => (
+              <div key={plane}>
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-[3px] rounded-full" style={{ background: planeColors[plane] }} />
+                  <span className="text-[13px] text-zinc-200">Plane {plane}</span>
+                  <span className="ml-auto font-mono text-[10px] tabular-nums text-zinc-500">
+                    {satellites.filter(sat => sat.plane === plane).length} sats
+                  </span>
+                </div>
 
-        <AnimatePresence initial={false}>
-          {satellitesExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="min-h-0 overflow-hidden"
-            >
-              <div className="mt-2 max-h-[clamp(9rem,24vh,17rem)] space-y-1 overflow-y-auto overscroll-contain pr-1">
-                {satellites.map((satellite, index) => {
-                  const isDeployed = index < deploymentStage * 16;
-                  const isSelected = selectedSatellite === satellite.id;
-                  const planeColor = satellite.plane === 'P1'
-                    ? 'bg-blue-400'
-                    : satellite.plane === 'P2'
-                      ? 'bg-emerald-400'
-                      : 'bg-amber-400';
-
-                  return (
-                    <button
-                      key={satellite.id}
-                      type="button"
-                      onClick={() => selectSatellite(satellite.id)}
-                      className={cn(
-                        "flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left transition-colors",
-                        isSelected
-                          ? 'border-blue-500/70 bg-blue-500/10'
-                          : 'border-zinc-800/80 bg-zinc-950/70 hover:border-zinc-700 hover:bg-zinc-900/70',
-                        !isDeployed && 'opacity-45'
-                      )}
-                    >
-                      <span className={cn(
-                        "h-1.5 w-1.5 shrink-0 rounded-full",
-                        satellite.status === 'failed' ? 'bg-red-500' : planeColor
-                      )} />
-                      <span className="font-mono text-xs text-zinc-200">{satellite.id}</span>
-                      <span className="ml-auto font-mono text-[10px] text-zinc-500">{satellite.plane}</span>
-                      <span className={cn("w-12 text-right text-[9px] uppercase tracking-wide", isDeployed ? 'text-zinc-500' : 'text-zinc-600')}>
-                        {isDeployed ? 'online' : 'pending'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className="flex flex-col border-t border-zinc-800 pt-3">
-        <button
-          type="button"
-          onClick={() => setGroundSitesExpanded(expanded => !expanded)}
-          className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-1 text-left transition-colors hover:bg-zinc-900/70"
-          aria-expanded={groundSitesExpanded}
-        >
-          <span className="text-xs text-zinc-500">Ground Sites</span>
-          <span className="flex items-center gap-2 font-mono text-[10px] text-zinc-500">
-            {[...gateways, ...groundStations].length}
-            <ChevronDown
-              size={14}
-              className={cn("transition-transform duration-200", !groundSitesExpanded && "-rotate-90")}
-            />
-          </span>
-        </button>
-
-        <AnimatePresence initial={false}>
-          {groundSitesExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="min-h-0 overflow-hidden"
-            >
-              <div className="mt-2 space-y-2">
-                {[...gateways, ...groundStations].map(site => {
-                  const isGateway = site.role === 'gateway';
-                  return (
-                    <div key={site.id} className="grid grid-cols-[auto_1fr] gap-x-2 rounded border border-zinc-800/80 bg-zinc-950/70 px-2 py-2">
-                      <div className={cn(
-                        "mt-1 h-2.5 w-2.5 shrink-0",
-                        isGateway ? "rotate-45 bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" : "border-l-[5px] border-r-[5px] border-b-[9px] border-l-transparent border-r-transparent border-b-blue-400"
-                      )} />
-                      <div className="min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={cn("font-mono text-sm", isGateway ? "text-amber-300" : "text-blue-300")}>{site.id}</span>
-                          <span className="text-[10px] uppercase tracking-wider text-zinc-500">{isGateway ? 'Gateway' : 'Client'}</span>
-                        </div>
-                        <div className="truncate text-xs text-zinc-400">{site.name}</div>
-                        <div className="truncate font-mono text-[10px] text-zinc-500">
-                          {site.lat.toFixed(2)}° lat / {site.lon.toFixed(2)}° lon
-                        </div>
+                <div className="mt-2 space-y-2.5">
+                  {([
+                    { key: 'raan' as const, label: 'RAAN', max: 360, step: 1 },
+                    { key: 'phase' as const, label: 'Phase', max: 22.5, step: 0.5 }
+                  ]).map(control => (
+                    <div key={control.key}>
+                      <div className="flex items-baseline justify-between">
+                        <label htmlFor={`${plane}-${control.key}`} className="text-[11px] text-zinc-500">
+                          {control.label}
+                        </label>
+                        <span className="font-mono text-[11px] tabular-nums text-zinc-300">
+                          {planesConfig[plane][control.key]}°
+                        </span>
                       </div>
+                      <input
+                        id={`${plane}-${control.key}`}
+                        type="range"
+                        min={0}
+                        max={control.max}
+                        step={control.step}
+                        value={planesConfig[plane][control.key]}
+                        onChange={event => setPlanesConfig(prev => ({
+                          ...prev,
+                          [plane]: { ...prev[plane], [control.key]: parseFloat(event.target.value) }
+                        }))}
+                        style={{ accentColor: planeColors[plane] }}
+                        className="mt-1 h-1 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                      />
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className="space-y-3 border-t border-zinc-800 pt-3">
-        <label className="text-xs text-zinc-500">Orbital Planes</label>
-        {planeIds.map(plane => (
-          <div key={plane} className="space-y-1">
-            <div className="text-sm font-medium">Plane {plane}</div>
-            <div className="flex justify-between text-[10px] text-zinc-500 mb-1">
-              <span>RAAN</span>
-              <span>{planesConfig[plane].raan}°</span>
-            </div>
-            <input
-              type="range"
-              min="0" max="360"
-              value={planesConfig[plane].raan}
-              onChange={(e) => setPlanesConfig(prev => ({
-                ...prev,
-                [plane]: { ...prev[plane], raan: parseInt(e.target.value) }
-              }))}
-              className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
-            />
-            <div className="flex justify-between text-[10px] text-zinc-500">
-              <span>Phase</span>
-              <span>{planesConfig[plane].phase}°</span>
-            </div>
+            ))}
           </div>
-        ))}
+        </ConfigGroup>
+
+        <ConfigGroup
+          title="Failures"
+          value={failedSatellites.length ? `${failedSatellites.length} down` : 'none'}
+          open={openGroups.failures}
+          onToggle={() => toggleGroup('failures')}
+        >
+          <div className="space-y-2">
+            {failedSatellites.map(satellite => (
+              <div
+                key={satellite.id}
+                className="flex items-center gap-2 rounded border border-red-500/25 bg-red-500/10 px-2 py-1.5"
+              >
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                <span className="font-mono text-xs text-red-300">{satellite.id}</span>
+                <button
+                  type="button"
+                  className="ml-auto text-[11px] text-zinc-400 transition-colors hover:text-zinc-100"
+                  onClick={() => {
+                    // TODO(BACKEND): Restore the node through the scenario API.
+                    setSatellites(sats => sats.map(sat => sat.id === satellite.id ? { ...sat, status: 'active' } : sat));
+                    setMetrics(baselineMetrics);
+                    setActiveRoute(activeRouteC65.path);
+                  }}
+                >
+                  Restore
+                </button>
+              </div>
+            ))}
+
+            {!failedSatellites.length && !showFailureSelect && (
+              <p className="text-[11px] leading-relaxed text-zinc-500">
+                Every node is up. Add a failure to see how the network copes.
+              </p>
+            )}
+
+            {showFailureSelect ? (
+              <div className="space-y-2 rounded border border-zinc-800 bg-zinc-900/50 p-2">
+                <label htmlFor="failure-target" className="block text-[11px] text-zinc-400">
+                  Which satellite fails?
+                </label>
+                <select
+                  id="failure-target"
+                  autoFocus
+                  className="w-full rounded border border-zinc-700 bg-zinc-950 p-1.5 font-mono text-xs text-zinc-200 focus:border-blue-500 focus:outline-none"
+                  onChange={event => {
+                    if (event.target.value) handleSimulateFailure(event.target.value);
+                    setShowFailureSelect(false);
+                  }}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Choose a satellite</option>
+                  {dynamicSatellites.filter(sat => sat.status === 'active').map(sat => (
+                    <option key={sat.id} value={sat.id}>{sat.id} · plane {sat.plane}</option>
+                  ))}
+                </select>
+                <Button variant="ghost" size="sm" className="h-7 w-full text-[11px]" onClick={() => setShowFailureSelect(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-full text-xs"
+                onClick={() => setShowFailureSelect(true)}
+              >
+                <Plus size={14} className="mr-1.5" /> Add failure
+              </Button>
+            )}
+
+          </div>
+        </ConfigGroup>
+
+        <ConfigGroup
+          title="Satellites"
+          value={`${deployedCount} of ${satellites.length}`}
+          open={openGroups.satellites}
+          onToggle={() => toggleGroup('satellites')}
+        >
+          <div className="max-h-[clamp(9rem,24vh,17rem)] space-y-px overflow-y-auto overscroll-contain pr-1">
+            {satellites.map((satellite, index) => {
+              const isDeployed = index < deployedCount;
+              const isSelected = selectedSatellite === satellite.id;
+
+              return (
+                <button
+                  key={satellite.id}
+                  type="button"
+                  onClick={() => selectSatellite(satellite.id)}
+                  aria-pressed={isSelected}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500",
+                    isSelected ? "bg-zinc-800/80" : "hover:bg-zinc-900",
+                    !isDeployed && "opacity-45"
+                  )}
+                >
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: satellite.status === 'failed' ? '#ef4444' : planeColors[satellite.plane] }}
+                  />
+                  <span className="font-mono text-xs text-zinc-200">{satellite.id}</span>
+                  <span className="ml-auto font-mono text-[10px] tabular-nums text-zinc-500">{satellite.plane}</span>
+                </button>
+              );
+            })}
+          </div>
+        </ConfigGroup>
+
+        <ConfigGroup
+          title="Ground sites"
+          value={`${allSites.length}`}
+          open={openGroups.sites}
+          onToggle={() => toggleGroup('sites')}
+        >
+          <div className="space-y-px">
+            {allSites.map(site => {
+              const isGateway = site.role === 'gateway';
+              return (
+                <div key={site.id} className="flex items-start gap-2 rounded px-2 py-1.5">
+                  <span className={cn(
+                    "mt-1 h-2 w-2 shrink-0",
+                    isGateway
+                      ? "rotate-45 bg-amber-400"
+                      : "border-l-4 border-r-4 border-b-[7px] border-l-transparent border-r-transparent border-b-blue-400"
+                  )} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className={cn("font-mono text-xs", isGateway ? "text-amber-300" : "text-blue-300")}>
+                        {site.id}
+                      </span>
+                      <span className="truncate text-[11px] text-zinc-400">{site.name}</span>
+                    </div>
+                    <div className="font-mono text-[10px] tabular-nums text-zinc-500">
+                      {formatLatitude(site.lat)}  {formatLongitude(site.lon)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </ConfigGroup>
       </div>
+    );
+  };
 
-      <div className="space-y-3 border-t border-zinc-800 pt-3">
-        <label className="text-xs text-zinc-500">Failures</label>
-
-        <div className="space-y-2">
-          {satellites.filter(s => s.status === 'failed').map(s => (
-            <div key={s.id} className="flex items-center justify-between text-sm bg-red-500/10 border border-red-500/20 p-2 rounded">
-              <span className="text-red-400">{s.id}</span>
-              <X size={14} className="text-red-400 cursor-pointer hover:text-red-300" onClick={() => {
-                setSatellites(sats => sats.map(sat => sat.id === s.id ? { ...sat, status: 'active' } : sat));
-                setMetrics(baselineMetrics);
-                setActiveRoute(activeRouteC65.path);
-              }}/>
-            </div>
-          ))}
-        </div>
-
-        {showFailureSelect ? (
-           <div className="flex flex-col space-y-2 p-2 border border-zinc-800 rounded bg-zinc-900/50">
-             <span className="text-[10px] text-zinc-400">Select active satellite:</span>
-             <select
-               className="bg-zinc-950 border border-zinc-700 text-sm p-1 rounded focus:outline-none focus:border-blue-500"
-               onChange={(e) => {
-                 if(e.target.value) handleSimulateFailure(e.target.value);
-                 setShowFailureSelect(false);
-               }}
-               defaultValue=""
-             >
-               <option value="" disabled>-- Select --</option>
-               {dynamicSatellites.filter(s => s.status === 'active').map(s => (
-                 <option key={s.id} value={s.id}>{s.id}</option>
-               ))}
-             </select>
-             <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setShowFailureSelect(false)}>Cancel</Button>
-           </div>
-        ) : (
-          <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => setShowFailureSelect(true)}>
-            <Plus size={14} className="mr-1" /> Add failure
-          </Button>
-        )}
-      </div>
-
-      <div className="border-t border-zinc-800 pt-3">
-        <Button className="w-full relative" onClick={() => {
-          setSimulating(true);
-          // TODO(BACKEND): Run the selected scenario through the simulation API.
-          setTimeout(() => setSimulating(false), 1500);
-        }}>
-          {simulating ? (
-            <motion.div animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity }} className="text-xs font-medium font-mono tracking-wider">
-              SIMULATING...
-            </motion.div>
-          ) : (
-            <span className="flex items-center font-medium font-mono text-xs tracking-wider">
-              <Play size={14} className="mr-2" /> RUN SIMULATION
-            </span>
-          )}
-        </Button>
-      </div>
-    </div>
-  );
+  /** Latitude/longitude the way an engineer reads them, not as signed floats. */
+  const formatLatitude = (lat: number) => `${Math.abs(lat).toFixed(2)}° ${lat >= 0 ? 'N' : 'S'}`;
+  const formatLongitude = (lon: number) => `${Math.abs(lon).toFixed(2)}° ${lon >= 0 ? 'E' : 'W'}`;
 
   /**
    * Compact network-health HUD pinned to the top-left corner of the globe.
@@ -742,9 +828,6 @@ export default function App() {
     );
   };
 
-  /** Latitude/longitude the way an engineer reads them, not as signed floats. */
-  const formatLatitude = (lat: number) => `${Math.abs(lat).toFixed(2)}° ${lat >= 0 ? 'N' : 'S'}`;
-  const formatLongitude = (lon: number) => `${Math.abs(lon).toFixed(2)}° ${lon >= 0 ? 'E' : 'W'}`;
 
   /**
    * Detail view for a clicked satellite, used as a desktop column or mobile
@@ -915,11 +998,38 @@ export default function App() {
         exit={{ opacity: 0, x: 8 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
       >
-        <section className="space-y-4 p-4">
-          <h2 className="pr-9 text-xs font-semibold tracking-widest text-zinc-400">CONFIGURATION</h2>
+        <section className="p-4">
+          <h2 className="mb-1 pr-9 text-xs font-semibold tracking-widest text-zinc-400">CONFIGURATION</h2>
           {renderConfigSection()}
         </section>
       </motion.div>
+
+      {/* The primary action stays reachable while the column scrolls. */}
+      <div className="flex-shrink-0 border-t border-zinc-800 bg-[#09090b] p-4">
+        <Button
+          className="h-10 w-full"
+          disabled={simulating}
+          onClick={() => {
+            setSimulating(true);
+            // TODO(BACKEND): Run the selected scenario through the simulation API.
+            setTimeout(() => setSimulating(false), 1500);
+          }}
+        >
+          {simulating ? (
+            <motion.span
+              animate={{ opacity: [0.55, 1, 0.55] }}
+              transition={{ repeat: Infinity, duration: 1.2 }}
+              className="text-sm font-medium"
+            >
+              Simulating…
+            </motion.span>
+          ) : (
+            <span className="flex items-center text-sm font-medium">
+              <Play size={14} className="mr-2" /> Run simulation
+            </span>
+          )}
+        </Button>
+      </div>
 
       {includeSatelliteOverlay && renderSatelliteOverlay()}
     </>

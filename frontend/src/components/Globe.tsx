@@ -21,6 +21,9 @@ const SATELLITE_ALTITUDE = 0.05;
 const EARTH_RADIUS_KM = 6371;
 // TODO(BACKEND): Receive this from each satellite's beam/coverage capability.
 const COVERAGE_RADIUS_KM = 1700;
+/** Short enough to feel instant, long enough to read as a reveal. */
+const COVERAGE_TWEEN_MS = 220;
+const COVERAGE_CAP_OPACITY = 0.22;
 const COVERAGE_SEGMENTS = 72;
 
 const toRadians = (degrees: number) => degrees * (Math.PI / 180);
@@ -170,7 +173,7 @@ export const Globe: React.FC<GlobeProps> = ({
     () => new THREE.MeshBasicMaterial({
       color: '#7dd3fc',
       transparent: true,
-      opacity: 0.22,
+      opacity: COVERAGE_CAP_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide
     }),
@@ -178,6 +181,52 @@ export const Globe: React.FC<GlobeProps> = ({
   );
 
   useEffect(() => () => coverageCapMaterial.dispose(), [coverageCapMaterial]);
+
+  // The footprint grows in and collapses out over a short eased tween. It is
+  // driven here rather than through polygonsTransitionDuration so that it only
+  // animates on select/deselect, never on the position updates that arrive
+  // every frame while the timeline runs.
+  const [coverageSatelliteId, setCoverageSatelliteId] = useState<string | null>(selectedSatellite ?? null);
+  const [coverageScale, setCoverageScale] = useState(selectedSatellite ? 1 : 0);
+  const coverageScaleRef = useRef(coverageScale);
+  coverageScaleRef.current = coverageScale;
+
+  useEffect(() => {
+    const target = selectedSatellite ? 1 : 0;
+    if (selectedSatellite) setCoverageSatelliteId(selectedSatellite);
+
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setCoverageScale(target);
+      if (!selectedSatellite) setCoverageSatelliteId(null);
+      return;
+    }
+
+    const from = coverageScaleRef.current;
+    if (from === target) return;
+
+    const start = performance.now();
+    let frame = 0;
+
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / COVERAGE_TWEEN_MS);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setCoverageScale(from + (target - from) * eased);
+
+      if (t < 1) {
+        frame = requestAnimationFrame(step);
+      } else if (target === 0) {
+        setCoverageSatelliteId(null);
+      }
+    };
+
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [selectedSatellite]);
+
+  useEffect(() => {
+    coverageCapMaterial.opacity = COVERAGE_CAP_OPACITY * coverageScale;
+  }, [coverageCapMaterial, coverageScale]);
 
   // One geometry for every satellite sphere; materials are cached per color and
   // meshes per satellite, so playback does not churn objects 10x a second.
@@ -395,19 +444,20 @@ export const Globe: React.FC<GlobeProps> = ({
   );
 
   const selectedCoverage = useMemo(() => {
-    const satellite = satellites.find(sat => sat.id === selectedSatellite);
-    if (!satellite) return null;
+    const satellite = satellites.find(sat => sat.id === coverageSatelliteId);
+    if (!satellite || coverageScale <= 0.001) return null;
 
-    const boundary = coverageRing(satellite.lat, satellite.lon, COVERAGE_RADIUS_KM);
+    const boundary = coverageRing(satellite.lat, satellite.lon, COVERAGE_RADIUS_KM * coverageScale);
 
     return {
       geometry: {
         type: 'Polygon',
         coordinates: [boundary.map(point => [point.lng, point.lat])]
       },
-      borderPoints: boundary.map(point => [point.lat, point.lng, 0.008] as [number, number, number])
+      borderPoints: boundary.map(point => [point.lat, point.lng, 0.008] as [number, number, number]),
+      borderOpacity: coverageScale
     };
-  }, [satellites, selectedSatellite]);
+  }, [satellites, coverageSatelliteId, coverageScale]);
 
   // Prepare links data
   const arcsData = useMemo(() => {
@@ -497,7 +547,7 @@ export const Globe: React.FC<GlobeProps> = ({
       ...orbitPaths,
       {
         points: selectedCoverage.borderPoints,
-        color: '#bae6fd',
+        color: `rgba(186,230,253,${(0.9 * selectedCoverage.borderOpacity).toFixed(3)})`,
         stroke: 0.34,
         dashLength: 0.05,
         dashGap: 0.035,

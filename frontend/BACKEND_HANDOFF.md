@@ -3,6 +3,9 @@
 The code is marked with `TODO(BACKEND)` at every known temporary data boundary.
 Use this document as the integration checklist before release.
 
+For the endpoints and payload shapes themselves, see [BACKEND_API.md](./BACKEND_API.md):
+this file says *where* the fixtures are, that one says *what* replaces them.
+
 ## Replace Fixtures
 
 - `src/mockData.ts`: orbital planes, inclination, ground sites, satellites,
