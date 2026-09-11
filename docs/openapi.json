@@ -1,0 +1,3191 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OrbitGuard API",
+    "summary": "Constellation resilience studio for the КосмоХакатон 2026 case",
+    "description": "Loads `cosmo-A-1.0` scenarios, simulates a constellation over its time grid, routes traffic from client sites to a gateway, and reports availability, outages and per-satellite criticality.\n\n**Conventions.** Times are seconds from the start of the run (`t_s`), angles are degrees, distances kilometres, fractions are 0…1 (not percent). Keys are `snake_case`, matching the official case format.",
+    "version": "dev"
+  },
+  "paths": {
+    "/api/v1/scenarios/validate": {
+      "post": {
+        "tags": [
+          "scenarios"
+        ],
+        "summary": "Check a scenario without storing it",
+        "operationId": "validate_scenario_api_v1_scenarios_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios": {
+      "post": {
+        "tags": [
+          "scenarios"
+        ],
+        "summary": "Import a scenario from a JSON body",
+        "operationId": "import_scenario_api_v1_scenarios_post",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scenario Id"
+            }
+          },
+          {
+            "name": "overwrite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Overwrite"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "scenarios"
+        ],
+        "summary": "List available scenarios",
+        "operationId": "list_scenarios_api_v1_scenarios_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioSummary"
+                  },
+                  "title": "Response List Scenarios Api V1 Scenarios Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/upload": {
+      "post": {
+        "tags": [
+          "scenarios"
+        ],
+        "summary": "Import a scenario from an uploaded file",
+        "operationId": "upload_scenario_api_v1_scenarios_upload_post",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scenario Id"
+            }
+          },
+          {
+            "name": "overwrite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Overwrite"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_scenario_api_v1_scenarios_upload_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}": {
+      "get": {
+        "tags": [
+          "scenarios"
+        ],
+        "summary": "Fetch one scenario with its original document",
+        "operationId": "get_scenario_api_v1_scenarios__scenario_id__get",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scenario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "scenarios"
+        ],
+        "summary": "Delete an imported scenario",
+        "operationId": "delete_scenario_api_v1_scenarios__scenario_id__delete",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scenario Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}/download": {
+      "get": {
+        "tags": [
+          "scenarios"
+        ],
+        "summary": "Download the scenario as the original cosmo-A-1.0 file",
+        "operationId": "download_scenario_api_v1_scenarios__scenario_id__download_get",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scenario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/simulations": {
+      "post": {
+        "tags": [
+          "simulations"
+        ],
+        "summary": "Run a scenario over its full time grid",
+        "operationId": "run_simulation_api_v1_simulations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/simulations/{run_id}": {
+      "get": {
+        "tags": [
+          "simulations"
+        ],
+        "summary": "Fetch a completed run",
+        "operationId": "get_simulation_api_v1_simulations__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/simulations/{run_id}/snapshot": {
+      "get": {
+        "tags": [
+          "simulations"
+        ],
+        "summary": "Network state at one instant",
+        "description": "`t_s` is snapped down to the nearest calculation instant, so a timeline\ndragged to an arbitrary position still lands on real computed state.",
+        "operationId": "get_snapshot_api_v1_simulations__run_id__snapshot_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "t_s",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Seconds from the start of the run",
+              "default": 0,
+              "title": "T S"
+            },
+            "description": "Seconds from the start of the run"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/simulations/{run_id}/ephemeris": {
+      "get": {
+        "tags": [
+          "simulations"
+        ],
+        "summary": "Satellite positions across the whole horizon",
+        "operationId": "get_ephemeris_api_v1_simulations__run_id__ephemeris_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "step_s",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Coarsen the sampling; never finer than the scenario grid",
+              "title": "Step S"
+            },
+            "description": "Coarsen the sampling; never finer than the scenario grid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EphemerisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/simulations/{run_id}/availability": {
+      "get": {
+        "tags": [
+          "simulations"
+        ],
+        "summary": "Per-instant availability states for the timeline strip",
+        "operationId": "get_availability_api_v1_simulations__run_id__availability_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AvailabilitySample"
+                  },
+                  "title": "Response Get Availability Api V1 Simulations  Run Id  Availability Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/simulations/{run_id}/routes/{client_id}": {
+      "get": {
+        "tags": [
+          "simulations"
+        ],
+        "summary": "Every instant's route for one client",
+        "operationId": "get_routes_api_v1_simulations__run_id__routes__client_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteTimelineResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/simulations/{run_id}/export": {
+      "get": {
+        "tags": [
+          "simulations"
+        ],
+        "summary": "Download the official cosmo-A-result-1.0 document",
+        "operationId": "export_result_api_v1_simulations__run_id__export_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/simulations/{run_id}/scenario": {
+      "get": {
+        "tags": [
+          "simulations"
+        ],
+        "summary": "Download the effective scenario this run used",
+        "description": "The case asks that an edited scenario can be exported and loaded back;\nthis is that file, with every UI change already folded in.",
+        "operationId": "download_effective_scenario_api_v1_simulations__run_id__scenario_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/variants": {
+      "get": {
+        "tags": [
+          "variants"
+        ],
+        "summary": "List saved variants",
+        "operationId": "list_variants_api_v1_variants_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VariantModel"
+                  },
+                  "type": "array",
+                  "title": "Response List Variants Api V1 Variants Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "variants"
+        ],
+        "summary": "Save the current configuration as a named variant",
+        "description": "Runs the configuration if it has not been run yet, then keeps it under a name.",
+        "operationId": "create_variant_api_v1_variants_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariantCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariantModel"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/variants/compare": {
+      "post": {
+        "tags": [
+          "variants"
+        ],
+        "summary": "Compare saved variants side by side",
+        "operationId": "compare_variants_api_v1_variants_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompareResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/variants/{variant_id}": {
+      "delete": {
+        "tags": [
+          "variants"
+        ],
+        "summary": "Delete a saved variant",
+        "operationId": "delete_variant_api_v1_variants__variant_id__delete",
+        "parameters": [
+          {
+            "name": "variant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Variant Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/resilience": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Rank satellites by the availability lost if they fail",
+        "description": "Runs one full simulation per satellite across a process pool (~2.3 s for 48).",
+        "operationId": "analyse_resilience_api_v1_analysis_resilience_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResilienceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResilienceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/sensitivity": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Sweep an environment parameter to locate the target threshold",
+        "operationId": "analyse_sensitivity_api_v1_analysis_sensitivity_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SensitivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SensitivityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/optimize": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Search for a better plane configuration",
+        "description": "Locked parameters are honoured: pass `null` for a range to pin it.",
+        "operationId": "start_optimization_api_v1_analysis_optimize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusModel"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Poll a running job",
+        "operationId": "get_job_api_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusModel"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}/result": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Fetch a finished job's result",
+        "operationId": "get_job_result_api_v1_jobs__job_id__result_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ping": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Ping",
+        "operationId": "ping_api_ping_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Readiness",
+        "operationId": "readiness_api_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AvailabilitySample": {
+        "properties": {
+          "t_s": {
+            "type": "integer",
+            "title": "T S"
+          },
+          "state": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "routed",
+                "visible_no_route",
+                "no_satellite"
+              ]
+            },
+            "type": "object",
+            "title": "State"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "t_s",
+          "state"
+        ],
+        "title": "AvailabilitySample",
+        "description": "Per-instant availability flags — what the timeline strip under the globe draws.\n\nThree states, not two: `visible_no_route` is the whole point of the case, and\ncollapsing it into \"no service\" would hide the difference between \"no\nsatellite overhead\" and \"satellite overhead but the mesh cannot reach the\ngateway\"."
+      },
+      "Body_upload_scenario_api_v1_scenarios_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_scenario_api_v1_scenarios_upload_post"
+      },
+      "CandidateModel": {
+        "properties": {
+          "planes": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Planes"
+          },
+          "worst_availability": {
+            "type": "number",
+            "title": "Worst Availability"
+          },
+          "mean_availability": {
+            "type": "number",
+            "title": "Mean Availability"
+          },
+          "worst_outage_s": {
+            "type": "integer",
+            "title": "Worst Outage S"
+          },
+          "mean_hops": {
+            "type": "number",
+            "title": "Mean Hops"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "planes",
+          "worst_availability",
+          "mean_availability",
+          "worst_outage_s",
+          "mean_hops"
+        ],
+        "title": "CandidateModel"
+      },
+      "ClientMetricsModel": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "title": "Client Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "visibility": {
+            "type": "number",
+            "title": "Visibility",
+            "description": "Fraction 0…1 of instants with a satellite in view"
+          },
+          "availability": {
+            "type": "number",
+            "title": "Availability",
+            "description": "Fraction 0…1 of instants with a route to a gateway"
+          },
+          "meets_target": {
+            "type": "boolean",
+            "title": "Meets Target"
+          },
+          "max_outage_s": {
+            "type": "integer",
+            "title": "Max Outage S"
+          },
+          "max_bounded_outage_s": {
+            "type": "integer",
+            "title": "Max Bounded Outage S"
+          },
+          "leading_outage_s": {
+            "type": "integer",
+            "title": "Leading Outage S"
+          },
+          "trailing_outage_s": {
+            "type": "integer",
+            "title": "Trailing Outage S"
+          },
+          "avg_hops": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Hops"
+          },
+          "min_hops": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Hops"
+          },
+          "max_hops": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Hops"
+          },
+          "outage_reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Outage Reasons"
+          },
+          "outage_windows": {
+            "items": {
+              "$ref": "#/components/schemas/OutageWindowModel"
+            },
+            "type": "array",
+            "title": "Outage Windows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "client_id",
+          "name",
+          "visibility",
+          "availability",
+          "meets_target",
+          "max_outage_s",
+          "max_bounded_outage_s",
+          "leading_outage_s",
+          "trailing_outage_s",
+          "avg_hops",
+          "min_hops",
+          "max_hops",
+          "outage_reasons",
+          "outage_windows"
+        ],
+        "title": "ClientMetricsModel"
+      },
+      "CompareRequest": {
+        "properties": {
+          "variant_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 2,
+            "title": "Variant Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "variant_ids"
+        ],
+        "title": "CompareRequest"
+      },
+      "CompareResponse": {
+        "properties": {
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/VariantModel"
+            },
+            "type": "array",
+            "title": "Variants"
+          },
+          "changed_parameters": {
+            "items": {
+              "$ref": "#/components/schemas/ParameterDiff"
+            },
+            "type": "array",
+            "title": "Changed Parameters"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/ComparedMetric"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "per_client_availability": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Per Client Availability"
+          },
+          "recommendation": {
+            "type": "string",
+            "title": "Recommendation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "variants",
+          "changed_parameters",
+          "metrics",
+          "per_client_availability",
+          "recommendation"
+        ],
+        "title": "CompareResponse",
+        "description": "Side-by-side view: what changed, and what it bought.\n\n`changed_parameters` is the case's explicit requirement that a comparison\nshows the changed parameters, not only the resulting numbers."
+      },
+      "ComparedMetric": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "fraction",
+              "seconds",
+              "hops",
+              "count"
+            ],
+            "title": "Unit"
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Values"
+          },
+          "higher_is_better": {
+            "type": "boolean",
+            "title": "Higher Is Better"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "unit",
+          "values",
+          "higher_is_better"
+        ],
+        "title": "ComparedMetric"
+      },
+      "ConfigModel": {
+        "properties": {
+          "launch_stage": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Launch Stage"
+          },
+          "planes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PlaneConfigModel"
+            },
+            "type": "object",
+            "title": "Planes"
+          },
+          "failures": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FailureConfigModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failures"
+          },
+          "gateway_outages": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/GatewayOutageConfigModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gateway Outages"
+          },
+          "isl_range_km": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isl Range Km"
+          },
+          "min_elevation_deg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 90.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Elevation Deg"
+          },
+          "altitude_km": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1200.0,
+                "minimum": 200.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Altitude Km"
+          },
+          "inclination_deg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inclination Deg"
+          },
+          "step_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step S"
+          },
+          "horizon_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 172800.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon S"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ConfigModel",
+        "description": "Overrides applied to a base scenario before a run.\n\n`failures` and `gateway_outages` replace the scenario's lists when present\nand leave them untouched when absent, so the panel can own the full list\nwithout needing add/remove verbs.\n\nThe environment block is separate from the design block on purpose: the case\nsays variants are compared at a fixed altitude, ISL range and elevation mask,\nso touching those marks the run as a sensitivity study rather than a design\nvariant, and every response echoes the effective environment back."
+      },
+      "EphemerisResponse": {
+        "properties": {
+          "step_s": {
+            "type": "integer",
+            "title": "Step S"
+          },
+          "horizon_s": {
+            "type": "integer",
+            "title": "Horizon S"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/EphemerisSample"
+            },
+            "type": "array",
+            "title": "Samples"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "step_s",
+          "horizon_s",
+          "samples"
+        ],
+        "title": "EphemerisResponse",
+        "description": "Positions over the whole horizon, for the globe's animation.\n\nAt the official grid this is ~1 MB uncompressed and ~324 KB gzipped for a\nfull day, so it ships in one response; `step_s` can coarsen it further when\nthe client would rather interpolate."
+      },
+      "EphemerisSample": {
+        "properties": {
+          "t_s": {
+            "type": "integer",
+            "title": "T S"
+          },
+          "satellites": {
+            "items": {
+              "$ref": "#/components/schemas/SatelliteStateModel"
+            },
+            "type": "array",
+            "title": "Satellites"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "t_s",
+          "satellites"
+        ],
+        "title": "EphemerisSample"
+      },
+      "FailureConfigModel": {
+        "properties": {
+          "satellite_id": {
+            "type": "string",
+            "title": "Satellite Id"
+          },
+          "start_s": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start S"
+          },
+          "end_s": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "End S"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "satellite_id",
+          "start_s",
+          "end_s"
+        ],
+        "title": "FailureConfigModel"
+      },
+      "GatewayDependencyModel": {
+        "properties": {
+          "gateway_id": {
+            "type": "string",
+            "title": "Gateway Id"
+          },
+          "serving_satellites": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Serving Satellites"
+          },
+          "busiest_satellite": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Busiest Satellite"
+          },
+          "busiest_share": {
+            "type": "number",
+            "title": "Busiest Share"
+          },
+          "contact_availability": {
+            "type": "number",
+            "title": "Contact Availability"
+          },
+          "routed_share_by_client": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Routed Share By Client"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gateway_id",
+          "serving_satellites",
+          "busiest_satellite",
+          "busiest_share",
+          "contact_availability",
+          "routed_share_by_client"
+        ],
+        "title": "GatewayDependencyModel",
+        "description": "How narrow the network's exit to the ground is.\n\nNamed by the organisers as one of the two things an engineer looks for first\n(alongside long outages). With a single gateway the question is how many\nsatellites ever deliver to it and how much of the day rests on the busiest."
+      },
+      "GatewayOutageConfigModel": {
+        "properties": {
+          "gateway_id": {
+            "type": "string",
+            "title": "Gateway Id"
+          },
+          "start_s": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start S"
+          },
+          "end_s": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "End S"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gateway_id",
+          "start_s",
+          "end_s"
+        ],
+        "title": "GatewayOutageConfigModel"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "JobStatusModel": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "optimize",
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "progress": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Progress"
+          },
+          "explored": {
+            "type": "integer",
+            "title": "Explored",
+            "default": 0
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "default": 0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "progress",
+          "created_at"
+        ],
+        "title": "JobStatusModel",
+        "description": "Progress for the one operation slow enough to need it."
+      },
+      "OptimizeRequest": {
+        "properties": {
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ConfigModel"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyName",
+            "default": "min_hops"
+          },
+          "objective": {
+            "type": "string",
+            "enum": [
+              "worst_first",
+              "mean_first"
+            ],
+            "title": "Objective",
+            "description": "Rank on the worst-served client (matches the case's per-client target) or on the mean across clients (what the organisers suggested at the Q&A)",
+            "default": "worst_first"
+          },
+          "bounds": {
+            "items": {
+              "$ref": "#/components/schemas/PlaneBoundsModel"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Bounds"
+          },
+          "coarse_steps": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 2.0,
+            "title": "Coarse Steps",
+            "default": 6
+          },
+          "refine_rounds": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 0.0,
+            "title": "Refine Rounds",
+            "default": 2
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bounds"
+        ],
+        "title": "OptimizeRequest"
+      },
+      "OptimizeResult": {
+        "properties": {
+          "baseline": {
+            "$ref": "#/components/schemas/CandidateModel"
+          },
+          "best": {
+            "$ref": "#/components/schemas/CandidateModel"
+          },
+          "objective": {
+            "type": "string",
+            "enum": [
+              "worst_first",
+              "mean_first"
+            ],
+            "title": "Objective"
+          },
+          "improved": {
+            "type": "boolean",
+            "title": "Improved"
+          },
+          "explored": {
+            "type": "integer",
+            "title": "Explored"
+          },
+          "changed_planes": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Changed Planes"
+          },
+          "verdict": {
+            "type": "string",
+            "title": "Verdict",
+            "description": "Plain-language conclusion, including the honest negative case where the target is unreachable by phasing alone"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "baseline",
+          "best",
+          "objective",
+          "improved",
+          "explored",
+          "changed_planes",
+          "verdict"
+        ],
+        "title": "OptimizeResult"
+      },
+      "OutageWindowModel": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "title": "Client Id"
+          },
+          "start_s": {
+            "type": "integer",
+            "title": "Start S"
+          },
+          "end_s": {
+            "type": "integer",
+            "title": "End S"
+          },
+          "duration_s": {
+            "type": "integer",
+            "title": "Duration S"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "no_visible_satellite",
+                  "network_partition",
+                  "no_gateway_contact",
+                  "gateway_unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "leading": {
+            "type": "boolean",
+            "title": "Leading"
+          },
+          "trailing": {
+            "type": "boolean",
+            "title": "Trailing"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "client_id",
+          "start_s",
+          "end_s",
+          "duration_s",
+          "reason",
+          "leading",
+          "trailing"
+        ],
+        "title": "OutageWindowModel",
+        "description": "A gap with no route.\n\n`leading`/`trailing` mark gaps touching the ends of the horizon: their true\nlength is unknown, so they are reported apart from `max_bounded_outage_s`,\nwhich is the number worth comparing between variants."
+      },
+      "ParameterDiff": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Values"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "label",
+          "values"
+        ],
+        "title": "ParameterDiff",
+        "description": "One parameter that differs between the compared variants."
+      },
+      "PlaneBoundsModel": {
+        "properties": {
+          "plane_id": {
+            "type": "string",
+            "title": "Plane Id"
+          },
+          "raan_deg": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raan Deg"
+          },
+          "phase_deg": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Deg"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plane_id"
+        ],
+        "title": "PlaneBoundsModel",
+        "description": "Search space for one plane.\n\nA `null` range means the parameter is **locked**: the engineer pins what the\nreal project has already fixed — a launch window, an agreed RAAN slot — and\nthe optimizer works around it. Without locks a recommendation is just a\nnumber that ignores the constraints that actually bind."
+      },
+      "PlaneConfigModel": {
+        "properties": {
+          "raan_deg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 360.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raan Deg"
+          },
+          "phase_deg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 360.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Deg"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PlaneConfigModel",
+        "description": "Omitted fields keep the scenario's value — the panel sends only what it moved."
+      },
+      "ResilienceRequest": {
+        "properties": {
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ConfigModel"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyName",
+            "default": "min_hops"
+          },
+          "satellite_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satellite Ids",
+            "description": "Restrict the sweep to these satellites; defaults to every one that flies"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ResilienceRequest"
+      },
+      "ResilienceResponse": {
+        "properties": {
+          "baseline_worst_availability": {
+            "type": "number",
+            "title": "Baseline Worst Availability"
+          },
+          "baseline_mean_availability": {
+            "type": "number",
+            "title": "Baseline Mean Availability"
+          },
+          "target_availability": {
+            "type": "number",
+            "title": "Target Availability"
+          },
+          "impacts": {
+            "items": {
+              "$ref": "#/components/schemas/SatelliteImpactModel"
+            },
+            "type": "array",
+            "title": "Impacts"
+          },
+          "critical_satellite_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Critical Satellite Ids"
+          },
+          "gateway_dependency": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayDependencyModel"
+            },
+            "type": "array",
+            "title": "Gateway Dependency"
+          },
+          "compute_ms": {
+            "type": "number",
+            "title": "Compute Ms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "baseline_worst_availability",
+          "baseline_mean_availability",
+          "target_availability",
+          "impacts",
+          "critical_satellite_ids",
+          "gateway_dependency",
+          "compute_ms"
+        ],
+        "title": "ResilienceResponse"
+      },
+      "RouteModel": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "title": "Client Id"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Path"
+          },
+          "hops": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hops"
+          },
+          "distance_km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Km"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "no_visible_satellite",
+                  "network_partition",
+                  "no_gateway_contact",
+                  "gateway_unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "gateway_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gateway Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "client_id",
+          "available",
+          "path",
+          "hops",
+          "distance_km",
+          "reason",
+          "gateway_id"
+        ],
+        "title": "RouteModel"
+      },
+      "RouteTimelineResponse": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "title": "Client Id"
+          },
+          "step_s": {
+            "type": "integer",
+            "title": "Step S"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/RouteModel"
+            },
+            "type": "array",
+            "title": "Routes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "client_id",
+          "step_s",
+          "routes"
+        ],
+        "title": "RouteTimelineResponse",
+        "description": "Every instant's route for one client — what the route inspector scrubs through."
+      },
+      "RoutingStrategyName": {
+        "type": "string",
+        "enum": [
+          "min_hops",
+          "min_distance"
+        ],
+        "title": "RoutingStrategyName"
+      },
+      "RunRequest": {
+        "properties": {
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ConfigModel"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyName",
+            "default": "min_hops"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RunRequest",
+        "description": "Run a scenario, either one we already hold or one supplied inline.\n\nSupplying `scenario` inline keeps the jury's \"load a file and run it\" path to\na single request, with no import step to fail in between."
+      },
+      "SatelliteImpactModel": {
+        "properties": {
+          "satellite_id": {
+            "type": "string",
+            "title": "Satellite Id"
+          },
+          "plane_id": {
+            "type": "string",
+            "title": "Plane Id"
+          },
+          "worst_availability_drop": {
+            "type": "number",
+            "title": "Worst Availability Drop"
+          },
+          "mean_availability_drop": {
+            "type": "number",
+            "title": "Mean Availability Drop"
+          },
+          "per_client_drop": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Per Client Drop"
+          },
+          "breaks_target": {
+            "type": "boolean",
+            "title": "Breaks Target"
+          },
+          "criticality": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Criticality"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "satellite_id",
+          "plane_id",
+          "worst_availability_drop",
+          "mean_availability_drop",
+          "per_client_drop",
+          "breaks_target",
+          "criticality"
+        ],
+        "title": "SatelliteImpactModel",
+        "description": "How much the network loses without this satellite.\n\n`worst_availability_drop` is measured on the *worst-served* client, not the\naverage, because the 90% target is judged per client: a satellite whose loss\ncosts one village 9 points and the others nothing is critical, and an average\nwould bury it."
+      },
+      "SatelliteStateModel": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "lat_deg": {
+            "type": "number",
+            "title": "Lat Deg"
+          },
+          "lon_deg": {
+            "type": "number",
+            "title": "Lon Deg"
+          },
+          "alt_km": {
+            "type": "number",
+            "title": "Alt Km"
+          },
+          "x_km": {
+            "type": "number",
+            "title": "X Km"
+          },
+          "y_km": {
+            "type": "number",
+            "title": "Y Km"
+          },
+          "z_km": {
+            "type": "number",
+            "title": "Z Km"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "lat_deg",
+          "lon_deg",
+          "alt_km",
+          "x_km",
+          "y_km",
+          "z_km",
+          "active"
+        ],
+        "title": "SatelliteStateModel",
+        "description": "Position in both frames.\n\n`lat_deg`/`lon_deg`/`alt_km` is what the globe consumes directly; the\nEarth-fixed cartesian triple is kept because it is what `geometry.py`\nactually produces, and a technical reviewer can check our conversion against\nthe module's own output without re-deriving it."
+      },
+      "ScenarioDetail": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/ScenarioSummary"
+          },
+          "scenario": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Scenario"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "summary",
+          "scenario"
+        ],
+        "title": "ScenarioDetail",
+        "description": "Everything the configuration panel and globe need to draw an unrun scenario."
+      },
+      "ScenarioSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "official",
+              "imported"
+            ],
+            "title": "Source"
+          },
+          "satellite_count": {
+            "type": "integer",
+            "title": "Satellite Count"
+          },
+          "plane_count": {
+            "type": "integer",
+            "title": "Plane Count"
+          },
+          "client_count": {
+            "type": "integer",
+            "title": "Client Count"
+          },
+          "gateway_count": {
+            "type": "integer",
+            "title": "Gateway Count"
+          },
+          "launch_stage": {
+            "type": "integer",
+            "title": "Launch Stage"
+          },
+          "horizon_s": {
+            "type": "integer",
+            "title": "Horizon S"
+          },
+          "step_s": {
+            "type": "integer",
+            "title": "Step S"
+          },
+          "steps": {
+            "type": "integer",
+            "title": "Steps"
+          },
+          "target_availability": {
+            "type": "number",
+            "title": "Target Availability"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "source",
+          "satellite_count",
+          "plane_count",
+          "client_count",
+          "gateway_count",
+          "launch_stage",
+          "horizon_s",
+          "step_s",
+          "steps",
+          "target_availability"
+        ],
+        "title": "ScenarioSummary",
+        "description": "One row in the scenario picker."
+      },
+      "SensitivityPointModel": {
+        "properties": {
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "worst_availability": {
+            "type": "number",
+            "title": "Worst Availability"
+          },
+          "per_client": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Per Client"
+          },
+          "meets_target": {
+            "type": "boolean",
+            "title": "Meets Target"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value",
+          "worst_availability",
+          "per_client",
+          "meets_target"
+        ],
+        "title": "SensitivityPointModel"
+      },
+      "SensitivityRequest": {
+        "properties": {
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ConfigModel"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyName",
+            "default": "min_hops"
+          },
+          "parameter": {
+            "type": "string",
+            "enum": [
+              "isl_range_km",
+              "min_elevation_deg",
+              "altitude_km",
+              "inclination_deg"
+            ],
+            "title": "Parameter"
+          },
+          "values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Values"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "parameter",
+          "values"
+        ],
+        "title": "SensitivityRequest",
+        "description": "Sweep one environment parameter to find where the target starts to hold."
+      },
+      "SensitivityResponse": {
+        "properties": {
+          "parameter": {
+            "type": "string",
+            "title": "Parameter"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/SensitivityPointModel"
+            },
+            "type": "array",
+            "title": "Points"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold",
+            "description": "Lowest swept value at which every client meets the target, when one exists"
+          },
+          "compute_ms": {
+            "type": "number",
+            "title": "Compute Ms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "parameter",
+          "points",
+          "compute_ms"
+        ],
+        "title": "SensitivityResponse"
+      },
+      "SimulationSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyName"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "target_availability": {
+            "type": "number",
+            "title": "Target Availability"
+          },
+          "step_s": {
+            "type": "integer",
+            "title": "Step S"
+          },
+          "horizon_s": {
+            "type": "integer",
+            "title": "Horizon S"
+          },
+          "steps": {
+            "type": "integer",
+            "title": "Steps"
+          },
+          "worst_availability": {
+            "type": "number",
+            "title": "Worst Availability"
+          },
+          "mean_availability": {
+            "type": "number",
+            "title": "Mean Availability"
+          },
+          "meets_target": {
+            "type": "boolean",
+            "title": "Meets Target"
+          },
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/ClientMetricsModel"
+            },
+            "type": "array",
+            "title": "Clients"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ConfigModel"
+          },
+          "environment_modified": {
+            "type": "boolean",
+            "title": "Environment Modified",
+            "description": "True when the run changed altitude/ISL range/elevation mask, which makes it a sensitivity study rather than a comparable design variant"
+          },
+          "effective_scenario": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Effective Scenario"
+          },
+          "compute_ms": {
+            "type": "number",
+            "title": "Compute Ms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "scenario_id",
+          "label",
+          "strategy",
+          "created_at",
+          "target_availability",
+          "step_s",
+          "horizon_s",
+          "steps",
+          "worst_availability",
+          "mean_availability",
+          "meets_target",
+          "clients",
+          "config",
+          "environment_modified",
+          "effective_scenario",
+          "compute_ms"
+        ],
+        "title": "SimulationSummary"
+      },
+      "SnapshotEdgeModel": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "distance_km": {
+            "type": "number",
+            "title": "Distance Km"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "isl",
+              "ground",
+              "gateway"
+            ],
+            "title": "Type"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "distance_km",
+          "type"
+        ],
+        "title": "SnapshotEdgeModel"
+      },
+      "SnapshotResponse": {
+        "properties": {
+          "t_s": {
+            "type": "integer",
+            "title": "T S"
+          },
+          "satellites": {
+            "items": {
+              "$ref": "#/components/schemas/SatelliteStateModel"
+            },
+            "type": "array",
+            "title": "Satellites"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/SnapshotEdgeModel"
+            },
+            "type": "array",
+            "title": "Edges"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/RouteModel"
+            },
+            "type": "array",
+            "title": "Routes"
+          },
+          "elevation_deg": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Elevation Deg"
+          },
+          "offline_gateways": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Offline Gateways"
+          },
+          "active_satellites": {
+            "type": "integer",
+            "title": "Active Satellites"
+          },
+          "total_satellites": {
+            "type": "integer",
+            "title": "Total Satellites"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "t_s",
+          "satellites",
+          "edges",
+          "routes",
+          "elevation_deg",
+          "offline_gateways",
+          "active_satellites",
+          "total_satellites"
+        ],
+        "title": "SnapshotResponse",
+        "description": "One instant of the network, fully described."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValidationReport": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "valid"
+        ],
+        "title": "ValidationReport",
+        "description": "Result of a dry-run check, so the UI can report before it commits."
+      },
+      "VariantCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ConfigModel"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyName",
+            "default": "min_hops"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "VariantCreate",
+        "description": "A saved design the engineer can return to and compare."
+      },
+      "VariantModel": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "scenario_title": {
+            "type": "string",
+            "title": "Scenario Title"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ConfigModel"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyName"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "worst_availability": {
+            "type": "number",
+            "title": "Worst Availability"
+          },
+          "mean_availability": {
+            "type": "number",
+            "title": "Mean Availability"
+          },
+          "meets_target": {
+            "type": "boolean",
+            "title": "Meets Target"
+          },
+          "max_bounded_outage_s": {
+            "type": "integer",
+            "title": "Max Bounded Outage S"
+          },
+          "availability_by_client": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Availability By Client"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "note",
+          "scenario_id",
+          "scenario_title",
+          "config",
+          "strategy",
+          "created_at",
+          "worst_availability",
+          "mean_availability",
+          "meets_target",
+          "max_bounded_outage_s",
+          "availability_by_client"
+        ],
+        "title": "VariantModel"
+      }
+    }
+  }
+}
