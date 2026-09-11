@@ -134,31 +134,51 @@ const tabMeta: { id: AppTab; label: string; icon: typeof GlobeIcon }[] = [
 ];
 
 /**
- * Every group in the configuration column shares one header grammar: name,
- * current value, chevron. The value stays visible when the group is collapsed,
- * so the column reads as a summary of the scenario rather than a stack of lids.
+ * One entry in the parameter ledger. The left rail carries the subsystem
+ * mnemonic against a continuous hairline spine, so the column reads as an
+ * equipment index rather than a stack of lids. The value stays visible when a
+ * group is shut, so the shut panel is still a summary of the scenario.
  */
-const ConfigGroup: React.FC<{
+const ParamGroup: React.FC<{
+  code: string;
   title: string;
   value: React.ReactNode;
+  alarm?: boolean;
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
-}> = ({ title, value, open, onToggle, children }) => (
-  <section className="border-t border-zinc-800/80 first:border-t-0">
+}> = ({ code, title, value, alarm, open, onToggle, children }) => (
+  <section className="border-b border-rule last:border-b-0">
     <h3>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center gap-3 rounded py-2.5 text-left transition-colors hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+        className="group flex w-full items-stretch text-left focus-visible:outline-none"
       >
-        <span className="text-[13px] text-zinc-300">{title}</span>
-        <span className="ml-auto font-mono text-[11px] tabular-nums text-zinc-500">{value}</span>
-        <ChevronDown
-          size={14}
-          className={cn("flex-shrink-0 text-zinc-600 transition-transform duration-200", !open && "-rotate-90")}
-        />
+        <span
+          className={cn(
+            "flex w-9 flex-shrink-0 items-center justify-center border-r border-rule py-2.5 font-data text-[10px] tracking-[0.08em] transition-colors",
+            alarm ? "text-alarm" : open ? "text-zinc-300" : "text-zinc-500 group-hover:text-zinc-300"
+          )}
+        >
+          {code}
+        </span>
+        <span className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 transition-colors group-hover:bg-white/[0.03] group-focus-visible:bg-white/[0.06]">
+          <span className="truncate font-label text-[13px] text-zinc-300">{title}</span>
+          <span
+            className={cn(
+              "ml-auto font-data text-[11px] tabular-nums",
+              alarm ? "text-alarm" : "text-zinc-500"
+            )}
+          >
+            {value}
+          </span>
+          <ChevronDown
+            size={12}
+            className={cn("flex-shrink-0 text-zinc-600 transition-transform duration-200", !open && "-rotate-90")}
+          />
+        </span>
       </button>
     </h3>
 
@@ -171,15 +191,81 @@ const ConfigGroup: React.FC<{
           transition={{ duration: 0.18, ease: 'easeOut' }}
           className="min-h-0 overflow-hidden"
         >
-          <div className="pb-4">{children}</div>
+          {/* The empty rail cell keeps the spine unbroken through the body. */}
+          <div className="flex">
+            <div className="w-9 flex-shrink-0 border-r border-rule" />
+            <div className="min-w-0 flex-1 px-3 pb-4 pt-1">{children}</div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
   </section>
 );
 
+/** Fixed-width degrees, the way a parameter table prints them: `007.5`. */
+const formatDegrees = (value: number) => value.toFixed(1).padStart(5, '0');
+
+/**
+ * Slide-rule control on a single line: label and full scale on the left, the
+ * reading on the right, and the tick bed drawn *inside* the track rather than
+ * stacked under it, so the scale costs no extra height. Major ticks land on
+ * values an operator names (every 90 deg of RAAN, every 7.5 of phase).
+ */
+const ScaleRow: React.FC<{
+  id: string;
+  label: string;
+  value: number;
+  max: number;
+  step: number;
+  ticks: number;
+  majorEvery: number;
+  onChange: (value: number) => void;
+}> = ({ id, label, value, max, step, ticks, majorEvery, onChange }) => (
+  <div className="flex items-center gap-2.5">
+    <label
+      htmlFor={id}
+      className="w-[3.5rem] flex-shrink-0 whitespace-nowrap font-data text-[10px] tracking-[0.06em] text-zinc-500"
+    >
+      {label}
+    </label>
+
+    <div className="relative h-[15px] min-w-0 flex-1">
+      {/* Inset by half a cursor width so the bed matches the travel the cursor
+          actually has, not the input's outer box. */}
+      <div
+        className="pointer-events-none absolute inset-x-[5px] top-1/2 flex items-start justify-between"
+        aria-hidden="true"
+      >
+        {Array.from({ length: ticks }).map((_, index) => (
+          <span
+            key={index}
+            className={cn("w-px", index % majorEvery === 0 ? "h-[6px] bg-zinc-700" : "h-[3px] bg-zinc-800")}
+          />
+        ))}
+      </div>
+
+      <input
+        id={id}
+        type="range"
+        className="param-scale absolute inset-0 w-full"
+        style={{ ['--fill' as string]: `${(value / max) * 100}%` }}
+        min={0}
+        max={max}
+        step={step}
+        value={value}
+        onChange={event => onChange(parseFloat(event.target.value))}
+      />
+    </div>
+
+    <span className="w-[3.25rem] flex-shrink-0 text-right font-data text-[11px] tabular-nums text-zinc-200">
+      {formatDegrees(value)}
+      <span className="text-zinc-500">&deg;</span>
+    </span>
+  </div>
+);
+
 const sidebarButtonClass =
-  "hidden h-8 w-8 items-center justify-center rounded-md border border-zinc-800 bg-black/80 text-zinc-400 backdrop-blur transition-colors hover:border-zinc-600 hover:text-zinc-100 lg:flex";
+  "hidden h-7 w-7 items-center justify-center border border-rule-strong bg-black/85 text-zinc-500 backdrop-blur transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none focus-visible:border-zinc-400 focus-visible:text-zinc-100 lg:flex";
 const sidebarTransition = { type: 'spring', stiffness: 360, damping: 36, mass: 0.9 } as const;
 
 const SidebarEdgeButton: React.FC<{
@@ -224,14 +310,14 @@ const MobileDrawer: React.FC<{
         />
         <motion.aside
           key="drawer"
-          className="fixed top-0 bottom-0 right-0 z-50 flex w-[88vw] max-w-sm flex-col border-l border-zinc-800 bg-[black] lg:hidden"
+          className="fixed top-0 bottom-0 right-0 z-50 flex w-[88vw] max-w-sm flex-col border-l border-rule-strong bg-[black] lg:hidden"
           initial={{ x: '100%' }}
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ type: 'spring', damping: 26, stiffness: 260 }}
         >
-          <div className="flex flex-shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-3">
-            <span className="text-xs font-semibold tracking-widest text-zinc-400">{title}</span>
+          <div className="flex flex-shrink-0 items-center justify-between border-b border-rule px-4 py-3">
+            <span className="font-label text-[13px] text-zinc-300">{title}</span>
             <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200" aria-label="Close panel">
               <X size={18} />
             </button>
@@ -492,119 +578,116 @@ export default function App() {
 
     return (
       <div className="flex flex-col">
-        <ConfigGroup
+        <ParamGroup
+          code="DPL"
           title="Deployment"
-          value={`${deployedCount} sats`}
+          value={`${deployedCount} SV`}
           open={openGroups.deployment}
           onToggle={() => toggleGroup('deployment')}
         >
-          {/* Stages are cumulative, so they read as a progress track rather than
-              three independent options. */}
-          <div className="relative flex items-center justify-between px-1">
-            <div className="absolute left-1 right-1 top-1/2 h-px -translate-y-1/2 bg-zinc-800" />
-            <div
-              className="absolute left-1 top-1/2 h-px -translate-y-1/2 bg-blue-500/70 transition-all duration-200"
-              style={{ width: `calc((100% - 0.5rem) * ${(deploymentStage - 1) / 2})` }}
-            />
+          {/* Stages are cumulative, so the control is one segmented readout
+              rather than three independent options. Selection reads by
+              inversion, not by hue. */}
+          <div className="mt-1 flex border border-rule-strong">
             {([1, 2, 3] as const).map(stage => (
               <button
                 key={stage}
                 type="button"
                 onClick={() => setDeploymentStage(stage)}
                 aria-pressed={deploymentStage === stage}
-                aria-label={`Deploy stage ${stage}, ${stage * 16} satellites`}
+                aria-label={`Deploy ${stage * 16} satellites`}
                 className={cn(
-                  "relative flex h-7 w-7 items-center justify-center rounded-full border font-mono text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500",
+                  "flex-1 border-l border-rule-strong py-1.5 font-data text-[11px] tabular-nums transition-colors first:border-l-0 focus-visible:outline-none focus-visible:bg-white/15 focus-visible:text-zinc-100",
                   deploymentStage === stage
-                    ? "border-blue-500 bg-blue-500/15 font-semibold text-blue-300"
-                    : deploymentStage > stage
-                      ? "border-blue-500/60 bg-[black] text-blue-400/80"
-                      : "border-zinc-700 bg-[black] text-zinc-500 hover:border-zinc-500 hover:text-zinc-300"
+                    ? "bg-zinc-100 text-black"
+                    : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
                 )}
               >
-                {stage}
+                {stage * 16}
               </button>
             ))}
           </div>
-          <div className="mt-2 flex justify-between px-1 font-mono text-[10px] tabular-nums">
-            {[16, 32, 48].map((count, index) => (
-              <span key={count} className={deploymentStage >= index + 1 ? "text-blue-400" : "text-zinc-600"}>
-                {count}
-              </span>
-            ))}
-          </div>
-        </ConfigGroup>
+          <p className="mt-2 font-label text-[11px] leading-relaxed text-zinc-500">
+            Stage {deploymentStage} of 3, 16 satellites per plane.
+          </p>
+        </ParamGroup>
 
-        <ConfigGroup
+        <ParamGroup
+          code="ORB"
           title="Orbital planes"
-          value={planeIds.map(plane => `${planesConfig[plane].raan}°`).join('  ')}
+          value={planeIds.map(plane => Math.round(planesConfig[plane].raan).toString().padStart(3, '0')).join(' ')}
           open={openGroups.planes}
           onToggle={() => toggleGroup('planes')}
         >
-          <div className="space-y-4">
+          <div className="space-y-3">
             {planeIds.map(plane => (
               <div key={plane}>
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-[3px] rounded-full" style={{ background: planeColors[plane] }} />
-                  <span className="text-[13px] text-zinc-200">Plane {plane}</span>
-                  <span className="ml-auto font-mono text-[10px] tabular-nums text-zinc-500">
-                    {satellites.filter(sat => sat.plane === plane).length} sats
+                <div className="flex items-center gap-2 border-b border-rule pb-1">
+                  {/* The only hue in the geometry block: plane identity, shared
+                      with the orbit lines on the globe. */}
+                  <span className="h-2.5 w-0.5" style={{ background: planeColors[plane] }} />
+                  <span className="font-data text-[11px] text-zinc-200">{plane}</span>
+                  <span className="ml-auto font-data text-[10px] tabular-nums text-zinc-500">
+                    {satellites.filter(sat => sat.plane === plane).length} SV
                   </span>
                 </div>
 
-                <div className="mt-2 space-y-2.5">
-                  {([
-                    { key: 'raan' as const, label: 'RAAN', max: 360, step: 1 },
-                    { key: 'phase' as const, label: 'Phase', max: 22.5, step: 0.5 }
-                  ]).map(control => (
-                    <div key={control.key}>
-                      <div className="flex items-baseline justify-between">
-                        <label htmlFor={`${plane}-${control.key}`} className="text-[11px] text-zinc-500">
-                          {control.label}
-                        </label>
-                        <span className="font-mono text-[11px] tabular-nums text-zinc-300">
-                          {planesConfig[plane][control.key]}°
-                        </span>
-                      </div>
-                      <input
-                        id={`${plane}-${control.key}`}
-                        type="range"
-                        min={0}
-                        max={control.max}
-                        step={control.step}
-                        value={planesConfig[plane][control.key]}
-                        onChange={event => setPlanesConfig(prev => ({
-                          ...prev,
-                          [plane]: { ...prev[plane], [control.key]: parseFloat(event.target.value) }
-                        }))}
-                        style={{ accentColor: planeColors[plane] }}
-                        className="mt-1 h-1 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
-                      />
-                    </div>
-                  ))}
+                <div className="mt-1.5 space-y-1">
+                  <ScaleRow
+                    id={`${plane}-raan`}
+                    label="RAAN"
+                    value={planesConfig[plane].raan}
+                    max={360}
+                    step={1}
+                    ticks={13}
+                    majorEvery={3}
+                    onChange={next => setPlanesConfig(prev => ({
+                      ...prev,
+                      [plane]: { ...prev[plane], raan: next }
+                    }))}
+                  />
+                  <ScaleRow
+                    id={`${plane}-phase`}
+                    label="PHASE"
+                    value={planesConfig[plane].phase}
+                    max={22.5}
+                    step={0.5}
+                    ticks={10}
+                    majorEvery={3}
+                    onChange={next => setPlanesConfig(prev => ({
+                      ...prev,
+                      [plane]: { ...prev[plane], phase: next }
+                    }))}
+                  />
                 </div>
               </div>
             ))}
           </div>
-        </ConfigGroup>
+          <p className="mt-2.5 font-label text-[11px] leading-relaxed text-zinc-500">
+            RAAN 0&ndash;360&deg;, phase 0&ndash;22.5&deg; per plane.
+          </p>
+        </ParamGroup>
 
-        <ConfigGroup
+        <ParamGroup
+          code="FLT"
           title="Failures"
-          value={failedSatellites.length ? `${failedSatellites.length} down` : 'none'}
+          alarm={failedSatellites.length > 0}
+          value={failedSatellites.length ? `${failedSatellites.length} DOWN` : 'NONE'}
           open={openGroups.failures}
           onToggle={() => toggleGroup('failures')}
         >
-          <div className="space-y-2">
+          <div className="mt-1 space-y-1.5">
             {failedSatellites.map(satellite => (
               <div
                 key={satellite.id}
-                className="flex items-center gap-2 rounded border border-red-500/25 bg-red-500/10 px-2 py-1.5"
+                className="flex items-center gap-2.5 border-l-2 border-alarm bg-white/[0.03] py-1.5 pl-2.5 pr-2"
               >
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
-                <span className="font-mono text-xs text-red-300">{satellite.id}</span>
+                <span className="font-data text-[10px] text-alarm">FAIL</span>
+                <span className="font-data text-[11px] text-zinc-200">{satellite.id}</span>
+                <span className="font-data text-[10px] text-zinc-500">{satellite.plane}</span>
                 <button
                   type="button"
-                  className="ml-auto text-[11px] text-zinc-400 transition-colors hover:text-zinc-100"
+                  className="ml-auto font-label text-[11px] text-zinc-400 underline-offset-2 transition-colors hover:text-zinc-100 hover:underline focus-visible:outline-none focus-visible:text-zinc-100 focus-visible:underline"
                   onClick={() => {
                     // TODO(BACKEND): Restore the node through the scenario API.
                     setSatellites(sats => sats.map(sat => sat.id === satellite.id ? { ...sat, status: 'active' } : sat));
@@ -618,59 +701,70 @@ export default function App() {
             ))}
 
             {!failedSatellites.length && !showFailureSelect && (
-              <p className="text-[11px] leading-relaxed text-zinc-500">
-                Every node is up. Add a failure to see how the network copes.
+              <p className="font-label text-[11px] leading-relaxed text-zinc-500">
+                All {deployedCount} nodes nominal. Inject a failure to see how routing copes.
               </p>
             )}
 
             {showFailureSelect ? (
-              <div className="space-y-2 rounded border border-zinc-800 bg-zinc-900/50 p-2">
-                <label htmlFor="failure-target" className="block text-[11px] text-zinc-400">
+              <div className="space-y-2 border border-rule-strong p-2">
+                <label htmlFor="failure-target" className="block font-label text-[11px] text-zinc-400">
                   Which satellite fails?
                 </label>
                 <select
                   id="failure-target"
                   autoFocus
-                  className="w-full rounded border border-zinc-700 bg-zinc-950 p-1.5 font-mono text-xs text-zinc-200 focus:border-blue-500 focus:outline-none"
+                  className="param-select w-full border border-rule-strong bg-black py-1.5 pl-2 pr-6 font-data text-[11px] text-zinc-200 focus:border-zinc-500 focus:outline-none"
                   onChange={event => {
                     if (event.target.value) handleSimulateFailure(event.target.value);
                     setShowFailureSelect(false);
                   }}
                   defaultValue=""
                 >
-                  <option value="" disabled>Choose a satellite</option>
+                  <option value="" disabled>Select a node</option>
                   {dynamicSatellites.filter(sat => sat.status === 'active').map(sat => (
-                    <option key={sat.id} value={sat.id}>{sat.id} · plane {sat.plane}</option>
+                    <option key={sat.id} value={sat.id}>{sat.id}   {sat.plane}</option>
                   ))}
                 </select>
-                <Button variant="ghost" size="sm" className="h-7 w-full text-[11px]" onClick={() => setShowFailureSelect(false)}>
+                <button
+                  type="button"
+                  className="w-full border border-rule py-1.5 font-label text-[11px] text-zinc-500 transition-colors hover:border-rule-strong hover:text-zinc-300 focus-visible:outline-none focus-visible:border-zinc-500"
+                  onClick={() => setShowFailureSelect(false)}
+                >
                   Cancel
-                </Button>
+                </button>
               </div>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-full text-xs"
+              <button
+                type="button"
+                className="mt-2 flex w-full items-center justify-center gap-1.5 border border-rule-strong py-1.5 font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none focus-visible:border-zinc-400 focus-visible:text-zinc-100"
                 onClick={() => setShowFailureSelect(true)}
               >
-                <Plus size={14} className="mr-1.5" /> Add failure
-              </Button>
+                <Plus size={12} /> Inject failure
+              </button>
             )}
-
           </div>
-        </ConfigGroup>
+        </ParamGroup>
 
-        <ConfigGroup
+        <ParamGroup
+          code="SV"
           title="Satellites"
-          value={`${deployedCount} of ${satellites.length}`}
+          value={`${deployedCount}/${satellites.length}`}
           open={openGroups.satellites}
           onToggle={() => toggleGroup('satellites')}
         >
-          <div className="max-h-[clamp(9rem,24vh,17rem)] space-y-px overflow-y-auto overscroll-contain pr-1">
+          {/* A real table header, not an eyebrow: it names the value columns. */}
+          <div className="flex items-center gap-2 border-b border-rule pb-1 pl-[10px] pr-0.5 font-data text-[9px] tracking-[0.08em] text-zinc-500">
+            <span>NODE</span>
+            <span className="ml-auto">PLANE</span>
+            <span className="w-9 text-right">STATE</span>
+          </div>
+
+          <div className="max-h-[clamp(9rem,24vh,17rem)] overflow-y-auto overscroll-contain">
             {satellites.map((satellite, index) => {
               const isDeployed = index < deployedCount;
               const isSelected = selectedSatellite === satellite.id;
+              const state = !isDeployed ? 'STBY' : satellite.status === 'failed' ? 'FAIL' : 'NOM';
 
               return (
                 <button
@@ -679,48 +773,53 @@ export default function App() {
                   onClick={() => selectSatellite(satellite.id)}
                   aria-pressed={isSelected}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500",
-                    isSelected ? "bg-zinc-800/80" : "hover:bg-zinc-900",
-                    !isDeployed && "opacity-45"
+                    "flex w-full items-center gap-2 border-l-2 py-1 pl-2 pr-0.5 text-left font-data text-[11px] tabular-nums transition-colors focus-visible:outline-none focus-visible:bg-white/[0.08]",
+                    isSelected
+                      ? "border-zinc-200 bg-white/[0.06] text-zinc-100"
+                      : "border-transparent text-zinc-400 hover:bg-white/[0.03] hover:text-zinc-200",
+                    !isDeployed && "text-zinc-600 hover:text-zinc-400"
                   )}
                 >
-                  <span
-                    className="h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ background: satellite.status === 'failed' ? '#ef4444' : planeColors[satellite.plane] }}
-                  />
-                  <span className="font-mono text-xs text-zinc-200">{satellite.id}</span>
-                  <span className="ml-auto font-mono text-[10px] tabular-nums text-zinc-500">{satellite.plane}</span>
+                  <span>{satellite.id}</span>
+                  <span className="ml-auto text-zinc-500">{satellite.plane}</span>
+                  <span className={cn("w-9 text-right text-[10px]", state === 'FAIL' ? "text-alarm" : "text-zinc-500")}>
+                    {state}
+                  </span>
                 </button>
               );
             })}
           </div>
-        </ConfigGroup>
+        </ParamGroup>
 
-        <ConfigGroup
+        <ParamGroup
+          code="GND"
           title="Ground sites"
-          value={`${allSites.length}`}
+          value={`${gateways.length} GW  ${groundStations.length} CL`}
           open={openGroups.sites}
           onToggle={() => toggleGroup('sites')}
         >
-          <div className="space-y-px">
+          <div className="space-y-2.5">
             {allSites.map(site => {
               const isGateway = site.role === 'gateway';
               return (
-                <div key={site.id} className="flex items-start gap-2 rounded px-2 py-1.5">
+                <div key={site.id} className="flex items-start gap-2.5">
+                  {/* Shape keeps the mapping to the globe markers; the hue is
+                      dropped, since shape alone carries it. */}
                   <span className={cn(
-                    "mt-1 h-2 w-2 shrink-0",
+                    "mt-1 h-2 w-2 shrink-0 bg-zinc-500",
                     isGateway
-                      ? "rotate-45 bg-amber-400"
-                      : "border-l-4 border-r-4 border-b-[7px] border-l-transparent border-r-transparent border-b-blue-400"
+                      ? "rotate-45"
+                      : "[clip-path:polygon(50%_0,100%_100%,0_100%)]"
                   )} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
-                      <span className={cn("font-mono text-xs", isGateway ? "text-amber-300" : "text-blue-300")}>
-                        {site.id}
+                      <span className="font-data text-[11px] text-zinc-200">{site.id}</span>
+                      <span className="truncate font-label text-[11px] text-zinc-500">{site.name}</span>
+                      <span className="ml-auto font-data text-[9px] tracking-[0.08em] text-zinc-500">
+                        {isGateway ? 'GW' : 'CL'}
                       </span>
-                      <span className="truncate text-[11px] text-zinc-400">{site.name}</span>
                     </div>
-                    <div className="font-mono text-[10px] tabular-nums text-zinc-500">
+                    <div className="font-data text-[10px] tabular-nums text-zinc-500">
                       {formatLatitude(site.lat)}  {formatLongitude(site.lon)}
                     </div>
                   </div>
@@ -728,7 +827,7 @@ export default function App() {
               );
             })}
           </div>
-        </ConfigGroup>
+        </ParamGroup>
       </div>
     );
   };
@@ -989,51 +1088,70 @@ export default function App() {
   };
 
   /** The right-hand column: scenario configuration (health lives on the globe HUD). */
-  const renderDataPanel = (includeSatelliteOverlay = false) => (
-    <>
-      <motion.div
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-        initial={{ opacity: 0, x: 8 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 8 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-      >
-        <section className="p-4">
-          <h2 className="mb-1 pr-9 text-xs font-semibold tracking-widest text-zinc-400">CONFIGURATION</h2>
-          {renderConfigSection()}
-        </section>
-      </motion.div>
+  const renderDataPanel = (includeSatelliteOverlay = false) => {
+    const deployedCount = deploymentStage * 16;
 
-      {/* The primary action stays reachable while the column scrolls. */}
-      <div className="flex-shrink-0 border-t border-zinc-800 bg-[#09090b] p-4">
-        <Button
-          className="h-10 w-full"
-          disabled={simulating}
-          onClick={() => {
-            setSimulating(true);
-            // TODO(BACKEND): Run the selected scenario through the simulation API.
-            setTimeout(() => setSimulating(false), 1500);
-          }}
+    return (
+      <>
+        {/* Panel identity: the scenario under edit, not a decorative label. */}
+        <div className="flex-shrink-0 border-b border-rule px-3 pb-2.5 pt-3">
+          <div className="font-label text-[11px] text-zinc-500">Scenario</div>
+          <div className="truncate pr-9 font-data text-[13px] text-zinc-100">01_full_constellation</div>
+        </div>
+
+        <motion.div
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          initial={{ opacity: 0, x: 8 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 8 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
         >
-          {simulating ? (
-            <motion.span
-              animate={{ opacity: [0.55, 1, 0.55] }}
-              transition={{ repeat: Infinity, duration: 1.2 }}
-              className="text-sm font-medium"
-            >
-              Simulating…
-            </motion.span>
-          ) : (
-            <span className="flex items-center text-sm font-medium">
-              <Play size={14} className="mr-2" /> Run simulation
-            </span>
-          )}
-        </Button>
-      </div>
+          {renderConfigSection()}
+        </motion.div>
 
-      {includeSatelliteOverlay && renderSatelliteOverlay()}
-    </>
-  );
+        {/* The primary action stays reachable while the column scrolls. */}
+        <div className="flex-shrink-0 border-t border-rule p-3">
+          <button
+            type="button"
+            disabled={simulating}
+            onClick={() => {
+              setSimulating(true);
+              // TODO(BACKEND): Run the selected scenario through the simulation API.
+              setTimeout(() => setSimulating(false), 1500);
+            }}
+            className={cn(
+              "group relative flex h-10 w-full items-center justify-between overflow-hidden border px-3 font-label text-[13px] transition-colors focus-visible:outline-none",
+              simulating
+                ? "cursor-wait border-rule-strong text-zinc-400"
+                : "border-zinc-600 text-zinc-100 hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10"
+            )}
+          >
+            <span>{simulating ? 'Running' : 'Run simulation'}</span>
+            <span
+              className={cn(
+                "font-data text-[10px] tabular-nums transition-colors",
+                simulating ? "text-zinc-600" : "text-zinc-500 group-hover:text-black/55"
+              )}
+            >
+              {deployedCount} SV / 24 h
+            </span>
+
+            {/* One orchestrated motion in the panel: a sweep along the button's
+                own edge while the run is in flight. */}
+            {simulating && (
+              <motion.span
+                className="absolute bottom-0 left-0 h-px w-1/3 bg-zinc-300"
+                animate={{ x: ['-110%', '330%'] }}
+                transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }}
+              />
+            )}
+          </button>
+        </div>
+
+        {includeSatelliteOverlay && renderSatelliteOverlay()}
+      </>
+    );
+  };
 
   const renderCriticalNodesPanel = () => (
     <>
@@ -1223,7 +1341,7 @@ export default function App() {
           <motion.aside
             key={`${key}-data-column`}
             layout
-            className="relative hidden flex-shrink-0 flex-col overflow-hidden border-l border-zinc-800 bg-[black] lg:flex"
+            className="relative hidden flex-shrink-0 flex-col overflow-hidden border-l border-rule-strong bg-[black] lg:flex"
             initial={{ width: 0, opacity: 0, x: 18 }}
             animate={{ width: dataColumnWidth, opacity: 1, x: 0 }}
             exit={{ width: 0, opacity: 0, x: 18 }}
@@ -1362,7 +1480,7 @@ export default function App() {
       {renderDataColumn('simulation', renderDataPanel())}
 
       {/* Drawer (below lg) */}
-      <MobileDrawer open={mobilePanel === 'data'} title="CONFIGURATION" onClose={() => setMobilePanel(null)}>
+      <MobileDrawer open={mobilePanel === 'data'} title="Configuration" onClose={() => setMobilePanel(null)}>
         {renderDataPanel(true)}
       </MobileDrawer>
     </div>
