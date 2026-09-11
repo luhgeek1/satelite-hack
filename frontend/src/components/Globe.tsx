@@ -75,6 +75,17 @@ const fitAltitude = (width: number, height: number) => {
   return Math.max(BASE_ALTITUDE, FIT_MARGIN / (FOV_HALF_TAN * limitingAspect) - 1);
 };
 
+/** globe.gl builds the globe at radius 100, and places the camera at R*(1+altitude). */
+const GLOBE_RADIUS = 100;
+const altitudeToDistance = (altitude: number) => GLOBE_RADIUS * (1 + altitude);
+
+/**
+ * How far past the fitted framing the camera may pull back. Without a ceiling
+ * OrbitControls lets the wheel run forever and the Earth ends up a speck among
+ * the stars; 1.7x still shows every orbit track with room to spare.
+ */
+const MAX_ZOOM_OUT_FACTOR = 1.7;
+
 const STAR_COUNT = 3200;
 /** Globe radius is 100 scene units and the camera far plane sits at 4000. */
 const STAR_SHELL_MIN = 700;
@@ -320,6 +331,17 @@ export const Globe: React.FC<GlobeProps> = ({
 
     globe.pointOfView({ altitude: target });
     appliedAltitudeRef.current = target;
+  }, [dimensions.width, dimensions.height]);
+
+  // Cap how far the wheel can pull the camera back. The ceiling follows the
+  // fitted framing, so a narrow container — which already starts further out —
+  // keeps the same amount of usable travel as a wide one.
+  useEffect(() => {
+    const controls = globeRef.current?.controls?.();
+    if (!controls || !dimensions.width || !dimensions.height) return;
+
+    controls.maxDistance =
+      altitudeToDistance(fitAltitude(dimensions.width, dimensions.height)) * MAX_ZOOM_OUT_FACTOR;
   }, [dimensions.width, dimensions.height]);
 
   useEffect(() => {

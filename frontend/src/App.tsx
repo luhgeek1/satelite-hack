@@ -967,7 +967,7 @@ export default function App() {
           {
             label: 'Active route',
             value: carriesRoute ? 'Carrying' : 'Not in path',
-            tone: carriesRoute ? 'text-blue-400' : 'text-zinc-500'
+            tone: carriesRoute ? 'text-zinc-100' : 'text-zinc-500'
           }
         ]
       : [];
@@ -990,7 +990,7 @@ export default function App() {
                   <span className="h-9 w-[3px] flex-shrink-0 rounded-full" style={{ background: accent }} />
                   <div className="min-w-0 flex-1">
                     <div className="font-mono text-xl leading-none text-zinc-50">{sat.id}</div>
-                    <div className={cn("mt-1.5 text-[11px]", failed ? "text-red-400" : "text-zinc-400")}>
+                    <div className={cn("mt-1.5 text-[11px]", failed ? "text-alarm" : "text-zinc-400")}>
                       {failed ? 'Failed' : 'Active'}
                     </div>
                   </div>
@@ -1703,24 +1703,23 @@ export default function App() {
             ))}
           </div>
 
-          {/* Three metrics in aligned columns beat three cards: the eye can run
-              down a column instead of hopping between boxes. */}
-          <div className="border border-rule-strong">
-            <div className="flex items-baseline gap-2 border-b border-rule px-3 py-2 font-data text-[9px] tracking-[0.08em] text-zinc-500 sm:gap-3">
-              <span className="min-w-0 flex-1">METRIC</span>
-              <span className="w-16 text-right sm:w-20">BASELINE</span>
-              <span className="w-16 text-right sm:w-20">OPTIMIZED</span>
-              <span className="w-16 text-right sm:w-20">DELTA</span>
-            </div>
+          {/* A KPI row: each tile leads with the value the scenario would have,
+              and carries its reference and delta underneath. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             {comparison.map(row => (
-              <div
-                key={row.metric}
-                className="flex items-baseline gap-2 border-b border-rule px-3 py-2.5 last:border-b-0 sm:gap-3"
-              >
-                <span className="min-w-0 flex-1 truncate font-label text-[13px] text-zinc-400">{row.metric}</span>
-                <span className="w-16 text-right font-data text-[12px] tabular-nums text-zinc-500 sm:w-20">{row.baseline}</span>
-                <span className="w-16 text-right font-data text-[13px] tabular-nums text-zinc-100 sm:w-20">{row.optimized}</span>
-                <span className="w-16 text-right font-data text-[12px] tabular-nums text-zinc-300 sm:w-20">{row.delta}</span>
+              <div key={row.metric} className="flex flex-col border border-rule-strong">
+                <div className="flex-1 px-3 pb-4 pt-3">
+                  <div className="font-label text-[12px] text-zinc-400">{row.metric}</div>
+                  <div className="mt-2 font-data text-[26px] leading-none tabular-nums text-zinc-100">
+                    {row.optimized}
+                  </div>
+                </div>
+                <div className="flex items-baseline justify-between gap-2 border-t border-rule px-3 py-2">
+                  <span className="font-data text-[11px] tabular-nums text-zinc-500">
+                    <span className="text-zinc-600">was</span> {row.baseline}
+                  </span>
+                  <span className="font-data text-[11px] tabular-nums text-zinc-300">{row.delta}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -1847,29 +1846,32 @@ export default function App() {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-[black] font-sans text-zinc-300">
       {/* Header */}
-      <header className="z-10 grid h-14 flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-zinc-800 bg-[black] px-3 sm:gap-4 sm:px-6 lg:h-16">
+      <header className="z-10 grid h-14 flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-rule bg-[black] px-3 sm:gap-4 sm:px-6 lg:h-16">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded border border-blue-800 bg-gradient-to-tr from-blue-600 to-blue-900">
-            <GlobeIcon className="h-5 w-5 text-white" />
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center border border-rule-strong">
+            <GlobeIcon className="h-4 w-4 text-zinc-300" />
           </div>
           <div className="hidden min-w-0 sm:block">
-            <h1 className="truncate text-sm font-bold leading-tight tracking-wide text-zinc-100">OrbitGuard</h1>
-            <div className="hidden text-[10px] uppercase tracking-widest text-blue-500/80 lg:block">Satellite Resilience Studio</div>
+            <h1 className="truncate font-label text-[14px] font-semibold leading-tight text-zinc-100">OrbitGuard</h1>
+            <div className="hidden font-label text-[11px] leading-tight text-zinc-500 lg:block">
+              Satellite resilience studio
+            </div>
           </div>
         </div>
 
-        <div className="flex h-9 flex-shrink-0 items-center gap-0.5 rounded-lg border border-zinc-800 bg-zinc-900/50 p-1">
+        <div className="flex h-9 flex-shrink-0 items-center border border-rule-strong">
           {tabMeta.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
               title={label}
               aria-label={label}
+              aria-pressed={activeTab === id}
               className={cn(
-                "flex h-full items-center gap-2 rounded-md px-2.5 text-sm font-medium capitalize transition-colors duration-200 sm:px-4 lg:px-6",
+                "flex h-full items-center gap-2 border-l border-rule-strong px-2.5 font-label text-[13px] transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none sm:px-4 lg:px-6",
                 activeTab === id
-                  ? "bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                  ? "bg-white/[0.12] text-zinc-100"
+                  : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
               )}
             >
               <Icon size={14} className="md:hidden" />
@@ -1879,17 +1881,27 @@ export default function App() {
         </div>
 
         <div className="flex min-w-0 items-center justify-end gap-2">
-          <div className="hidden h-8 items-center rounded-md border border-zinc-800 bg-zinc-900/60 px-3 text-sm xl:flex">
-            <span className="mr-2 text-zinc-500">Scenario:</span>
-            <span className="truncate text-zinc-200">01_full_constellation</span>
-            <ChevronDown size={14} className="ml-2 flex-shrink-0 text-zinc-500" />
-          </div>
-          <Button variant="outline" size="sm" className="h-8 flex-shrink-0 px-2.5 sm:px-3" title="Import JSON">
-            <Upload size={14} className="sm:mr-2" /> <span className="hidden sm:inline">JSON</span>
-          </Button>
-          <div className="hidden h-8 flex-shrink-0 items-center rounded-md border border-blue-500/20 bg-blue-400/10 px-2.5 font-mono text-xs text-blue-400 sm:flex">
-            <div className="mr-2 h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.9)]" />
-            READY
+          <button
+            type="button"
+            className="hidden h-8 items-center border border-rule-strong px-3 transition-colors hover:border-zinc-600 focus-visible:border-zinc-400 focus-visible:outline-none xl:flex"
+          >
+            <span className="mr-2 font-label text-[12px] text-zinc-500">Scenario</span>
+            <span className="truncate font-data text-[12px] text-zinc-200">01_full_constellation</span>
+            <ChevronDown size={13} className="ml-2 flex-shrink-0 text-zinc-600" />
+          </button>
+
+          <button
+            type="button"
+            title="Import JSON"
+            className="flex h-8 flex-shrink-0 items-center border border-rule-strong px-2.5 font-label text-[12px] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:border-zinc-400 focus-visible:text-zinc-100 focus-visible:outline-none sm:px-3"
+          >
+            <Upload size={13} className="sm:mr-2" /> <span className="hidden sm:inline">JSON</span>
+          </button>
+
+          {/* Annunciator, same grammar as the network-health card. */}
+          <div className="hidden h-8 flex-shrink-0 items-center gap-2 border border-rule-strong px-2.5 sm:flex">
+            <span className="h-1.5 w-1.5 bg-zinc-500" />
+            <span className="font-data text-[10px] tracking-[0.08em] text-zinc-400">READY</span>
           </div>
         </div>
       </header>
