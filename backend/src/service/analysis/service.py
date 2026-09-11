@@ -245,3 +245,107 @@ class AnalysisService:
             ) from exc
 
 
+def _bounds(models: list[PlaneBoundsModel], scenario: dict[str, Any]) -> list[PlaneBounds]:
+    known = {p["id"] for p in scenario["design"]["planes"]}
+    for model in models:
+        if model.plane_id not in known:
+            raise BadRequestError(f"Unknown plane {model.plane_id!r}", details={"field": "bounds"})
+    return [
+        PlaneBounds(
+            plane_id=m.plane_id,
+            raan_deg=tuple(m.raan_deg) if m.raan_deg else None,
+            phase_deg=tuple(m.phase_deg) if m.phase_deg else None,
+        )
+        for m in models
+    ]
+
+
+def _candidate(candidate: Candidate) -> CandidateModel:
+    return CandidateModel(
+        planes={
+            pid: {"raan_deg": p.raan_deg, "phase_deg": p.phase_deg}
+            for pid, p in candidate.planes.items()
+        },
+        worst_availability=round(candidate.worst_availability, 6),
+        mean_availability=round(candidate.mean_availability, 6),
+        worst_outage_s=candidate.worst_outage_s,
+        mean_hops=round(candidate.mean_hops, 4),
+    )
+
+
+def _optimize_result(result: Any, scenario: dict[str, Any]) -> OptimizeResult:
+    target = scenario["environment"]["target_availability"]
+    return OptimizeResult(
+        baseline=_candidate(result.baseline),
+        best=_candidate(result.best),
+        objective=result.objective.value,
+        improved=result.improved,
+        explored=result.explored,
+        changed_planes={
+            pid: {"raan_deg": p.raan_deg, "phase_deg": p.phase_deg}
+            for pid, p in result.changed_planes.items()
+        },
+        verdict=_verdict(result, target),
+    )
+
+
+def _verdict(result: Any, target: float) -> str:
+    """State the outcome plainly, including when the honest answer is "it cannot be done".
+
+    A search that finds nothing is a real engineering result — it says the given
+    architecture is already at its best under these constraints — and reporting
+    it as such is worth more than dressing up a rounding-error improvement.
+    """
+    before = result.baseline.worst_availability
+    after = result.best.worst_availability
+    target_pct = target * 100
+
+    if not result.improved:
+        if before >= target:
+            return (
+                f"The current configuration is already a local optimum at {before * 100:.1f}% for "
+                f"the worst-served client, above the {target_pct:.0f}% target. The search explored "
+                f"{result.explored} configurations without finding a better one."
+            )
+        return (
+            f"No phasing or RAAN change improves on {before * 100:.1f}% for the worst-served "
+            f"client across {result.explored} configurations explored. The {target_pct:.0f}% "
+            f"target is not reachable by re-orienting the existing planes — it needs an "
+            f"architectural change: more satellites in the deployed batches, a longer "
+            f"inter-satellite link range, or an additional gateway."
+        )
+
+    gain = (after - before) * 100
+    changes = ", ".join(
+        f"{pid} "
+        + " ".join(
+            f"{name.split('_')[0].upper()}→{value:.1f}°"
+            for name, value in (("raan_deg", p.raan_deg), ("phase_deg", p.phase_deg))
+            if value is not None
+        )
+        for pid, p in result.changed_planes.items()
+    )
+    verdict = (
+        f"Worst-client availability improves from {before * 100:.1f}% to {after * 100:.1f}% "
+        f"({gain:+.1f} points) by changing {changes or 'plane orientation'}."
+    )
+    if after < target:
+        verdict += (
+            f" This still falls short of the {target_pct:.0f}% target, so phasing alone is not "
+            f"enough for this configuration."
+        )
+    return verdict
+
+
+def _job_model(job: Job) -> JobStatusModel:
+    return JobStatusModel(
+        id=job.id,
+        kind=job.kind,
+        status=job.status,
+        progress=round(job.progress, 4),
+        explored=job.explored,
+        total=job.total,
+        error=job.error,
+        created_at=job.created_at,
+        finished_at=job.finished_at,
+    )
