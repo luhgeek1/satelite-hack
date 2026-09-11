@@ -24,6 +24,8 @@ export const COVERAGE_RADIUS_KM = 1700;
 export const EARTH_RADIUS_KM_EXPORT = 6371;
 /** Short enough to feel instant, long enough to read as a reveal. */
 const COVERAGE_TWEEN_MS = 220;
+/** Long enough to see which way the globe turned, short enough not to wait. */
+const FOCUS_FLIGHT_MS = 700;
 const COVERAGE_CAP_OPACITY = 0.22;
 const COVERAGE_SEGMENTS = 72;
 
@@ -161,6 +163,8 @@ interface GlobeProps {
   onSatelliteClick?: (sat: Satellite) => void;
   selectedSatellite?: string | null;
   mode?: 'simulation' | 'resilience';
+  /** A request to turn the globe to a satellite; the nonce re-fires a repeat pick. */
+  focusOn?: { id: string; nonce: number } | null;
 }
 
 export const Globe: React.FC<GlobeProps> = ({
@@ -176,7 +180,8 @@ export const Globe: React.FC<GlobeProps> = ({
   onCameraPositionChange,
   onSatelliteClick,
   selectedSatellite,
-  mode = 'simulation'
+  mode = 'simulation',
+  focusOn = null
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<any>(undefined);
@@ -331,6 +336,32 @@ export const Globe: React.FC<GlobeProps> = ({
       globeRef.current.controls().enableZoom = true;
     }
   }, []);
+
+  const focusNonceRef = useRef<number | null>(null);
+  const satellitesRef = useRef(satellites);
+  satellitesRef.current = satellites;
+
+  useEffect(() => {
+    if (!focusOn || focusOn.nonce === focusNonceRef.current) return;
+    focusNonceRef.current = focusOn.nonce;
+
+    const globe = globeRef.current;
+    if (!globe) return;
+
+    const satellite = satellitesRef.current.find(sat => sat.id === focusOn.id);
+    if (!satellite) return;
+
+    // Altitude is carried over untouched: the pick says which node to look at,
+    // not how close to get. Auto-rotation has to stop, or the node drifts back
+    // out of frame the moment it arrives.
+    const controls = globe.controls?.();
+    if (controls) controls.autoRotate = false;
+
+    globe.pointOfView(
+      { lat: satellite.lat, lng: satellite.lon, altitude: globe.pointOfView().altitude },
+      FOCUS_FLIGHT_MS
+    );
+  }, [focusOn]);
 
   // Stars behind the Earth.
   useEffect(() => {
@@ -487,16 +518,21 @@ export const Globe: React.FC<GlobeProps> = ({
       // which would hide which plane it belongs to.
       const emphasized = isFailed || isSelected;
 
+      // The growth rides the same tween as the coverage footprint, and only the
+      // picked node reads it — a layer-wide transition would animate all 48.
+      const grow = sat.id === coverageSatelliteId ? coverageScale : 0;
+
       return {
         ...sat,
         color,
         globeAltitude: altitude,
-        radius: emphasized ? 0.8 : 0.4,
-        sphereRadius: emphasized ? 1.5 : 0.95,
-        sphereVisible: playing
+        radius: isFailed ? 0.8 : 0.4 + 0.4 * grow,
+        sphereRadius: isFailed ? 1.5 : 0.95 + 0.55 * grow,
+        sphereVisible: playing,
+        emphasized
       };
     });
-  }, [satellites, selectedSatellite, activeRoute, mode, playing]);
+  }, [satellites, selectedSatellite, activeRoute, mode, playing, coverageSatelliteId, coverageScale]);
 
   const highlightedPlane = useMemo(
     () => satellites.find(s => s.id === selectedSatellite)?.plane ?? null,
@@ -686,7 +722,7 @@ export const Globe: React.FC<GlobeProps> = ({
         pointAltitude="globeAltitude"
         pointRadius="radius"
         pointResolution={32}
-        pointsTransitionDuration={260}
+        pointsTransitionDuration={0}
         onPointClick={(pt: any) => onPointClick(pt)}
         pointLabel={satelliteTooltip}
 

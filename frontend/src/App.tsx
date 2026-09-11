@@ -509,9 +509,18 @@ export default function App() {
   }, [activeTab]);
 
   // On narrow screens the satellite detail lives inside the right drawer.
-  const selectSatellite = (id: string | null) => {
-    setSelectedSatellite(current => current === id ? null : id);
-    if (id && !isDesktop) setMobilePanel('data');
+  const [globeFocus, setGlobeFocus] = useState<{ id: string; nonce: number } | null>(null);
+
+  /**
+   * `focus` means the pick came from a list, where the satellite is a name
+   * rather than something already on screen — so the globe turns to it. A click
+   * on the globe itself needs no turning; the node is under the cursor.
+   */
+  const selectSatellite = (id: string | null, focus = false) => {
+    const next = selectedSatellite === id ? null : id;
+    setSelectedSatellite(next);
+    if (next && focus) setGlobeFocus({ id: next, nonce: Date.now() });
+    if (next && !isDesktop) setMobilePanel('data');
   };
 
   const handleSimulateFailure = (id: string) => {
@@ -780,7 +789,7 @@ export default function App() {
                 <button
                   key={satellite.id}
                   type="button"
-                  onClick={() => selectSatellite(satellite.id)}
+                  onClick={() => selectSatellite(satellite.id, true)}
                   aria-pressed={isSelected}
                   className={cn(
                     "flex w-full items-center gap-2 border-l-2 py-1 pl-2 pr-0.5 text-left font-data text-[11px] tabular-nums transition-colors focus-visible:outline-none focus-visible:bg-white/[0.08]",
@@ -1200,7 +1209,7 @@ export default function App() {
               <button
                 key={sat.id}
                 type="button"
-                onClick={() => selectSatellite(sat.id)}
+                onClick={() => selectSatellite(sat.id, true)}
                 aria-pressed={isSelected}
                 className={cn(
                   "flex w-full items-stretch border-b border-rule text-left transition-colors focus-visible:outline-none",
@@ -1521,6 +1530,7 @@ export default function App() {
               onCameraPositionChange={setGlobeCameraPosition}
               onSatelliteClick={(s) => selectSatellite(s.id)}
               selectedSatellite={selectedSatellite}
+              focusOn={globeFocus}
             />
           ) : (
             <Map2D
@@ -1660,6 +1670,7 @@ export default function App() {
             onSatelliteClick={(s) => selectSatellite(s.id)}
             selectedSatellite={selectedSatellite}
             mode="resilience"
+            focusOn={globeFocus}
           />
         ) : (
           <Map2D
