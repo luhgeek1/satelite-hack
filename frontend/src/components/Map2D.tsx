@@ -78,14 +78,17 @@ export const Map2D: React.FC<Map2DProps> = ({
 
   useEffect(() => {
     const target = selectedSatellite ? 1 : 0;
-    const from = coverageScaleRef.current;
     const id = selectedSatellite ?? coverage.id;
-    if (from === target && coverage.id === id) return;
+    // Same restart the globe needs: switching straight from one node to another
+    // leaves the scale at 1, and the new footprint would appear fully grown.
+    const restarting = Boolean(selectedSatellite) && coverage.id !== selectedSatellite;
+    const from = restarting ? 0 : coverageScaleRef.current;
+    if (from === target && !restarting) return;
 
     let frame = 0;
     const start = performance.now();
     const step = (now: number) => {
-      const progress = Math.min(1, (now - start) / COVERAGE_TWEEN_MS);
+      const progress = Math.max(0, Math.min(1, (now - start) / COVERAGE_TWEEN_MS));
       const eased = progress * (2 - progress);
       setCoverage({ id, scale: from + (target - from) * eased });
       if (progress < 1) frame = requestAnimationFrame(step);

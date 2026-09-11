@@ -214,9 +214,16 @@ export const Globe: React.FC<GlobeProps> = ({
   const [coverageScale, setCoverageScale] = useState(selectedSatellite ? 1 : 0);
   const coverageScaleRef = useRef(coverageScale);
   coverageScaleRef.current = coverageScale;
+  const coverageSatelliteIdRef = useRef(coverageSatelliteId);
+  coverageSatelliteIdRef.current = coverageSatelliteId;
 
   useEffect(() => {
     const target = selectedSatellite ? 1 : 0;
+    // Moving the pick straight to another node has to restart the reveal. The
+    // scale is still 1 from the previous selection, so without this the new
+    // node jumps to full size and only the very first pick ever animates.
+    const restarting = Boolean(selectedSatellite) && coverageSatelliteIdRef.current !== selectedSatellite;
+
     if (selectedSatellite) setCoverageSatelliteId(selectedSatellite);
 
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -226,14 +233,18 @@ export const Globe: React.FC<GlobeProps> = ({
       return;
     }
 
-    const from = coverageScaleRef.current;
+    const from = restarting ? 0 : coverageScaleRef.current;
     if (from === target) return;
+    if (restarting) setCoverageScale(0);
 
     const start = performance.now();
     let frame = 0;
 
     const step = (now: number) => {
-      const t = Math.min(1, (now - start) / COVERAGE_TWEEN_MS);
+      // rAF hands back the frame's own timestamp, which can predate the
+      // start captured just before it — an unclamped progress goes negative
+      // and the first frame renders a sub-zero radius.
+      const t = Math.max(0, Math.min(1, (now - start) / COVERAGE_TWEEN_MS));
       const eased = 1 - Math.pow(1 - t, 3);
       setCoverageScale(from + (target - from) * eased);
 
