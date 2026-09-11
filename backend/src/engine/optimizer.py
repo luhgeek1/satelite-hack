@@ -267,3 +267,49 @@ def _differs(scenario: dict[str, Any], plane_id: str, override: PlaneOverride) -
     return False
 
 
+@dataclass(frozen=True, slots=True)
+class SensitivityPoint:
+    value: float
+    worst_availability: float
+    per_client: dict[str, float]
+    meets_target: bool
+
+
+def sweep_environment(
+    scenario: dict[str, Any],
+    *,
+    parameter: str,
+    values: Sequence[float],
+    strategy: RoutingStrategy = RoutingStrategy.MIN_HOPS,
+    max_workers: int | None = None,
+) -> list[SensitivityPoint]:
+    """Vary one environment parameter and report where the target starts to hold.
+
+    This is how the ISL-range finding is produced: intra-plane neighbours sit
+    2700.4 km apart at 16 satellites per plane, and the sweep shows availability
+    collapsing the moment the link budget falls below that chord.
+    """
+    payloads = [(scenario, parameter, float(value), strategy) for value in values]
+
+    if max_workers == 1:
+        points = [_sweep_one(p) for p in payloads]
+    else:
+        with ProcessPoolExecutor(max_workers=max_workers) as pool:
+            points = list(pool.map(_sweep_one, payloads, chunksize=2))
+
+    return points
+
+
+def _sweep_one(
+    payload: tuple[dict[str, Any], str, float, RoutingStrategy],
+) -> SensitivityPoint:
+    scenario, parameter, value, strategy = payload
+    override = ConfigOverride(**{parameter: value})
+    result = simulate(apply_override(scenario, override), strategy=strategy)
+    worst = worst_availability(result.metrics)
+    return SensitivityPoint(
+        value=value,
+        worst_availability=worst,
+        per_client={cid: m.availability for cid, m in result.metrics.items()},
+        meets_target=worst >= scenario["environment"]["target_availability"],
+    )
