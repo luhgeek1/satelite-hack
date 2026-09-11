@@ -1,0 +1,26 @@
+"""Shared fixtures.
+
+The engine tests need no infrastructure at all — that is the point of keeping
+`src/engine` free of framework imports — so they load scenarios straight from
+the case data directory.
+"""
+
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+DATA_DIR = REPO_ROOT / "data"
+CASE_GEOMETRY = REPO_ROOT / "case" / "Расчетный модуль" / "geometry.py"
+
+
+@pytest.fixture(scope="session")
+def data_dir() -> Path:
+    return DATA_DIR
+
+
+@pytest.fixture(scope="session")
+def full_constellation():
+    from engine import load_scenario
+
+    return load_scenario(DATA_DIR / "01_full_constellation.json")
