@@ -843,22 +843,28 @@ export default function App() {
    */
   const renderNetworkHealthCard = () => {
     const hasRoute = activeRoute.length > 0;
+    // The card states a target, so that threshold — not an invented warning
+    // band — is what decides whether a reading is called out.
+    const belowTarget = Object.values(metrics.availability).some(v => (v as number) < 90);
+    const degraded = belowTarget || !hasRoute;
 
     return (
-      <div className="pointer-events-none absolute left-3 top-3 z-10 w-[190px] rounded-lg border border-zinc-800 bg-black/70 p-3 backdrop-blur sm:w-[215px] lg:left-6 lg:top-6 lg:p-4">
+      <div className="pointer-events-none absolute left-3 top-3 z-10 w-[190px] border border-rule-strong bg-black/70 p-3 backdrop-blur sm:w-[215px] lg:left-6 lg:top-6 lg:p-4">
         <button
           type="button"
           onClick={() => setNetworkHealthExpanded(expanded => !expanded)}
-          className="pointer-events-auto flex w-full items-center gap-2 rounded-md text-left transition-colors hover:text-blue-300"
+          className="pointer-events-auto flex w-full items-center gap-2 text-left transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
           aria-expanded={networkHealthExpanded}
           title={networkHealthExpanded ? 'Collapse network health' : 'Expand network health'}
         >
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.9)]" />
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-blue-400">Network Health</span>
+          {/* Annunciator, not decoration: it only carries hue when something
+              is actually off target. */}
+          <span className={cn("h-1.5 w-1.5 shrink-0", degraded ? "bg-alarm" : "bg-zinc-500")} />
+          <span className="font-label text-[12px] text-zinc-300">Network health</span>
           <ChevronDown
             size={13}
             className={cn(
-              "ml-auto shrink-0 text-blue-400/70 transition-transform duration-200",
+              "ml-auto shrink-0 text-zinc-600 transition-transform duration-200",
               !networkHealthExpanded && "-rotate-90"
             )}
           />
@@ -873,49 +879,49 @@ export default function App() {
               transition={{ duration: 0.18, ease: 'easeOut' }}
               className="min-h-0 overflow-hidden"
             >
-              <div className="mt-3 space-y-1.5 font-mono text-[11px] sm:text-xs">
+              <div className="mt-3 space-y-1.5 font-data text-[11px] tabular-nums sm:text-xs">
                 {Object.entries(metrics.availability).map(([id, v]) => {
                   const val = v as number;
                   return (
                     <div key={id} className="flex items-baseline justify-between gap-2">
                       <span className="text-zinc-400">{id}</span>
-                      <span className={cn(
-                        val >= 95 ? "text-zinc-100" : val >= 90 ? "text-amber-400" : "text-red-400"
-                      )}>{val.toFixed(1)}%</span>
+                      <span className={val >= 90 ? "text-zinc-100" : "text-alarm"}>{val.toFixed(1)}%</span>
                     </div>
                   );
                 })}
                 <div className="flex items-baseline justify-between gap-2 text-zinc-500">
-                  <span>Target</span>
-                  <span>≥ 90%</span>
+                  <span className="font-label text-[12px]">Target</span>
+                  <span>&ge; 90%</span>
                 </div>
               </div>
 
-              <div className="my-3 border-t border-zinc-800" />
+              <div className="my-3 border-t border-rule" />
 
-              <div className="flex items-baseline justify-between gap-2 font-mono text-[11px] sm:text-xs">
-                <span className="text-zinc-400">Max outage</span>
+              <div className="flex items-baseline justify-between gap-2 font-data text-[11px] tabular-nums sm:text-xs">
+                <span className="font-label text-[12px] text-zinc-400">Max outage</span>
                 <span className="text-zinc-100">{metrics.maxOutageMinutes} min</span>
               </div>
 
-              <div className="mt-3 font-mono text-[11px] sm:text-xs">
+              <div className="mt-3 font-data text-[11px] tabular-nums sm:text-xs">
                 {hasRoute ? (
                   <>
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-zinc-400">Route</span>
+                      <span className="font-label text-[12px] text-zinc-400">Route</span>
                       <span className="text-zinc-100">{activeRoute.length - 1} hops</span>
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-1 text-emerald-400">
+                    {/* The path needs no hue of its own: that it exists is
+                        already said above, and its absence is the alarm. */}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-1 text-zinc-300">
                       {activeRoute.map((node, i) => (
                         <React.Fragment key={i}>
                           <span>{node}</span>
-                          {i < activeRoute.length - 1 && <span className="text-zinc-600">→</span>}
+                          {i < activeRoute.length - 1 && <span className="text-zinc-600">&rarr;</span>}
                         </React.Fragment>
                       ))}
                     </div>
                   </>
                 ) : (
-                  <div className="flex items-center gap-1.5 text-red-400">
+                  <div className="flex items-center gap-1.5 font-label text-[12px] text-alarm">
                     <AlertTriangle size={12} /> No route
                   </div>
                 )}
@@ -1395,19 +1401,19 @@ export default function App() {
         </div>
 
         {/* Playback toolbar */}
-        <div className="flex-shrink-0 border-t border-zinc-800 bg-[black]/90 px-3 py-2 backdrop-blur sm:px-4">
+        <div className="flex-shrink-0 border-t border-rule bg-[black]/90 px-3 py-2 backdrop-blur sm:px-4">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
             <button
               type="button"
               onClick={() => setPlaying(!playing)}
               title={playing ? 'Pause' : 'Play'}
               aria-label={playing ? 'Pause' : 'Play'}
-              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900/60 text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center border border-rule-strong text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white focus-visible:border-zinc-300 focus-visible:text-white focus-visible:outline-none"
             >
               {playing ? <Pause size={14} /> : <Play size={14} />}
             </button>
 
-            <div className="flex flex-shrink-0 items-center gap-0.5 rounded-md border border-zinc-800 bg-zinc-900/60 p-0.5">
+            <div className="flex flex-shrink-0 items-center border border-rule-strong">
               {[1, 4, 16].map(rate => (
                 <button
                   key={rate}
@@ -1415,10 +1421,10 @@ export default function App() {
                   onClick={() => setSpeed(rate)}
                   aria-pressed={speed === rate}
                   className={cn(
-                    "h-6 rounded px-2 font-mono text-[11px] transition-colors",
+                    "h-6 border-l border-rule-strong px-2 font-data text-[11px] tabular-nums transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none",
                     speed === rate
-                      ? "bg-zinc-800 text-zinc-100 ring-1 ring-zinc-700"
-                      : "text-zinc-500 hover:text-zinc-300"
+                      ? "bg-white/[0.12] text-zinc-100"
+                      : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
                   )}
                 >
                   x{rate}
@@ -1426,15 +1432,15 @@ export default function App() {
               ))}
             </div>
 
-            <div className="flex flex-shrink-0 items-baseline gap-1 font-mono text-sm tabular-nums text-blue-400">
+            <div className="flex flex-shrink-0 items-baseline gap-1 font-data text-sm tabular-nums text-zinc-100">
               {formatTime(time)}
               <span className="text-[10px] text-zinc-500">UTC</span>
             </div>
 
-            <div className="hidden h-5 w-px flex-shrink-0 bg-zinc-800 sm:block" />
+            <div className="hidden h-5 w-px flex-shrink-0 bg-rule-strong sm:block" />
 
             <div className="flex w-full min-w-0 basis-full items-center gap-2 sm:w-auto sm:flex-1 sm:basis-0">
-              <span className="flex-shrink-0 font-mono text-[10px] tabular-nums text-zinc-500">00:00</span>
+              <span className="flex-shrink-0 font-data text-[10px] tabular-nums text-zinc-500">00:00</span>
 
               <div
                 ref={timelineRef}
@@ -1450,27 +1456,28 @@ export default function App() {
                 onKeyDown={handleTimelineKeyDown}
                 className="group relative h-4 min-w-0 flex-1 cursor-pointer touch-none focus:outline-none"
               >
-                <div className="absolute inset-x-0 top-1/2 flex h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-zinc-800 ring-offset-2 ring-offset-black group-focus-visible:ring-1 group-focus-visible:ring-blue-500">
+                <div className="absolute inset-x-0 top-1/2 flex h-1.5 -translate-y-1/2 items-center overflow-hidden ring-offset-2 ring-offset-black group-focus-visible:ring-1 group-focus-visible:ring-zinc-400">
                   {activeRoute.length === 0 ? (
-                    <div className="h-full w-full bg-red-500/80" />
+                    <div className="h-full w-full bg-alarm" />
                   ) : (
                     <>
-                      <div className="h-full w-[30%] bg-blue-500/80" />
-                      <div className="h-full w-[10%] bg-red-500/80" />
-                      <div className="h-full w-[40%] bg-blue-500/80" />
-                      <div className="h-full w-[5%] bg-red-500/80" />
-                      <div className="h-full w-[15%] bg-blue-500/80" />
+                      <div className="h-0.5 w-[30%] bg-zinc-400" />
+                      <div className="h-full w-[10%] bg-alarm" />
+                      <div className="h-0.5 w-[40%] bg-zinc-400" />
+                      <div className="h-full w-[5%] bg-alarm" />
+                      <div className="h-0.5 w-[15%] bg-zinc-400" />
                     </>
                   )}
                 </div>
 
+                {/* Same cursor window as the parameter scales in the panel. */}
                 <div
-                  className="pointer-events-none absolute top-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.7)] transition-[left] duration-75"
+                  className="pointer-events-none absolute top-1/2 h-3.5 w-[9px] -translate-x-1/2 -translate-y-1/2 border-l border-r border-white transition-[left] duration-75"
                   style={{ left: `${(time / 1440) * 100}%` }}
                 />
               </div>
 
-              <span className="flex-shrink-0 font-mono text-[10px] tabular-nums text-zinc-500">24:00</span>
+              <span className="flex-shrink-0 font-data text-[10px] tabular-nums text-zinc-500">24:00</span>
             </div>
           </div>
         </div>
