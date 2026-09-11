@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Upload, ShieldAlert, BarChart3, ChevronDown, AlertTriangle, Plus, X, Zap, Activity, PanelRightClose, PanelRightOpen, Globe as GlobeIcon } from 'lucide-react';
+import { Play, Pause, Upload, ShieldAlert, BarChart3, ChevronDown, AlertTriangle, Plus, X, Activity, PanelRightClose, PanelRightOpen, Globe as GlobeIcon } from 'lucide-react';
 import { Globe, planeColors, type GlobeCameraPosition, type OrbitTrack } from './components/Globe';
 import { criticalityLevel } from './lib/criticality';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
@@ -1094,16 +1094,20 @@ export default function App() {
   };
 
   /** The right-hand column: scenario configuration (health lives on the globe HUD). */
+  /** Panel identity, shared by both tabs: the scenario, not a decorative label. */
+  const renderPanelHead = () => (
+    <div className="flex-shrink-0 border-b border-rule px-3 pb-2.5 pt-3">
+      <div className="font-label text-[11px] text-zinc-500">Scenario</div>
+      <div className="truncate pr-9 font-data text-[13px] text-zinc-100">01_full_constellation</div>
+    </div>
+  );
+
   const renderDataPanel = (includeSatelliteOverlay = false) => {
     const deployedCount = deploymentStage * 16;
 
     return (
       <>
-        {/* Panel identity: the scenario under edit, not a decorative label. */}
-        <div className="flex-shrink-0 border-b border-rule px-3 pb-2.5 pt-3">
-          <div className="font-label text-[11px] text-zinc-500">Scenario</div>
-          <div className="truncate pr-9 font-data text-[13px] text-zinc-100">01_full_constellation</div>
-        </div>
+        {renderPanelHead()}
 
         <motion.div
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
@@ -1159,143 +1163,206 @@ export default function App() {
     );
   };
 
-  const renderCriticalNodesPanel = () => (
-    <>
-      <motion.div
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-4 lg:p-6"
-        initial={{ opacity: 0, x: 8 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 8 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-      >
-        <h2 className="mb-4 hidden pr-9 text-xs font-semibold tracking-widest text-zinc-400 lg:mb-6 lg:block">CRITICAL NODES</h2>
+  const renderCriticalNodesPanel = () => {
+    const ranked = [...satellites].sort((a, b) => b.criticality - a.criticality).slice(0, 4);
 
-        <div className="space-y-3 lg:space-y-4">
-          {[...satellites].sort((a,b) => b.criticality - a.criticality).slice(0,4).map((sat, idx) => (
-             <Card
-               key={sat.id}
-               className={cn(
-                 "bg-[black] cursor-pointer hover:border-blue-900 transition-colors",
-                 selectedSatellite === sat.id && "border-blue-500 shadow-[0_0_15px_rgba(34,211,238,0.15)]"
-               )}
-               onClick={() => selectSatellite(sat.id)}
-             >
-               <CardContent className="p-4">
-                 <div className="flex justify-between items-start mb-2">
-                   <div className="flex items-center space-x-2">
-                     <span className="text-xs text-zinc-500 font-mono">0{idx+1}</span>
-                     <span className="font-medium text-zinc-200">{sat.id}</span>
-                   </div>
-                   <div className="text-xs font-mono text-orange-400">{sat.criticality}</div>
-                 </div>
-                 <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden mb-3">
-                    <div className="h-full bg-orange-500" style={{ width: `${sat.criticality}%` }} />
-                 </div>
-                 <div className="flex justify-between text-xs text-zinc-400">
-                    <span>Avail. impact</span>
-                    <span className="text-red-400 font-mono">-{((sat.criticality / 100) * 16).toFixed(1)}%</span>
-                 </div>
-               </CardContent>
-             </Card>
-          ))}
-        </div>
-      </motion.div>
+    return (
+      <>
+        {renderPanelHead()}
 
-      <div className="flex-shrink-0 border-t border-zinc-800 p-4 lg:p-6">
-        <Button className="w-full py-4 text-sm lg:py-6" onClick={handleOptimize}>
-          <Zap size={16} className="mr-2" /> Optimize Configuration
-        </Button>
-      </div>
+        <motion.div
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          initial={{ opacity: 0, x: 8 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 8 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+        >
+          {/* The rail carries the rank instead of a subsystem mnemonic: this
+              list really is ordered, so the numbering is information. */}
+          {ranked.map((sat, index) => {
+            const level = criticalityLevel(sat.criticality);
+            const isSelected = selectedSatellite === sat.id;
+            // Same impact model the satellite detail panel uses, so the two
+            // never disagree.
+            const impact = ((sat.criticality / 100) * 16).toFixed(1);
 
-      {/* TODO(BACKEND): Replace fixture progress, recommendations and result metrics with optimizer-job data. */}
-      <AnimatePresence>
-        {optimizationState !== 'none' && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            className="absolute inset-0 z-30 flex flex-col bg-[#09090b] p-4 lg:p-6"
+            return (
+              <button
+                key={sat.id}
+                type="button"
+                onClick={() => selectSatellite(sat.id)}
+                aria-pressed={isSelected}
+                className={cn(
+                  "flex w-full items-stretch border-b border-rule text-left transition-colors focus-visible:outline-none",
+                  isSelected ? "bg-white/[0.06]" : "hover:bg-white/[0.03] focus-visible:bg-white/[0.06]"
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex w-9 flex-shrink-0 items-start justify-center border-r border-rule pt-2.5 font-data text-[10px] tabular-nums",
+                    isSelected ? "text-zinc-200" : "text-zinc-500"
+                  )}
+                >
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+
+                <span className="min-w-0 flex-1 px-3 py-2.5">
+                  <span className="flex items-baseline gap-2">
+                    <span className="font-data text-[12px] text-zinc-100">{sat.id}</span>
+                    <span
+                      className={cn(
+                        "ml-auto font-data text-[9px] tracking-[0.08em]",
+                        level.label === 'Critical' ? "text-alarm" : "text-zinc-500"
+                      )}
+                    >
+                      {level.token}
+                    </span>
+                    <span className="w-6 text-right font-data text-[11px] tabular-nums text-zinc-200">
+                      {sat.criticality}
+                    </span>
+                  </span>
+
+                  {/* No magnitude bar: these scores cluster in the 70s-90s, so
+                      a 0-100 bar is a near-full rule that reads as a divider
+                      and says less than the number already does. */}
+                  <span className="mt-1.5 flex items-baseline justify-between gap-2">
+                    <span className="font-label text-[11px] text-zinc-500">Availability impact</span>
+                    <span className="font-data text-[11px] tabular-nums text-zinc-200">&minus;{impact}%</span>
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </motion.div>
+
+        <div className="flex-shrink-0 border-t border-rule p-3">
+          <button
+            type="button"
+            onClick={handleOptimize}
+            className="group flex h-10 w-full items-center justify-between border border-zinc-600 px-3 font-label text-[13px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10 focus-visible:outline-none"
           >
-             {optimizationState === 'running' ? (
-               <div className="flex flex-col items-center justify-center flex-1 space-y-6">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                  >
-                    <Zap size={32} className="text-blue-400" />
-                  </motion.div>
-                  <div className="text-center space-y-2">
-                    <div className="font-mono text-sm tracking-wider text-zinc-300">SEARCHING CONFIGURATIONS</div>
-                    <div className="text-xs text-zinc-500">124 / 500 explored</div>
+            <span>Optimize configuration</span>
+            <span className="font-data text-[10px] tabular-nums text-zinc-500 transition-colors group-hover:text-black/55">
+              500 candidates
+            </span>
+          </button>
+        </div>
+
+        {/* TODO(BACKEND): Replace fixture progress, recommendations and result metrics with optimizer-job data. */}
+        <AnimatePresence>
+          {optimizationState !== 'none' && (
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              className="absolute inset-0 z-30 flex flex-col bg-[black]"
+            >
+              {optimizationState === 'running' ? (
+                <div className="flex flex-1 flex-col items-center justify-center px-6">
+                  <div className="w-full max-w-[220px]">
+                    <div className="font-label text-[13px] text-zinc-200">Searching configurations</div>
+                    <div className="mt-1 font-data text-[11px] tabular-nums text-zinc-500">124 / 500 explored</div>
+                    {/* Same sweep as the run button, so "working" reads the
+                        same way everywhere in the app. */}
+                    <div className="relative mt-3 h-px w-full overflow-hidden bg-rule-strong">
+                      <motion.span
+                        className="absolute inset-y-0 left-0 w-1/3 bg-zinc-300"
+                        animate={{ x: ['-110%', '330%'] }}
+                        transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }}
+                      />
+                    </div>
                   </div>
-               </div>
-             ) : (
-               <div className="flex flex-col h-full min-h-0">
-                  <h2 className="text-xs font-semibold tracking-widest text-zinc-400 mb-4 lg:mb-6 flex items-center justify-between">
-                    RECOMMENDED CONFIGURATION
-                    <button onClick={() => setOptimizationState('none')}><X size={16} className="text-zinc-500" /></button>
-                  </h2>
-
-                  <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain">
-                     <div className="grid grid-cols-2 gap-3 lg:gap-4">
-                       <div className="bg-[black] p-3 lg:p-4 rounded-lg border border-zinc-800">
-                         <div className="text-xs text-zinc-500 mb-1">Availability</div>
-                         <div className="font-mono flex flex-wrap items-end gap-x-2">
-                           <span className="text-zinc-400 line-through text-xs mb-0.5">96.7%</span>
-                           <span className="text-blue-400 text-lg">98.1%</span>
-                         </div>
-                       </div>
-                       <div className="bg-[black] p-3 lg:p-4 rounded-lg border border-zinc-800">
-                         <div className="text-xs text-zinc-500 mb-1">Max Outage</div>
-                         <div className="font-mono flex flex-wrap items-end gap-x-2">
-                           <span className="text-zinc-400 line-through text-xs mb-0.5">26m</span>
-                           <span className="text-blue-400 text-lg">14m</span>
-                         </div>
-                       </div>
-                     </div>
-
-                     <div>
-                       <div className="text-xs font-medium text-zinc-400 mb-3">ORBIT CHANGES</div>
-                       <div className="space-y-3">
-                         <div className="bg-zinc-900/50 p-3 rounded text-sm border border-zinc-800/50">
-                            <div className="font-medium mb-2">Plane P2</div>
-                            <div className="flex justify-between text-zinc-400 font-mono text-xs">
-                              <span>RAAN</span>
-                              <span>60° → <span className="text-blue-400">56°</span></span>
-                            </div>
-                            <div className="flex justify-between text-zinc-400 font-mono text-xs mt-1">
-                              <span>Phase</span>
-                              <span>7.5° → <span className="text-blue-400">13.0°</span></span>
-                            </div>
-                         </div>
-                         <div className="bg-zinc-900/50 p-3 rounded text-sm border border-zinc-800/50">
-                            <div className="font-medium mb-2">Plane P3</div>
-                            <div className="flex justify-between text-zinc-400 font-mono text-xs">
-                              <span>RAAN</span>
-                              <span>120° → <span className="text-blue-400">124°</span></span>
-                            </div>
-                         </div>
-                       </div>
-                     </div>
+                </div>
+              ) : (
+                <div className="flex h-full min-h-0 flex-col">
+                  <div className="flex flex-shrink-0 items-start justify-between border-b border-rule px-3 pb-2.5 pt-3">
+                    <div>
+                      <div className="font-label text-[11px] text-zinc-500">Optimizer</div>
+                      <div className="font-data text-[13px] text-zinc-100">Recommended</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setOptimizationState('none')}
+                      aria-label="Dismiss recommendation"
+                      className="text-zinc-500 transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
 
-                  <div className="flex-shrink-0 space-y-3 border-t border-zinc-800 pt-4 mt-4 lg:pt-6">
-                    <Button className="w-full" onClick={() => {
-                      setMetrics(optimizedMetrics);
-                      setOptimizationState('none');
-                    }}>Apply Configuration</Button>
-                    <Button variant="outline" className="w-full" onClick={() => {
-                      setOptimizationState('none');
-                      setActiveTab('compare');
-                    }}>Compare with Baseline</Button>
+                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                    {/* Before and after on one baseline, so the gain is read by
+                        comparing two numbers rather than two cards. */}
+                    {[
+                      { label: 'Availability', from: '96.7', to: '98.1', unit: '%' },
+                      { label: 'Max outage', from: '26', to: '14', unit: 'min' }
+                    ].map(row => (
+                      <div
+                        key={row.label}
+                        className="flex items-baseline gap-2 border-b border-rule px-3 py-2.5"
+                      >
+                        <span className="font-label text-[12px] text-zinc-400">{row.label}</span>
+                        <span className="ml-auto font-data text-[11px] tabular-nums text-zinc-600">{row.from}</span>
+                        <span className="font-data text-[11px] text-zinc-700">&rarr;</span>
+                        <span className="font-data text-[12px] tabular-nums text-zinc-100">{row.to}</span>
+                        <span className="w-7 font-data text-[10px] text-zinc-500">{row.unit}</span>
+                      </div>
+                    ))}
+
+                    <div className="border-b border-rule px-3 py-2.5">
+                      <div className="font-label text-[12px] text-zinc-400">Orbit changes</div>
+                      <div className="mt-2 space-y-1.5">
+                        {[
+                          { plane: 'P2', param: 'RAAN', from: 60, to: 56 },
+                          { plane: 'P2', param: 'PHASE', from: 7.5, to: 13 },
+                          { plane: 'P3', param: 'RAAN', from: 120, to: 124 }
+                        ].map(change => (
+                          <div
+                            key={`${change.plane}-${change.param}`}
+                            className="flex items-baseline gap-2 font-data text-[11px] tabular-nums"
+                          >
+                            <span className="h-2.5 w-0.5 self-center" style={{ background: planeColors[change.plane as Plane] }} />
+                            <span className="text-zinc-300">{change.plane}</span>
+                            <span className="text-[10px] text-zinc-500">{change.param}</span>
+                            <span className="ml-auto text-zinc-600">{formatDegrees(change.from)}</span>
+                            <span className="text-zinc-700">&rarr;</span>
+                            <span className="text-zinc-100">{formatDegrees(change.to)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-               </div>
-             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
+
+                  <div className="flex-shrink-0 space-y-2 border-t border-rule p-3">
+                    <button
+                      type="button"
+                      className="flex h-10 w-full items-center justify-center border border-zinc-600 font-label text-[13px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10 focus-visible:outline-none"
+                      onClick={() => {
+                        setMetrics(optimizedMetrics);
+                        setOptimizationState('none');
+                      }}
+                    >
+                      Apply configuration
+                    </button>
+                    <button
+                      type="button"
+                      className="flex h-9 w-full items-center justify-center border border-rule-strong font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:border-zinc-400 focus-visible:text-zinc-100 focus-visible:outline-none"
+                      onClick={() => {
+                        setOptimizationState('none');
+                        setActiveTab('compare');
+                      }}
+                    >
+                      Compare with baseline
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  };
 
   /** Floating toggle that opens the data column as a drawer below `lg`. */
   const renderMobilePanelToggle = (label: string, icon: React.ReactNode) => (
@@ -1457,15 +1524,19 @@ export default function App() {
                 className="group relative h-4 min-w-0 flex-1 cursor-pointer touch-none focus:outline-none"
               >
                 <div className="absolute inset-x-0 top-1/2 flex h-1.5 -translate-y-1/2 items-center overflow-hidden ring-offset-2 ring-offset-black group-focus-visible:ring-1 group-focus-visible:ring-zinc-400">
+                  {/* The baseline runs the whole day underneath, so an outage
+                      block reads as a mark *on* the timeline rather than as a
+                      gap in it — which would invert the meaning. */}
+                  <div className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-zinc-600" />
                   {activeRoute.length === 0 ? (
-                    <div className="h-full w-full bg-alarm" />
+                    <div className="relative h-full w-full bg-zinc-400" />
                   ) : (
                     <>
-                      <div className="h-0.5 w-[30%] bg-zinc-400" />
-                      <div className="h-full w-[10%] bg-alarm" />
-                      <div className="h-0.5 w-[40%] bg-zinc-400" />
-                      <div className="h-full w-[5%] bg-alarm" />
-                      <div className="h-0.5 w-[15%] bg-zinc-400" />
+                      <div className="w-[30%]" />
+                      <div className="relative h-full w-[10%] bg-zinc-400" />
+                      <div className="w-[40%]" />
+                      <div className="relative h-full w-[5%] bg-zinc-400" />
+                      <div className="w-[15%]" />
                     </>
                   )}
                 </div>
@@ -1508,20 +1579,28 @@ export default function App() {
           mode="resilience"
         />
         {renderMobilePanelToggle('Critical nodes', <ShieldAlert size={13} />)}
-        <div className="absolute bottom-3 left-3 rounded-lg border border-zinc-800 bg-[black]/80 p-3 backdrop-blur lg:top-6 lg:bottom-auto lg:left-6 lg:p-4">
-          <div className="mb-2 text-[10px] font-semibold tracking-widest text-zinc-400 lg:mb-3 lg:text-xs">NODE CRITICALITY</div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs lg:block lg:space-y-2 lg:text-sm">
-            <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-zinc-500 mr-2" /> Low</div>
-            <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-amber-400 mr-2" /> Medium</div>
-            <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-orange-500 mr-2 shadow-[0_0_8px_rgba(249,115,22,0.8)]" /> High</div>
-            <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-red-500 mr-2 shadow-[0_0_8px_rgba(239,68,68,0.8)]" /> Critical</div>
+        {/* Legend for the globe dots: swatches come from the shared scale, so
+            the key can never drift from what is drawn. */}
+        <div className="absolute bottom-3 left-3 border border-rule-strong bg-[black]/80 p-3 backdrop-blur lg:top-6 lg:bottom-auto lg:left-6 lg:p-4">
+          <div className="mb-2 font-label text-[12px] text-zinc-300 lg:mb-3">Node criticality</div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 lg:block lg:space-y-1.5">
+            {[0, 50, 75, 90].map(sample => {
+              const level = criticalityLevel(sample);
+              return (
+                <div key={level.token} className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 shrink-0" style={{ background: level.color }} />
+                  <span className="font-label text-[12px] text-zinc-400">{level.label}</span>
+                  <span className="ml-auto font-data text-[9px] tracking-[0.08em] text-zinc-600">{level.token}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </motion.div>
 
       {renderDataColumn('resilience', renderCriticalNodesPanel())}
 
-      <MobileDrawer open={mobilePanel === 'data'} title="CRITICAL NODES" onClose={() => setMobilePanel(null)}>
+      <MobileDrawer open={mobilePanel === 'data'} title="Critical nodes" onClose={() => setMobilePanel(null)}>
         <>
           {renderCriticalNodesPanel()}
           {renderSatelliteOverlay()}
