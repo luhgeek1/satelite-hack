@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Upload, ShieldAlert, BarChart3, ChevronDown, AlertTriangle, Plus, X, Activity, PanelRightClose, PanelRightOpen, Globe as GlobeIcon } from 'lucide-react';
+import { Play, Pause, Upload, ShieldAlert, BarChart3, ChevronDown, AlertTriangle, Plus, X, Activity, PanelRightClose, PanelRightOpen, Globe as GlobeIcon, Map as MapIcon } from 'lucide-react';
 import { Globe, planeColors, type GlobeCameraPosition, type OrbitTrack } from './components/Globe';
+import { Map2D } from './components/Map2D';
 import { criticalityLevel } from './lib/criticality';
 import { Button } from './components/ui/button';
 import { cn } from './lib/utils';
@@ -37,6 +38,9 @@ const ultraDesktopQuery = '(min-width: 1536px)';
 
 type ConfigGroupId = 'deployment' | 'planes' | 'failures' | 'satellites' | 'sites';
 
+/** Globe or flat map — the same constellation, two projections. */
+type ViewMode = '3d' | '2d';
+
 /** Inputs the engineer edits come first; the read-only catalogs sit below. */
 const defaultOpenGroups: Record<ConfigGroupId, boolean> = {
   deployment: true,
@@ -68,6 +72,7 @@ type PersistedAppState = {
   dataPanelHidden: boolean;
   planesConfig: Record<Plane, { raan: number; phase: number }>;
   globeCameraPosition: GlobeCameraPosition | null;
+  viewMode: ViewMode;
 };
 
 const isTab = (value: unknown): value is AppTab =>
@@ -78,6 +83,8 @@ const isDeploymentStage = (value: unknown): value is 1 | 2 | 3 =>
 
 const isOptimizationState = (value: unknown): value is OptimizationState =>
   value === 'none' || value === 'running' || value === 'done';
+
+const isViewMode = (value: unknown): value is ViewMode => value === '3d' || value === '2d';
 
 const isGlobeCameraPosition = (value: unknown): value is GlobeCameraPosition => {
   if (!value || typeof value !== 'object') return false;
@@ -118,6 +125,7 @@ const loadPersistedAppState = (): Partial<PersistedAppState> => {
       dataPanelHidden: typeof saved.dataPanelHidden === 'boolean' ? saved.dataPanelHidden : undefined,
       planesConfig: saved.planesConfig ? { ...defaultPlanesConfig, ...saved.planesConfig } : undefined,
       globeCameraPosition: isGlobeCameraPosition(saved.globeCameraPosition) ? saved.globeCameraPosition : undefined,
+      viewMode: isViewMode(saved.viewMode) ? saved.viewMode : undefined,
     };
   } catch {
     return {};
@@ -356,6 +364,7 @@ export default function App() {
   const [globeCameraPosition, setGlobeCameraPosition] = useState<GlobeCameraPosition | null>(
     persistedAppState.globeCameraPosition ?? null
   );
+  const [viewMode, setViewMode] = useState<ViewMode>(persistedAppState.viewMode ?? '3d');
   const [planesConfig, setPlanesConfig] = useState<Record<Plane, { raan: number; phase: number }>>(
     persistedAppState.planesConfig ?? defaultPlanesConfig
   );
@@ -453,6 +462,7 @@ export default function App() {
       dataPanelHidden,
       planesConfig,
       globeCameraPosition,
+      viewMode,
     };
 
     window.localStorage.setItem(appStateStorageKey, JSON.stringify(state));
@@ -474,6 +484,7 @@ export default function App() {
     dataPanelHidden,
     planesConfig,
     globeCameraPosition,
+    viewMode,
   ]);
 
   useEffect(() => {
@@ -1363,6 +1374,31 @@ export default function App() {
     );
   };
 
+  /** Switches the viewport between the globe and the flat map. */
+  const renderViewToggle = () => (
+    <div className="absolute bottom-3 right-3 z-20 flex border border-rule-strong bg-black/85 backdrop-blur lg:bottom-6 lg:right-6">
+      {([
+        { id: '3d' as const, label: 'Globe', icon: <GlobeIcon size={13} /> },
+        { id: '2d' as const, label: 'Map', icon: <MapIcon size={13} /> }
+      ]).map(view => (
+        <button
+          key={view.id}
+          type="button"
+          onClick={() => setViewMode(view.id)}
+          aria-pressed={viewMode === view.id}
+          className={cn(
+            "flex h-7 items-center gap-1.5 border-l border-rule-strong px-2.5 font-label text-[12px] transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none",
+            viewMode === view.id
+              ? "bg-white/[0.12] text-zinc-100"
+              : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
+          )}
+        >
+          {view.icon} {view.label}
+        </button>
+      ))}
+    </div>
+  );
+
   /** Floating toggle that opens the data column as a drawer below `lg`. */
   const renderMobilePanelToggle = (label: string, icon: React.ReactNode) => (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-3 lg:hidden">
@@ -1449,19 +1485,32 @@ export default function App() {
       {/* Left - Globe + timeline */}
       <motion.div layout transition={sidebarTransition} className="flex min-w-0 flex-1 flex-col bg-[black]">
         <div className="relative min-h-0 flex-1">
-          <Globe
-            satellites={dynamicSatellites}
-            links={links}
-            groundStations={groundStations}
-            gateways={gateways}
-            activeRoute={activeRoute}
-            orbits={orbitTracks}
-            playing={playing}
-            cameraPosition={globeCameraPosition ?? undefined}
-            onCameraPositionChange={setGlobeCameraPosition}
-            onSatelliteClick={(s) => selectSatellite(s.id)}
-            selectedSatellite={selectedSatellite}
-          />
+          {viewMode === '3d' ? (
+            <Globe
+              satellites={dynamicSatellites}
+              links={links}
+              groundStations={groundStations}
+              gateways={gateways}
+              activeRoute={activeRoute}
+              orbits={orbitTracks}
+              playing={playing}
+              cameraPosition={globeCameraPosition ?? undefined}
+              onCameraPositionChange={setGlobeCameraPosition}
+              onSatelliteClick={(s) => selectSatellite(s.id)}
+              selectedSatellite={selectedSatellite}
+            />
+          ) : (
+            <Map2D
+              satellites={dynamicSatellites}
+              links={links}
+              groundStations={groundStations}
+              gateways={gateways}
+              activeRoute={activeRoute}
+              onSatelliteClick={(s) => selectSatellite(s.id)}
+              selectedSatellite={selectedSatellite}
+            />
+          )}
+          {renderViewToggle()}
           {renderNetworkHealthCard()}
           {renderMobilePanelToggle('Panel', <Activity size={13} />)}
         </div>
@@ -1566,17 +1615,30 @@ export default function App() {
   const renderResilienceTab = () => (
     <div className="relative flex min-h-0 flex-1 overflow-hidden">
       <motion.div layout transition={sidebarTransition} className="relative flex min-w-0 flex-1 flex-col bg-[black]">
-        <Globe
-          satellites={satellites}
-          links={links}
-          groundStations={groundStations}
-          gateways={gateways}
-          cameraPosition={globeCameraPosition ?? undefined}
-          onCameraPositionChange={setGlobeCameraPosition}
-          onSatelliteClick={(s) => selectSatellite(s.id)}
-          selectedSatellite={selectedSatellite}
-          mode="resilience"
-        />
+        {viewMode === '3d' ? (
+          <Globe
+            satellites={satellites}
+            links={links}
+            groundStations={groundStations}
+            gateways={gateways}
+            cameraPosition={globeCameraPosition ?? undefined}
+            onCameraPositionChange={setGlobeCameraPosition}
+            onSatelliteClick={(s) => selectSatellite(s.id)}
+            selectedSatellite={selectedSatellite}
+            mode="resilience"
+          />
+        ) : (
+          <Map2D
+            satellites={satellites}
+            links={links}
+            groundStations={groundStations}
+            gateways={gateways}
+            onSatelliteClick={(s) => selectSatellite(s.id)}
+            selectedSatellite={selectedSatellite}
+            mode="resilience"
+          />
+        )}
+        {renderViewToggle()}
         {renderMobilePanelToggle('Critical nodes', <ShieldAlert size={13} />)}
         {/* Legend for the globe dots: swatches come from the shared scale, so
             the key can never drift from what is drawn. */}
