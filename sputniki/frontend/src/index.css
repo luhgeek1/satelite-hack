@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* App shell locks to the viewport: the page itself never scrolls,
+   only the inner panels do. */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  height: 100dvh;
+  margin: 0;
+  background: #000;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  height: 100%;
+  background: #000;
+}
+
+/* Thin, dark scrollbars for the inner scroll areas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #27272a transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Sliders stay usable on touch screens without scrolling the panel */
+input[type='range'] {
+  touch-action: none;
+}

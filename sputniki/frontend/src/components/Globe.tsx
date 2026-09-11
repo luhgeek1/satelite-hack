@@ -1,0 +1,720 @@
+import React, { useMemo, useRef, useEffect, useState } from 'react';
+import GlobeGL from 'react-globe.gl';
+import * as THREE from 'three';
+import { Satellite, GroundStation, Link, Plane } from '../types';
+import { criticalityLevel } from '../lib/criticality';
+
+export type OrbitTrack = {
+  plane: Plane;
+  points: { lat: number; lng: number }[];
+};
+
+/** Plane identity colors, shared by satellites, orbit lines and label chips. */
+export const planeColors: Record<Plane, string> = {
+  P1: '#3b82f6',
+  P2: '#10b981',
+  P3: '#f59e0b'
+};
+
+/** Altitude (in globe radii) the constellation is drawn at. */
+const SATELLITE_ALTITUDE = 0.05;
+const EARTH_RADIUS_KM = 6371;
+// TODO(BACKEND): Receive this from each satellite's beam/coverage capability.
+const COVERAGE_RADIUS_KM = 1700;
+const COVERAGE_SEGMENTS = 72;
+
+const toRadians = (degrees: number) => degrees * (Math.PI / 180);
+const toDegrees = (radians: number) => radians * (180 / Math.PI);
+const normalizeLongitude = (longitude: number) => ((longitude + 540) % 360) - 180;
+
+/** Returns a closed geodesic ring around a satellite's current nadir point. */
+const coverageRing = (lat: number, lng: number, radiusKm: number) => {
+  const startLat = toRadians(lat);
+  const startLng = toRadians(lng);
+  const angularDistance = radiusKm / EARTH_RADIUS_KM;
+
+  return Array.from({ length: COVERAGE_SEGMENTS + 1 }, (_, index) => {
+    const bearing = (index / COVERAGE_SEGMENTS) * Math.PI * 2;
+    const ringLat = Math.asin(
+      Math.sin(startLat) * Math.cos(angularDistance)
+      + Math.cos(startLat) * Math.sin(angularDistance) * Math.cos(bearing)
+    );
+    const ringLng = startLng + Math.atan2(
+      Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(startLat),
+      Math.cos(angularDistance) - Math.sin(startLat) * Math.sin(ringLat)
+    );
+
+    return { lat: toDegrees(ringLat), lng: normalizeLongitude(toDegrees(ringLng)) };
+  });
+};
+
+export type GlobeCameraPosition = {
+  lat: number;
+  lng: number;
+  altitude: number;
+};
+
+/** Camera defaults of globe.gl: 50° vertical FOV, globe radius in "altitude" units. */
+const FOV_HALF_TAN = Math.tan((50 / 2) * (Math.PI / 180));
+/** Design default — never zoom in closer than this on roomy screens. */
+const BASE_ALTITUDE = 2.5;
+/** Keep ~12% of padding around the globe when fitting it to a narrow container. */
+const FIT_MARGIN = 1.12;
+
+/**
+ * Altitude at which the whole globe stays inside the container.
+ * On narrow (portrait) containers the width is the limiting dimension, so the
+ * camera has to pull back further than the desktop default.
+ */
+const fitAltitude = (width: number, height: number) => {
+  if (!width || !height) return BASE_ALTITUDE;
+  const limitingAspect = Math.min(1, width / height);
+  return Math.max(BASE_ALTITUDE, FIT_MARGIN / (FOV_HALF_TAN * limitingAspect) - 1);
+};
+
+const STAR_COUNT = 3200;
+/** Globe radius is 100 scene units and the camera far plane sits at 4000. */
+const STAR_SHELL_MIN = 700;
+const STAR_SHELL_MAX = 1600;
+
+/**
+ * A starfield shell around the scene. Sitting in world space (rather than on
+ * the camera) it parallaxes naturally as the globe auto-rotates, and the globe
+ * mesh occludes the stars behind it.
+ */
+const createStarfield = () => {
+  const positions = new Float32Array(STAR_COUNT * 3);
+  const colors = new Float32Array(STAR_COUNT * 3);
+
+  for (let i = 0; i < STAR_COUNT; i++) {
+    // Evenly distributed directions: uniform z avoids clustering at the poles.
+    const z = Math.random() * 2 - 1;
+    const theta = Math.random() * Math.PI * 2;
+    const ringRadius = Math.sqrt(1 - z * z);
+    const distance = STAR_SHELL_MIN + Math.random() * (STAR_SHELL_MAX - STAR_SHELL_MIN);
+
+    positions[i * 3] = ringRadius * Math.cos(theta) * distance;
+    positions[i * 3 + 1] = z * distance;
+    positions[i * 3 + 2] = ringRadius * Math.sin(theta) * distance;
+
+    // Mostly faint white, a few brighter ones with a cold or warm tint.
+    const brightness = 0.35 + Math.random() ** 2.2 * 0.65;
+    const tint = Math.random();
+    colors[i * 3] = brightness * (tint > 0.85 ? 1 : 0.92);
+    colors[i * 3 + 1] = brightness * 0.94;
+    colors[i * 3 + 2] = brightness * (tint < 0.3 ? 1 : 0.9);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const material = new THREE.PointsMaterial({
+    size: 1.7,
+    sizeAttenuation: false,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: false,
+  });
+
+  const points = new THREE.Points(geometry, material);
+  points.renderOrder = -1;
+  return points;
+};
+
+interface GlobeProps {
+  satellites: Satellite[];
+  links: Link[];
+  groundStations: GroundStation[];
+  gateways: GroundStation[];
+  activeRoute?: string[];
+  orbits?: OrbitTrack[];
+  /** While the timeline runs, satellites render as small spheres instead of the
+   *  default cylinder markers, which smear as they travel. */
+  playing?: boolean;
+  rotation?: [number, number, number];
+  cameraPosition?: GlobeCameraPosition;
+  onCameraPositionChange?: (position: GlobeCameraPosition) => void;
+  onSatelliteClick?: (sat: Satellite) => void;
+  selectedSatellite?: string | null;
+  mode?: 'simulation' | 'resilience';
+}
+
+export const Globe: React.FC<GlobeProps> = ({
+  satellites,
+  links,
+  groundStations,
+  gateways,
+  activeRoute = [],
+  orbits = [],
+  playing = false,
+  rotation = [0, -20, 0], // Kept for API compatibility, but react-globe handles its own view
+  cameraPosition,
+  onCameraPositionChange,
+  onSatelliteClick,
+  selectedSatellite,
+  mode = 'simulation'
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const globeRef = useRef<any>();
+  const resumeRotationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cameraPersistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const interactionEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appliedAltitudeRef = useRef<number | null>(null);
+  const latestCameraPositionRef = useRef<GlobeCameraPosition | null>(null);
+  const isUserInteractingRef = useRef(false);
+  const hasSavedCameraPositionRef = useRef(Boolean(cameraPosition));
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const coverageCapMaterial = useMemo(
+    () => new THREE.MeshBasicMaterial({
+      color: '#7dd3fc',
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    }),
+    []
+  );
+
+  useEffect(() => () => coverageCapMaterial.dispose(), [coverageCapMaterial]);
+
+  // One geometry for every satellite sphere; materials are cached per color and
+  // meshes per satellite, so playback does not churn objects 10x a second.
+  const sphereGeometry = useMemo(() => new THREE.SphereGeometry(1, 12, 12), []);
+  const sphereMaterials = useRef(new Map<string, THREE.MeshBasicMaterial>());
+  const sphereMeshes = useRef(new Map<string, THREE.Mesh>());
+
+  useEffect(() => {
+    const materials = sphereMaterials.current;
+    const meshes = sphereMeshes.current;
+
+    return () => {
+      materials.forEach(material => material.dispose());
+      materials.clear();
+      meshes.clear();
+      sphereGeometry.dispose();
+    };
+  }, [sphereGeometry]);
+
+  const satelliteSphere = (d: any) => {
+    let material = sphereMaterials.current.get(d.color);
+    if (!material) {
+      material = new THREE.MeshBasicMaterial({ color: d.color });
+      sphereMaterials.current.set(d.color, material);
+    }
+
+    let mesh = sphereMeshes.current.get(d.id);
+    if (!mesh) {
+      mesh = new THREE.Mesh(sphereGeometry, material);
+      sphereMeshes.current.set(d.id, mesh);
+    }
+
+    mesh.material = material;
+    mesh.scale.setScalar(d.sphereRadius);
+    return mesh;
+  };
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      if (!entries[0]) return;
+      const { width, height } = entries[0].contentRect;
+      setDimensions({ width: Math.round(width), height: Math.round(height) });
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Update globe POV on mount
+  useEffect(() => {
+    if (globeRef.current) {
+      globeRef.current.pointOfView(cameraPosition ?? { lat: 0, lng: 0, altitude: BASE_ALTITUDE });
+      globeRef.current.controls().autoRotate = true;
+      globeRef.current.controls().autoRotateSpeed = 0.5;
+      globeRef.current.controls().enableZoom = true;
+    }
+  }, []);
+
+  // Stars behind the Earth.
+  useEffect(() => {
+    const scene = globeRef.current?.scene?.();
+    if (!scene) return;
+
+    const stars = createStarfield();
+    scene.add(stars);
+
+    return () => {
+      scene.remove(stars);
+      stars.geometry.dispose();
+      (stars.material as THREE.PointsMaterial).dispose();
+    };
+  }, []);
+
+  // Keep the whole globe inside the viewport as the container resizes.
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe || !dimensions.width || !dimensions.height) return;
+
+    // A saved user view takes precedence over responsive default framing.
+    if (hasSavedCameraPositionRef.current) return;
+
+    const target = fitAltitude(dimensions.width, dimensions.height);
+    const current = globe.pointOfView().altitude;
+
+    // Never fight a zoom level the user picked themselves.
+    if (appliedAltitudeRef.current !== null && Math.abs(current - appliedAltitudeRef.current) > 0.05) return;
+    if (Math.abs(current - target) < 0.01) {
+      appliedAltitudeRef.current = target;
+      return;
+    }
+
+    globe.pointOfView({ altitude: target });
+    appliedAltitudeRef.current = target;
+  }, [dimensions.width, dimensions.height]);
+
+  useEffect(() => {
+    return () => {
+      if (resumeRotationTimeoutRef.current) {
+        clearTimeout(resumeRotationTimeoutRef.current);
+      }
+      if (cameraPersistTimeoutRef.current) {
+        clearTimeout(cameraPersistTimeoutRef.current);
+      }
+      if (interactionEndTimeoutRef.current) {
+        clearTimeout(interactionEndTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const publishCameraPosition = () => {
+    const position = latestCameraPositionRef.current;
+    if (position) onCameraPositionChange?.(position);
+  };
+
+  const captureCurrentCameraPosition = () => {
+    const position = globeRef.current?.pointOfView?.();
+    if (!position) return;
+
+    latestCameraPositionRef.current = {
+      lat: position.lat,
+      lng: position.lng,
+      altitude: position.altitude
+    };
+  };
+
+  const queueCameraPersistence = () => {
+    if (cameraPersistTimeoutRef.current) {
+      clearTimeout(cameraPersistTimeoutRef.current);
+    }
+
+    cameraPersistTimeoutRef.current = setTimeout(publishCameraPosition, 180);
+  };
+
+  const pauseRotationAfterUserContact = () => {
+    const controls = globeRef.current?.controls?.();
+    if (!controls) return;
+
+    isUserInteractingRef.current = true;
+    controls.autoRotate = false;
+
+    if (resumeRotationTimeoutRef.current) {
+      clearTimeout(resumeRotationTimeoutRef.current);
+    }
+
+    resumeRotationTimeoutRef.current = setTimeout(() => {
+      const latestControls = globeRef.current?.controls?.();
+      if (latestControls) {
+        latestControls.autoRotate = true;
+      }
+    }, 50000);
+
+    // Wheel zoom resolves just after the browser's event; read the settled POV.
+    finishUserInteraction();
+  };
+
+  const finishUserInteraction = () => {
+    if (interactionEndTimeoutRef.current) {
+      clearTimeout(interactionEndTimeoutRef.current);
+    }
+
+    interactionEndTimeoutRef.current = setTimeout(() => {
+      captureCurrentCameraPosition();
+      isUserInteractingRef.current = false;
+      publishCameraPosition();
+    }, 180);
+  };
+
+  const handleZoom = (position: GlobeCameraPosition) => {
+    if (!isUserInteractingRef.current) return;
+
+    latestCameraPositionRef.current = position;
+    queueCameraPersistence();
+  };
+
+  // Prepare satellite data
+  const pointsData = useMemo(() => {
+    return satellites.map(sat => {
+      const isSelected = selectedSatellite === sat.id;
+      const isFailed = sat.status === 'failed';
+      const isActiveRoute = activeRoute.includes(sat.id);
+      
+      let color = "#a1a1aa"; // zinc-400
+      let altitude = 0.05;
+      
+      if (isFailed) {
+        color = "#ef4444"; // red-500
+      } else if (mode === 'resilience') {
+        color = criticalityLevel(sat.criticality).color;
+      } else if (isActiveRoute) {
+        color = "#3b82f6"; // blue-400
+      } else if (mode === 'simulation') {
+        if (sat.plane === 'P1') color = "#3b82f6"; // blue-500
+        if (sat.plane === 'P2') color = "#10b981"; // emerald-500
+        if (sat.plane === 'P3') color = "#f59e0b"; // amber-500
+      }
+
+      // Selection is shown by size, the emphasized ID chip, the coverage
+      // footprint and the highlighted orbit — never by recoloring the node,
+      // which would hide which plane it belongs to.
+      const emphasized = isFailed || isSelected;
+
+      return {
+        ...sat,
+        color,
+        globeAltitude: altitude,
+        radius: emphasized ? 0.8 : 0.4,
+        sphereRadius: emphasized ? 1.5 : 0.95
+      };
+    });
+  }, [satellites, selectedSatellite, activeRoute, mode]);
+
+  const highlightedPlane = useMemo(
+    () => satellites.find(s => s.id === selectedSatellite)?.plane ?? null,
+    [satellites, selectedSatellite]
+  );
+
+  const selectedCoverage = useMemo(() => {
+    const satellite = satellites.find(sat => sat.id === selectedSatellite);
+    if (!satellite) return null;
+
+    const boundary = coverageRing(satellite.lat, satellite.lon, COVERAGE_RADIUS_KM);
+
+    return {
+      geometry: {
+        type: 'Polygon',
+        coordinates: [boundary.map(point => [point.lng, point.lat])]
+      },
+      borderPoints: boundary.map(point => [point.lat, point.lng, 0.008] as [number, number, number])
+    };
+  }, [satellites, selectedSatellite]);
+
+  // Prepare links data
+  const arcsData = useMemo(() => {
+    return links.map(link => {
+      const sourceNode = satellites.find(s => s.id === link.source) || groundStations.find(g => g.id === link.source) || gateways.find(g => g.id === link.source);
+      const targetNode = satellites.find(s => s.id === link.target) || groundStations.find(g => g.id === link.target) || gateways.find(g => g.id === link.target);
+      
+      if (!sourceNode || !targetNode) return null;
+
+      const isRoute = activeRoute.includes(link.source) && activeRoute.includes(link.target);
+      const isFailed = (sourceNode as Satellite).status === 'failed' || (targetNode as Satellite).status === 'failed';
+
+      if (isFailed && isRoute) return null;
+
+      const sourcePlane = (sourceNode as Satellite).plane;
+      const targetPlane = (targetNode as Satellite).plane;
+      const samePlane = Boolean(sourcePlane) && sourcePlane === targetPlane;
+      const inHighlightedPlane = highlightedPlane !== null && samePlane && sourcePlane === highlightedPlane;
+
+      // Baseline links used to be near-invisible; each class now has its own
+      // weight so inter-satellite links read at a glance without becoming a web.
+      // Links inside one plane take that plane's hue, which ties the group to
+      // its orbit line; cross-plane hops stay neutral cyan.
+      let color = 'rgba(125,211,252,0.5)'; // cross-plane ISL
+      let stroke = 0.26;
+
+      if (isRoute) {
+        color = '#3b82f6';
+        stroke = 0.6;
+      } else if (isFailed) {
+        color = 'rgba(239,68,68,0.45)';
+        stroke = 0.2;
+      } else if (link.type === 'gateway') {
+        color = 'rgba(251,191,36,0.45)';
+        stroke = 0.24;
+      } else if (link.type === 'ground') {
+        color = 'rgba(125,211,252,0.3)';
+        stroke = 0.16;
+      } else if (samePlane) {
+        color = `${planeColors[sourcePlane]}${inHighlightedPlane ? 'cc' : '73'}`;
+        stroke = inHighlightedPlane ? 0.3 : 0.22;
+      }
+
+      const sourceIsSat = 'plane' in sourceNode;
+      const targetIsSat = 'plane' in targetNode;
+
+      return {
+        startLat: sourceNode.lat,
+        startLng: sourceNode.lon,
+        startAlt: sourceIsSat ? SATELLITE_ALTITUDE : 0,
+        endLat: targetNode.lat,
+        endLng: targetNode.lon,
+        endAlt: targetIsSat ? SATELLITE_ALTITUDE : 0,
+        color: [color, color],
+        dashAnimateTime: isRoute ? 1000 : 0,
+        dashLength: isRoute ? 0.5 : 1,
+        dashGap: isRoute ? 0.2 : 0,
+        stroke
+      };
+    }).filter(Boolean);
+  }, [links, satellites, groundStations, gateways, activeRoute, highlightedPlane]);
+
+  /**
+   * One closed line per orbital plane. The plane of the selected satellite is
+   * lifted out of the background so its whole group reads as a unit.
+   */
+  const pathsData = useMemo(() => {
+    const orbitPaths = orbits.map(orbit => {
+      const isHighlighted = orbit.plane === highlightedPlane;
+      const base = planeColors[orbit.plane];
+
+      return {
+        points: orbit.points.map(p => [p.lat, p.lng, SATELLITE_ALTITUDE] as [number, number, number]),
+        color: isHighlighted ? base : `${base}e6`,
+        stroke: isHighlighted ? 0.55 : 0.42,
+        // Dashes are what separate an orbit track from the solid link arcs that
+        // run along the same path.
+        dashLength: 0.016,
+        dashGap: 0.01,
+        dashAnimateTime: 0
+      };
+    });
+
+    if (!selectedCoverage) return orbitPaths;
+
+    return [
+      ...orbitPaths,
+      {
+        points: selectedCoverage.borderPoints,
+        color: '#bae6fd',
+        stroke: 0.34,
+        dashLength: 0.05,
+        dashGap: 0.035,
+        dashAnimateTime: 0
+      }
+    ];
+  }, [orbits, highlightedPlane, selectedCoverage]);
+
+  // Ground sites are deliberately rendered above the satellite layer so their
+  // operational labels remain legible against the Earth and the starfield.
+  const htmlElementsData = useMemo(() => {
+    const data: any[] = [];
+
+    satellites.forEach(sat => {
+      data.push({
+        lat: sat.lat,
+        lng: sat.lon,
+        alt: SATELLITE_ALTITUDE,
+        type: 'sat',
+        id: sat.id,
+        accent: sat.status === 'failed' ? '#ef4444' : planeColors[sat.plane],
+        emphasized: sat.status === 'failed' || sat.id === selectedSatellite || activeRoute.includes(sat.id)
+      });
+    });
+
+    groundStations.forEach(gs => {
+      data.push({
+        lat: gs.lat,
+        lng: gs.lon,
+        alt: 0,
+        type: 'gs',
+        id: gs.id,
+        name: gs.name
+      });
+    });
+    gateways.forEach(gw => {
+      data.push({
+        lat: gw.lat,
+        lng: gw.lon,
+        alt: 0,
+        type: 'gw',
+        id: gw.id,
+        name: gw.name
+      });
+    });
+    return data;
+  }, [satellites, groundStations, gateways, selectedSatellite, activeRoute]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex h-full w-full items-center justify-center overflow-hidden"
+      onPointerDown={pauseRotationAfterUserContact}
+      onPointerMove={pauseRotationAfterUserContact}
+      onPointerUp={finishUserInteraction}
+      onPointerCancel={finishUserInteraction}
+      onPointerLeave={finishUserInteraction}
+      onWheel={pauseRotationAfterUserContact}
+      onTouchStart={pauseRotationAfterUserContact}
+      onTouchEnd={finishUserInteraction}
+    >
+      <GlobeGL
+        ref={globeRef}
+        width={dimensions.width || 1}
+        height={dimensions.height || 1}
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        backgroundColor="rgba(0,0,0,0)"
+        onZoom={handleZoom}
+        
+        pointsData={playing ? [] : pointsData}
+        pointLat="lat"
+        pointLng="lon"
+        pointColor="color"
+        pointAltitude="globeAltitude"
+        pointRadius="radius"
+        pointResolution={32}
+        pointsTransitionDuration={0}
+        onPointClick={(pt: any) => onPointClick(pt)}
+        pointLabel={(pt: any) => `
+          <div style="background: rgba(15,23,42,0.9); padding: 4px 8px; border-radius: 4px; border: 1px solid #334155; font-family: monospace; font-size: 10px; color: #f8fafc;">
+            ${pt.id}<br/>
+            Alt: ${pt.altitude}km
+          </div>
+        `}
+
+        objectsData={playing ? pointsData : []}
+        objectLat="lat"
+        objectLng="lon"
+        objectAltitude="globeAltitude"
+        objectThreeObject={satelliteSphere}
+        onObjectClick={(obj: any) => onPointClick(obj)}
+
+        arcsData={arcsData}
+        arcStartLat="startLat"
+        arcStartLng="startLng"
+        arcStartAltitude="startAlt"
+        arcEndLat="endLat"
+        arcEndLng="endLng"
+        arcEndAltitude="endAlt"
+        arcColor="color"
+        arcDashLength="dashLength"
+        arcDashGap="dashGap"
+        arcDashAnimateTime="dashAnimateTime"
+        arcStroke="stroke"
+        arcAltitudeAutoScale={0.2}
+        arcsTransitionDuration={0}
+
+        polygonsData={selectedCoverage ? [selectedCoverage] : []}
+        polygonGeoJsonGeometry="geometry"
+        polygonCapMaterial={coverageCapMaterial}
+        polygonSideColor="rgba(148,163,184,0)"
+        polygonStrokeColor={null}
+        polygonAltitude={0.006}
+        polygonCapCurvatureResolution={1}
+        polygonsTransitionDuration={0}
+
+        pathsData={pathsData}
+        pathPoints="points"
+        pathPointLat={(p: any) => p[0]}
+        pathPointLng={(p: any) => p[1]}
+        pathPointAlt={(p: any) => p[2]}
+        pathColor="color"
+        pathStroke="stroke"
+        pathDashLength="dashLength"
+        pathDashGap="dashGap"
+        pathDashAnimateTime="dashAnimateTime"
+        pathResolution={2}
+        pathTransitionDuration={0}
+
+        htmlElementsData={htmlElementsData}
+        htmlAltitude={(d: any) => d.alt ?? 0}
+        htmlTransitionDuration={0}
+        htmlElement={(d: any) => {
+          const el = document.createElement('div');
+
+          // Satellites: a small ID plate next to the dot drawn by the points
+          // layer. Kept secondary so 48 of them never turn into noise.
+          if (d.type === 'sat') {
+            el.style.cssText = 'pointer-events:none;white-space:nowrap;font-family:ui-monospace, SFMono-Regular, Menlo, monospace';
+
+            const chip = document.createElement('div');
+            chip.textContent = d.id;
+            chip.style.cssText = [
+              'transform:translate(9px,-50%)',
+              'padding:1px 4px',
+              'border-radius:3px',
+              `border:1px solid ${d.emphasized ? d.accent : 'rgba(63,63,70,0.9)'}`,
+              'background:rgba(3,7,18,0.82)',
+              `color:${d.emphasized ? d.accent : '#a1a1aa'}`,
+              'font-size:9px',
+              'line-height:11px',
+              'letter-spacing:0.04em',
+              `font-weight:${d.emphasized ? 700 : 500}`,
+              d.emphasized ? `box-shadow:0 0 10px ${d.accent}55` : 'box-shadow:0 2px 6px rgba(0,0,0,0.5)'
+            ].join(';');
+
+            el.appendChild(chip);
+            return el;
+          }
+
+          const isGateway = d.type === 'gw';
+          const accent = isGateway ? '#fbbf24' : '#60a5fa';
+          const accentDim = isGateway ? 'rgba(251,191,36,0.22)' : 'rgba(96,165,250,0.22)';
+          const labelOffsets: Record<string, { x: number; y: number }> = {
+            G_MUR: { x: 0, y: 21 },
+            C65: { x: 3, y: 20 },
+            C70: { x: 9, y: -14 },
+            C72: { x: 15, y: -30 }
+          };
+          const labelOffset = labelOffsets[d.id] ?? { x: 0, y: 0 };
+
+          el.style.cssText = [
+            'pointer-events:none',
+            'white-space:nowrap',
+            'font-family:ui-monospace, SFMono-Regular, Menlo, monospace'
+          ].join(';');
+
+          // CSS2DRenderer owns the outer element's transform. The site itself
+          // uses a zero-size anchor, so marker and label stay rigidly grouped.
+          const content = document.createElement('div');
+          content.style.cssText = 'position:relative;width:0;height:0;overflow:visible;';
+
+          const marker = document.createElement('div');
+          marker.style.cssText = isGateway
+            ? `position:absolute;left:-7px;top:-7px;box-sizing:border-box;width:14px;height:14px;background:${accent};transform:rotate(45deg);border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 0 4px ${accentDim},0 0 18px ${accent};`
+            : `position:absolute;left:-8px;top:-8px;box-sizing:border-box;width:16px;height:16px;border-radius:50%;border:2px solid ${accent};background:#08111f;box-shadow:0 0 0 4px ${accentDim},0 0 18px ${accent};`;
+
+          if (!isGateway) {
+            const core = document.createElement('div');
+            core.style.cssText = `position:absolute;inset:3px;border-radius:50%;background:${accent};`;
+            marker.appendChild(core);
+          }
+
+          const label = document.createElement('div');
+          label.style.cssText = `position:absolute;left:${10 + labelOffset.x}px;top:${-11 + labelOffset.y}px;display:flex;flex-direction:column;gap:0;padding:2px 5px;border:1px solid ${isGateway ? 'rgba(251,191,36,0.75)' : 'rgba(96,165,250,0.78)'};border-radius:3px;background:rgba(3,7,18,0.9);box-shadow:0 3px 10px rgba(0,0,0,0.42);`;
+
+          const code = document.createElement('span');
+          code.textContent = d.id;
+          code.style.cssText = `color:${accent};font-size:10px;font-weight:700;line-height:12px;letter-spacing:0.04em;text-shadow:0 0 8px ${accentDim};`;
+
+          const name = document.createElement('span');
+          name.textContent = d.name;
+          name.style.cssText = 'max-width:112px;overflow:hidden;text-overflow:ellipsis;color:#d4d4d8;font-size:8px;line-height:10px;letter-spacing:0.02em;';
+
+          label.append(code, name);
+          content.append(marker, label);
+          el.appendChild(content);
+          return el;
+        }}
+      />
+    </div>
+  );
+
+  function onPointClick(pt: any) {
+    if (onSatelliteClick) {
+      onSatelliteClick(pt as Satellite);
+    }
+  }
+};
