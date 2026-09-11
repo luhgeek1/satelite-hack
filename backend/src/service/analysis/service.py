@@ -1,0 +1,247 @@
+"""Resilience, sensitivity and configuration search."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import time
+from typing import Any
+
+from core.config import get_settings
+from core.errors import BadRequestError, NotFoundError
+from database.redis import CacheRepo
+from database.relational_db import ScenarioInterface, UoW
+from domain.analysis import (
+    GatewayDependencyModel,
+    JobStatusModel,
+    OptimizeRequest,
+    OptimizeResult,
+    PlaneBoundsModel,
+    ResilienceRequest,
+    ResilienceResponse,
+    SatelliteImpactModel,
+    SensitivityPointModel,
+    SensitivityRequest,
+    SensitivityResponse,
+)
+from domain.analysis.schemas import CandidateModel
+from domain.scenario import ConfigModel
+from engine import ConfigOverride, FailureWindow, PlaneOverride, RoutingStrategy, apply_override
+from engine.analysis import analyse_gateway_dependency, analyse_resilience
+from engine.optimizer import Candidate, Objective, PlaneBounds, optimize, sweep_environment
+from engine.scenario import GatewayOutage, ScenarioError
+from service.analysis.jobs import Job, JobRegistry
+from service.scenarios.service import check_scenario
+
+logger = logging.getLogger(__name__)
+
+
+class AnalysisService:
+    def __init__(
+        self,
+        *,
+        uow: UoW,
+        scenarios: ScenarioInterface,
+        cache: CacheRepo,
+        jobs: JobRegistry,
+    ) -> None:
+        self.uow = uow
+        self.scenarios = scenarios
+        self.cache = cache
+        self.jobs = jobs
+
+    async def resilience(self, request: ResilienceRequest) -> ResilienceResponse:
+        """Rank satellites by what the network loses without them.
+
+        ~2.3 s for 48 satellites across a process pool, so it runs inline rather
+        than as a job — the Resilience tab can simply await it.
+        """
+        scenario = await self._effective(request.scenario_id, request.scenario, request.config)
+        strategy = RoutingStrategy(request.strategy.value)
+        settings = get_settings()
+
+        started = time.perf_counter()
+        report, dependency = await asyncio.gather(
+            asyncio.to_thread(
+                analyse_resilience,
+                scenario,
+                strategy=strategy,
+                satellites=request.satellite_ids,
+                max_workers=settings.ANALYSIS_MAX_WORKERS,
+            ),
+            asyncio.to_thread(analyse_gateway_dependency, scenario, strategy=strategy),
+        )
+        elapsed = (time.perf_counter() - started) * 1000
+
+        plane_of = {s["id"]: s["plane_id"] for s in scenario["design"]["satellites"]}
+        impacts = sorted(report.impacts, key=lambda i: -i.worst_availability_drop)
+
+        return ResilienceResponse(
+            baseline_worst_availability=report.baseline_worst_availability,
+            baseline_mean_availability=report.baseline_mean_availability,
+            target_availability=report.target_availability,
+            impacts=[
+                SatelliteImpactModel(
+                    satellite_id=i.satellite_id,
+                    plane_id=plane_of.get(i.satellite_id, ""),
+                    worst_availability_drop=round(i.worst_availability_drop, 6),
+                    mean_availability_drop=round(i.mean_availability_drop, 6),
+                    per_client_drop={k: round(v, 6) for k, v in i.per_client_drop.items()},
+                    breaks_target=i.breaks_target,
+                    criticality=i.criticality,
+                )
+                for i in impacts
+            ],
+            critical_satellite_ids=[i.satellite_id for i in report.critical],
+            gateway_dependency=[
+                GatewayDependencyModel(
+                    gateway_id=d.gateway_id,
+                    serving_satellites=list(d.serving_satellites),
+                    busiest_satellite=d.busiest_satellite,
+                    busiest_share=d.busiest_share,
+                    contact_availability=round(d.contact_availability, 6),
+                    routed_share_by_client={
+                        k: round(v, 6) for k, v in d.routed_share_by_client.items()
+                    },
+                )
+                for d in dependency
+            ],
+            compute_ms=round(elapsed, 2),
+        )
+
+    async def sensitivity(self, request: SensitivityRequest) -> SensitivityResponse:
+        """Sweep one environment parameter and locate the threshold.
+
+        This is how the ISL finding is produced: with 16 satellites per plane the
+        in-plane neighbours sit 2700.4 km apart, and availability collapses the
+        moment the link range drops below that chord.
+        """
+        scenario = await self._effective(request.scenario_id, request.scenario, request.config)
+        strategy = RoutingStrategy(request.strategy.value)
+        settings = get_settings()
+
+        started = time.perf_counter()
+        points = await asyncio.to_thread(
+            sweep_environment,
+            scenario,
+            parameter=request.parameter,
+            values=sorted(request.values),
+            strategy=strategy,
+            max_workers=settings.ANALYSIS_MAX_WORKERS,
+        )
+        elapsed = (time.perf_counter() - started) * 1000
+
+        return SensitivityResponse(
+            parameter=request.parameter,
+            points=[
+                SensitivityPointModel(
+                    value=p.value,
+                    worst_availability=round(p.worst_availability, 6),
+                    per_client={k: round(v, 6) for k, v in p.per_client.items()},
+                    meets_target=p.meets_target,
+                )
+                for p in points
+            ],
+            threshold=next((p.value for p in points if p.meets_target), None),
+            compute_ms=round(elapsed, 2),
+        )
+
+    async def start_optimization(self, request: OptimizeRequest) -> JobStatusModel:
+        """Kick off a configuration search.
+
+        The only background operation in the service: a search evaluates hundreds
+        of full simulations, which is far too long to hold a request open.
+        """
+        scenario = await self._effective(request.scenario_id, request.scenario, request.config)
+        strategy = RoutingStrategy(request.strategy.value)
+        bounds = _bounds(request.bounds, scenario)
+        objective = Objective(request.objective)
+
+        if all(b.locked for b in bounds):
+            raise BadRequestError(
+                "Every plane is locked, so there is nothing to search. "
+                "Unlock at least one RAAN or phase range."
+            )
+
+        settings = get_settings()
+
+        async def work(job: Job) -> OptimizeResult:
+            result = await asyncio.to_thread(
+                optimize,
+                scenario,
+                bounds=bounds,
+                strategy=strategy,
+                objective=objective,
+                coarse_steps=request.coarse_steps,
+                refine_rounds=request.refine_rounds,
+                max_workers=settings.OPTIMIZER_MAX_WORKERS,
+                progress=job.note_progress,
+            )
+            return _optimize_result(result, scenario)
+
+        return _job_model(self.jobs.submit("optimize", work))
+
+    def job(self, job_id: str) -> JobStatusModel:
+        job = self.jobs.get(job_id)
+        if job is None:
+            raise NotFoundError(f"Job {job_id!r} not found")
+        return _job_model(job)
+
+    def job_result(self, job_id: str) -> OptimizeResult:
+        job = self.jobs.get(job_id)
+        if job is None:
+            raise NotFoundError(f"Job {job_id!r} not found")
+        if job.status == "failed":
+            raise BadRequestError(job.error or "Job failed")
+        if job.status != "done":
+            raise BadRequestError(f"Job {job_id!r} is still {job.status}")
+        return job.result
+
+    async def _effective(
+        self,
+        scenario_id: str | None,
+        inline: dict[str, Any] | None,
+        config: ConfigModel,
+    ) -> dict[str, Any]:
+        if (scenario_id is None) == (inline is None):
+            raise BadRequestError("Provide exactly one of scenario_id or scenario")
+
+        if scenario_id is not None:
+            row = await self.scenarios.get(scenario_id)
+            if row is None:
+                raise NotFoundError(f"Scenario {scenario_id!r} not found")
+            base = row.payload
+        else:
+            base = check_scenario(inline)
+
+        override = ConfigOverride(
+            launch_stage=config.launch_stage,
+            planes={
+                pid: PlaneOverride(raan_deg=p.raan_deg, phase_deg=p.phase_deg)
+                for pid, p in config.planes.items()
+            },
+            failures=(
+                [FailureWindow(f.satellite_id, f.start_s, f.end_s) for f in config.failures]
+                if config.failures is not None
+                else None
+            ),
+            gateway_outages=(
+                [GatewayOutage(g.gateway_id, g.start_s, g.end_s) for g in config.gateway_outages]
+                if config.gateway_outages is not None
+                else None
+            ),
+            isl_range_km=config.isl_range_km,
+            min_elevation_deg=config.min_elevation_deg,
+            altitude_km=config.altitude_km,
+            inclination_deg=config.inclination_deg,
+            step_s=config.step_s,
+            horizon_s=config.horizon_s,
+        )
+        try:
+            return apply_override(base, override)
+        except ScenarioError as exc:
+            raise BadRequestError(
+                exc.message, details={"field": exc.field} if exc.field else None
+            ) from exc
+
+
