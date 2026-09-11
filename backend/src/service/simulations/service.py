@@ -1,0 +1,407 @@
+"""Running simulations and everything derived from a run.
+
+Runs are content-addressed: the id is a hash of the effective scenario plus the
+routing strategy, so an identical configuration always maps to the same id. That
+makes `POST /simulations` idempotent (dragging a slider back returns the previous
+run rather than creating a duplicate) and lets snapshots be cached under a key
+that cannot go stale.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import logging
+from datetime import UTC, datetime
+from typing import Any
+from uuid import uuid4
+
+import orjson
+
+from core.errors import BadRequestError, NotFoundError
+from database.redis import CacheRepo
+from database.relational_db import (
+    ScenarioInterface,
+    SimulationRunInterface,
+    SimulationRunRow,
+    UoW,
+    VariantInterface,
+    VariantRow,
+)
+from domain.analysis import (
+    ComparedMetric,
+    CompareResponse,
+    ParameterDiff,
+    VariantCreate,
+    VariantModel,
+)
+from domain.scenario import ConfigModel, RoutingStrategyName
+from domain.simulation import (
+    AvailabilitySample,
+    ClientMetricsModel,
+    EphemerisResponse,
+    EphemerisSample,
+    OutageWindowModel,
+    RouteModel,
+    RouteTimelineResponse,
+    RunRequest,
+    SatelliteStateModel,
+    SimulationSummary,
+    SnapshotEdgeModel,
+    SnapshotResponse,
+)
+from engine import ConfigOverride, FailureWindow, PlaneOverride, RoutingStrategy, apply_override
+from engine.export import build_result
+from engine.scenario import GatewayOutage, ScenarioError
+from engine.simulate import SimulationResult, ephemeris, simulate, snapshot_at
+from service.scenarios.service import check_scenario
+
+logger = logging.getLogger(__name__)
+
+
+class SimulationService:
+    def __init__(
+        self,
+        *,
+        uow: UoW,
+        scenarios: ScenarioInterface,
+        runs: SimulationRunInterface,
+        variants: VariantInterface,
+        cache: CacheRepo,
+    ) -> None:
+        self.uow = uow
+        self.scenarios = scenarios
+        self.runs = runs
+        self.variants = variants
+        self.cache = cache
+
+    async def run(self, request: RunRequest) -> SimulationSummary:
+        try:
+            request.resolved()
+        except ValueError as exc:
+            raise BadRequestError(str(exc)) from exc
+
+        base = await self._base_scenario(request.scenario_id, request.scenario)
+        effective = self._apply(base, request.config)
+        strategy = RoutingStrategy(request.strategy.value)
+        run_id = content_id(effective, strategy)
+
+        existing = await self.runs.get(run_id)
+        if existing is not None:
+            return SimulationSummary.model_validate(existing.summary)
+
+        result = await asyncio.to_thread(simulate, effective, strategy=strategy)
+        summary = self._summarise(
+            run_id=run_id,
+            scenario_id=request.scenario_id,
+            label=request.label,
+            config=request.config,
+            result=result,
+        )
+
+        await self.runs.upsert(
+            run_id,
+            scenario_id=request.scenario_id,
+            label=request.label,
+            strategy=strategy.value,
+            config=request.config.model_dump(mode="json"),
+            effective_scenario=effective,
+            summary=summary.model_dump(mode="json"),
+            worst_availability=summary.worst_availability,
+            mean_availability=summary.mean_availability,
+            meets_target=summary.meets_target,
+            environment_modified=summary.environment_modified,
+            compute_ms=summary.compute_ms,
+        )
+        await self.uow.commit()
+        return summary
+
+    async def summary(self, run_id: str) -> SimulationSummary:
+        return SimulationSummary.model_validate((await self._require_run(run_id)).summary)
+
+    async def snapshot(self, run_id: str, t_s: int) -> SnapshotResponse:
+        """One instant. Cached, because the timeline scrubs back and forth."""
+        row = await self._require_run(run_id)
+        scenario = row.effective_scenario
+        t_s = self._snap_to_grid(scenario, t_s)
+
+        key = f"snap:{run_id}:{t_s}"
+        cached = await self.cache.get_json(key)
+        if cached is not None:
+            return SnapshotResponse.model_validate(cached)
+
+        strategy = RoutingStrategy(row.strategy)
+        snap = await asyncio.to_thread(snapshot_at, scenario, t_s, strategy=strategy)
+
+        response = SnapshotResponse(
+            t_s=snap.t_s,
+            satellites=[_satellite_model(s) for s in snap.satellites],
+            edges=[
+                SnapshotEdgeModel(
+                    source=e.source, target=e.target, distance_km=e.distance_km, type=e.type
+                )
+                for e in snap.edges
+            ],
+            routes=[_route_model(r) for r in snap.routes.values()],
+            elevation_deg=snap.elevation_deg,
+            offline_gateways=sorted(snap.offline_gateways),
+            active_satellites=sum(1 for s in snap.satellites if s.active),
+            total_satellites=len(snap.satellites),
+        )
+        await self.cache.set_json(key, response.model_dump(mode="json"))
+        return response
+
+    async def ephemeris(self, run_id: str, step_s: int | None = None) -> EphemerisResponse:
+        row = await self._require_run(run_id)
+        scenario = row.effective_scenario
+        env = scenario["environment"]
+        effective_step = env["step_s"] if step_s is None else step_s
+
+        key = f"eph:{run_id}:{effective_step}"
+        cached = await self.cache.get_json(key)
+        if cached is not None:
+            return EphemerisResponse.model_validate(cached)
+
+        samples = await asyncio.to_thread(ephemeris, scenario, step_s=step_s)
+        response = EphemerisResponse(
+            step_s=samples[1]["t_s"] - samples[0]["t_s"] if len(samples) > 1 else env["step_s"],
+            horizon_s=env["horizon_s"],
+            samples=[
+                EphemerisSample(
+                    t_s=sample["t_s"],
+                    satellites=[_satellite_model(s) for s in sample["satellites"]],
+                )
+                for sample in samples
+            ],
+        )
+        await self.cache.set_json(key, response.model_dump(mode="json"))
+        return response
+
+    async def route_timeline(self, run_id: str, client_id: str) -> RouteTimelineResponse:
+        row = await self._require_run(run_id)
+        result = await self._replay(row)
+
+        if client_id not in result.metrics:
+            raise NotFoundError(f"Client {client_id!r} is not part of this scenario")
+
+        return RouteTimelineResponse(
+            client_id=client_id,
+            step_s=result.step_s,
+            routes=[_route_model(result.routes[t_s][client_id]) for t_s in result.time_grid],
+        )
+
+    async def availability_series(self, run_id: str) -> list[AvailabilitySample]:
+        """Per-instant state for the timeline strip.
+
+        Three states rather than two — a client can have a satellite overhead and
+        still have no route, and that distinction is the case's central point.
+        """
+        row = await self._require_run(run_id)
+        key = f"avail:{run_id}"
+        cached = await self.cache.get_json(key)
+        if cached is not None:
+            return [AvailabilitySample.model_validate(item) for item in cached]
+
+        result = await self._replay(row)
+        samples = []
+        for t_s in result.time_grid:
+            state: dict[str, str] = {}
+            for client_id, route in result.routes[t_s].items():
+                if route.available:
+                    state[client_id] = "routed"
+                elif route.reason is not None and route.reason.value == "no_visible_satellite":
+                    state[client_id] = "no_satellite"
+                else:
+                    state[client_id] = "visible_no_route"
+            samples.append(AvailabilitySample(t_s=t_s, state=state))  # type: ignore[arg-type]
+
+        await self.cache.set_json(key, [s.model_dump(mode="json") for s in samples])
+        return samples
+
+    async def export(self, run_id: str) -> dict[str, Any]:
+        """The official `cosmo-A-result-1.0` document."""
+        row = await self._require_run(run_id)
+        result = await self._replay(row)
+        return build_result(result)
+
+    async def effective_scenario(self, run_id: str) -> dict[str, Any]:
+        """The scenario as actually run — re-importable, so a variant round-trips."""
+        return (await self._require_run(run_id)).effective_scenario
+
+    async def save_variant(self, request: VariantCreate) -> VariantModel:
+        summary = await self.run(
+            RunRequest(
+                scenario_id=request.scenario_id,
+                scenario=request.scenario,
+                config=request.config,
+                strategy=request.strategy,
+                label=request.name,
+            )
+        )
+        row = await self.variants.create(
+            id=f"var_{uuid4().hex[:12]}",
+            name=request.name,
+            note=request.note,
+            run_id=summary.id,
+        )
+        await self.uow.commit()
+        reloaded = await self.variants.get(row.id)
+        assert reloaded is not None
+        return _variant_model(reloaded)
+
+    async def list_variants(self) -> list[VariantModel]:
+        return [_variant_model(row) for row in await self.variants.list()]
+
+    async def delete_variant(self, variant_id: str) -> None:
+        if not await self.variants.delete(variant_id):
+            raise NotFoundError(f"Variant {variant_id!r} not found")
+        await self.uow.commit()
+
+    async def compare(self, variant_ids: list[str]) -> CompareResponse:
+        rows = await self.variants.get_many(variant_ids)
+        if len(rows) != len(variant_ids):
+            missing = set(variant_ids) - {row.id for row in rows}
+            raise NotFoundError(f"Unknown variants: {', '.join(sorted(missing))}")
+
+        models = [_variant_model(row) for row in rows]
+        summaries = [SimulationSummary.model_validate(row.run.summary) for row in rows]
+
+        return CompareResponse(
+            variants=models,
+            changed_parameters=_parameter_diff(rows),
+            metrics=_metric_rows(summaries),
+            per_client_availability=_per_client(summaries),
+            recommendation=_recommend(models, summaries),
+        )
+
+    async def _base_scenario(
+        self, scenario_id: str | None, inline: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        if scenario_id is not None:
+            row = await self.scenarios.get(scenario_id)
+            if row is None:
+                raise NotFoundError(f"Scenario {scenario_id!r} not found")
+            return row.payload
+        return check_scenario(inline)
+
+    def _apply(self, base: dict[str, Any], config: ConfigModel) -> dict[str, Any]:
+        override = ConfigOverride(
+            launch_stage=config.launch_stage,
+            planes={
+                plane_id: PlaneOverride(raan_deg=p.raan_deg, phase_deg=p.phase_deg)
+                for plane_id, p in config.planes.items()
+            },
+            failures=(
+                [FailureWindow(f.satellite_id, f.start_s, f.end_s) for f in config.failures]
+                if config.failures is not None
+                else None
+            ),
+            gateway_outages=(
+                [GatewayOutage(g.gateway_id, g.start_s, g.end_s) for g in config.gateway_outages]
+                if config.gateway_outages is not None
+                else None
+            ),
+            isl_range_km=config.isl_range_km,
+            min_elevation_deg=config.min_elevation_deg,
+            altitude_km=config.altitude_km,
+            inclination_deg=config.inclination_deg,
+            step_s=config.step_s,
+            horizon_s=config.horizon_s,
+        )
+        try:
+            return apply_override(base, override)
+        except ScenarioError as exc:
+            raise BadRequestError(
+                exc.message, details={"field": exc.field} if exc.field else None
+            ) from exc
+
+    async def _require_run(self, run_id: str) -> SimulationRunRow:
+        row = await self.runs.get(run_id)
+        if row is None:
+            raise NotFoundError(
+                f"Simulation {run_id!r} not found. Runs are transient — re-run the configuration."
+            )
+        return row
+
+    async def _replay(self, row: SimulationRunRow) -> SimulationResult:
+        """Recompute a run to get at its routes.
+
+        Cheaper than storing them: the 2160 route records are ~400 KB per run,
+        while regenerating them costs ~0.15 s and keeps the database small enough
+        to stay boring.
+        """
+        return await asyncio.to_thread(
+            simulate, row.effective_scenario, strategy=RoutingStrategy(row.strategy)
+        )
+
+    def _snap_to_grid(self, scenario: dict[str, Any], t_s: int) -> int:
+        env = scenario["environment"]
+        if not 0 <= t_s < env["horizon_s"]:
+            raise BadRequestError(
+                f"t_s must be within [0, {env['horizon_s']}), got {t_s}",
+                details={"field": "t_s"},
+            )
+        return (t_s // env["step_s"]) * env["step_s"]
+
+    def _summarise(
+        self,
+        *,
+        run_id: str,
+        scenario_id: str | None,
+        label: str | None,
+        config: ConfigModel,
+        result: SimulationResult,
+    ) -> SimulationSummary:
+        names = {site["id"]: site["name"] for site in result.effective_scenario["ground_sites"]}
+        availabilities = [m.availability for m in result.metrics.values()]
+
+        return SimulationSummary(
+            id=run_id,
+            scenario_id=scenario_id,
+            label=label,
+            strategy=RoutingStrategyName(result.strategy.value),
+            created_at=datetime.now(UTC).isoformat(),
+            target_availability=result.target_availability,
+            step_s=result.step_s,
+            horizon_s=result.horizon_s,
+            steps=len(result.time_grid),
+            worst_availability=min(availabilities, default=0.0),
+            mean_availability=sum(availabilities) / len(availabilities) if availabilities else 0.0,
+            meets_target=all(m.meets_target for m in result.metrics.values()),
+            clients=[
+                ClientMetricsModel(
+                    client_id=m.client_id,
+                    name=names.get(m.client_id, m.client_id),
+                    visibility=m.visibility,
+                    availability=m.availability,
+                    meets_target=m.meets_target,
+                    max_outage_s=m.max_outage_s,
+                    max_bounded_outage_s=m.max_bounded_outage_s,
+                    leading_outage_s=m.leading_outage_s,
+                    trailing_outage_s=m.trailing_outage_s,
+                    avg_hops=m.avg_hops,
+                    min_hops=m.min_hops,
+                    max_hops=m.max_hops,
+                    outage_reasons=m.reason_counts,
+                    outage_windows=[
+                        OutageWindowModel(
+                            client_id=w.client_id,
+                            start_s=w.start_s,
+                            end_s=w.end_s,
+                            duration_s=w.duration_s,
+                            reason=w.reason.value if w.reason else None,  # type: ignore[arg-type]
+                            leading=w.leading,
+                            trailing=w.trailing,
+                        )
+                        for w in m.outage_windows
+                    ],
+                )
+                for m in result.metrics.values()
+            ],
+            config=config,
+            environment_modified=config.touches_environment,
+            effective_scenario=result.effective_scenario,
+            compute_ms=round(result.duration_s * 1000, 2),
+        )
+
+
