@@ -405,3 +405,199 @@ class SimulationService:
         )
 
 
+def content_id(effective_scenario: dict[str, Any], strategy: RoutingStrategy) -> str:
+    """Stable id for a configuration: same inputs, same run."""
+    blob = orjson.dumps(effective_scenario, option=orjson.OPT_SORT_KEYS)
+    digest = hashlib.blake2b(blob, digest_size=10)
+    digest.update(strategy.value.encode())
+    return f"sim_{digest.hexdigest()}"
+
+
+def _satellite_model(state: Any) -> SatelliteStateModel:
+    return SatelliteStateModel(
+        id=state.id,
+        lat_deg=round(state.lat_deg, 5),
+        lon_deg=round(state.lon_deg, 5),
+        alt_km=round(state.alt_km, 3),
+        x_km=round(state.x_km, 3),
+        y_km=round(state.y_km, 3),
+        z_km=round(state.z_km, 3),
+        active=state.active,
+    )
+
+
+def _route_model(route: Any) -> RouteModel:
+    return RouteModel(
+        client_id=route.client_id,
+        available=route.available,
+        path=list(route.path),
+        hops=route.hops,
+        distance_km=round(route.distance_km, 3) if route.distance_km is not None else None,
+        reason=route.reason.value if route.reason else None,
+        gateway_id=route.gateway_id,
+    )
+
+
+def _variant_model(row: VariantRow) -> VariantModel:
+    summary = SimulationSummary.model_validate(row.run.summary)
+    return VariantModel(
+        id=row.id,
+        name=row.name,
+        note=row.note,
+        scenario_id=row.run.scenario_id,
+        scenario_title=summary.effective_scenario["meta"]["title"],
+        config=summary.config,
+        strategy=summary.strategy,
+        created_at=row.created_at.isoformat(),
+        worst_availability=summary.worst_availability,
+        mean_availability=summary.mean_availability,
+        meets_target=summary.meets_target,
+        max_bounded_outage_s=max((c.max_bounded_outage_s for c in summary.clients), default=0),
+        availability_by_client={c.client_id: c.availability for c in summary.clients},
+    )
+
+
+_PLANE_LABEL = {"raan_deg": "RAAN", "phase_deg": "Phase"}
+
+
+def _parameter_diff(rows: list[VariantRow]) -> list[ParameterDiff]:
+    """What actually differs between the variants — the case requires this explicitly."""
+    scenarios = [row.run.effective_scenario for row in rows]
+    diffs: list[ParameterDiff] = []
+
+    stages = [s["design"]["launch_stage"] for s in scenarios]
+    if len(set(stages)) > 1:
+        diffs.append(
+            ParameterDiff(path="design.launch_stage", label="Launch stage", values=list(stages))
+        )
+
+    plane_ids = sorted({p["id"] for s in scenarios for p in s["design"]["planes"]})
+    for plane_id in plane_ids:
+        for attribute, label in _PLANE_LABEL.items():
+            values = [
+                next((p[attribute] for p in s["design"]["planes"] if p["id"] == plane_id), None)
+                for s in scenarios
+            ]
+            if len({v for v in values if v is not None}) > 1:
+                diffs.append(
+                    ParameterDiff(
+                        path=f"design.planes[{plane_id}].{attribute}",
+                        label=f"{plane_id} {label}",
+                        values=values,
+                    )
+                )
+
+    for key, label in (
+        ("isl_range_km", "ISL range, km"),
+        ("min_elevation_deg", "Min elevation, °"),
+        ("altitude_km", "Altitude, km"),
+        ("inclination_deg", "Inclination, °"),
+    ):
+        values = [s["environment"][key] for s in scenarios]
+        if len(set(values)) > 1:
+            diffs.append(ParameterDiff(path=f"environment.{key}", label=label, values=values))
+
+    counts = [len(s["failures"]) for s in scenarios]
+    if len(set(counts)) > 1:
+        diffs.append(ParameterDiff(path="failures", label="Failure windows", values=list(counts)))
+
+    return diffs
+
+
+def _metric_rows(summaries: list[SimulationSummary]) -> list[ComparedMetric]:
+    return [
+        ComparedMetric(
+            key="worst_availability",
+            label="Worst-client availability",
+            unit="fraction",
+            values=[s.worst_availability for s in summaries],
+            higher_is_better=True,
+        ),
+        ComparedMetric(
+            key="mean_availability",
+            label="Mean availability",
+            unit="fraction",
+            values=[s.mean_availability for s in summaries],
+            higher_is_better=True,
+        ),
+        ComparedMetric(
+            key="max_bounded_outage_s",
+            label="Longest outage",
+            unit="seconds",
+            values=[max((c.max_bounded_outage_s for c in s.clients), default=0) for s in summaries],
+            higher_is_better=False,
+        ),
+        ComparedMetric(
+            key="clients_meeting_target",
+            label="Clients meeting target",
+            unit="count",
+            values=[sum(1 for c in s.clients if c.meets_target) for s in summaries],
+            higher_is_better=True,
+        ),
+        ComparedMetric(
+            key="avg_hops",
+            label="Mean route length",
+            unit="hops",
+            values=[_mean_hops(s) for s in summaries],
+            higher_is_better=False,
+        ),
+    ]
+
+
+def _mean_hops(summary: SimulationSummary) -> float | None:
+    hops = [c.avg_hops for c in summary.clients if c.avg_hops is not None]
+    return round(sum(hops) / len(hops), 3) if hops else None
+
+
+def _per_client(summaries: list[SimulationSummary]) -> dict[str, list[float]]:
+    client_ids = sorted({c.client_id for s in summaries for c in s.clients})
+    return {
+        client_id: [
+            next((c.availability for c in s.clients if c.client_id == client_id), 0.0)
+            for s in summaries
+        ]
+        for client_id in client_ids
+    }
+
+
+def _recommend(variants: list[VariantModel], summaries: list[SimulationSummary]) -> str:
+    """A sentence the engineer can put in a report, not a bare winner flag.
+
+    Ranked on worst-client availability because that is what the target is
+    judged on; ties fall through to the longest outage.
+    """
+    target = summaries[0].target_availability
+    ranked = sorted(
+        zip(variants, summaries, strict=True),
+        key=lambda pair: (
+            pair[1].worst_availability,
+            -max((c.max_bounded_outage_s for c in pair[1].clients), default=0),
+        ),
+        reverse=True,
+    )
+    best_variant, best_summary = ranked[0]
+    worst_pct = best_variant.worst_availability * 100
+    target_pct = target * 100
+
+    if any(s.environment_modified for s in summaries):
+        caveat = (
+            " Note that these runs do not share one environment — altitude, ISL range or the "
+            "elevation mask differ — so this is a sensitivity comparison, not a design comparison."
+        )
+    else:
+        caveat = ""
+
+    if best_summary.meets_target:
+        return (
+            f"{best_variant.name} is the strongest option: every client stays at or above the "
+            f"{target_pct:.0f}% target, with the worst-served one at {worst_pct:.1f}%.{caveat}"
+        )
+
+    failing = [c.client_id for c in best_summary.clients if not c.meets_target]
+    return (
+        f"{best_variant.name} is the best of the compared options at {worst_pct:.1f}% for the "
+        f"worst-served client, but it still misses the {target_pct:.0f}% target for "
+        f"{', '.join(failing)}. Reaching the target needs an architectural change — more "
+        f"satellites in the staged batches or a longer ISL range — not a different phasing."
+        f"{caveat}"
+    )
