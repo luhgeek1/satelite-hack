@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Play, Pause, Upload, ShieldAlert, BarChart3, ChevronDown, AlertTriangle, Plus, X, Activity, PanelRightClose, PanelRightOpen, Globe as GlobeIcon } from 'lucide-react';
 import { Globe, planeColors, type GlobeCameraPosition, type OrbitTrack } from './components/Globe';
 import { criticalityLevel } from './lib/criticality';
-import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Button } from './components/ui/button';
 import { cn } from './lib/utils';
 import { useMediaQuery } from './hooks/useMediaQuery';
@@ -19,7 +18,7 @@ import {
   orbitTrackPoint
 } from './mockData';
 import { Satellite, NetworkMetrics, Plane } from './types';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 
 const planeIds: Plane[] = ['P1', 'P2', 'P3'];
 const normalizeLongitude = (lon: number) => ((((lon + 180) % 360) + 360) % 360) - 180;
@@ -1609,6 +1608,13 @@ export default function App() {
     </div>
   );
 
+  /**
+   * Two series, separated by lightness rather than hue. The pair validates at
+   * CVD dE 35.7 against a floor of 8, and carries a dash pattern plus direct
+   * labels so identity never rests on colour alone.
+   */
+  const seriesInk = { baseline: '#6b6b72', optimized: '#d9d9de' };
+
   const renderCompareTab = () => {
     const chartData = Array.from({ length: 25 }).map((_, i) => {
       const hour = i;
@@ -1623,130 +1629,216 @@ export default function App() {
       };
     });
 
+    // TODO(BACKEND): Replace fixture deltas with the simulation's own summary.
+    // Availability moves in percentage points, not percent — the old "+1.4%"
+    // read as a relative change, which it is not.
+    const comparison = [
+      { metric: 'Availability', baseline: '96.7%', optimized: '98.1%', delta: '+1.4 pp' },
+      { metric: 'Max outage', baseline: '26 min', optimized: '14 min', delta: '−46%' },
+      { metric: 'Critical nodes', baseline: '5', optimized: '2', delta: '−3' }
+    ];
+
+    /** Outage windows as a share of the day, in order across 00:00-24:00. */
+    const outageRuns: Record<'baseline' | 'optimized', { up: number; down: number }[]> = {
+      baseline: [{ up: 10, down: 5 }, { up: 15, down: 8 }, { up: 30, down: 12 }, { up: 20, down: 0 }],
+      optimized: [{ up: 30, down: 3 }, { up: 45, down: 2 }, { up: 20, down: 0 }]
+    };
+
+    const renderOutageStrip = (key: 'baseline' | 'optimized') => (
+      <div className="relative flex h-4 min-w-0 flex-1 items-center">
+        {/* Same idiom as the playback strip: the day runs unbroken underneath,
+            so a block reads as an outage on the timeline, not a gap in it. */}
+        <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-zinc-600" />
+        <div className="relative flex h-1.5 w-full items-center">
+          {outageRuns[key].map((run, index) => (
+            <React.Fragment key={index}>
+              <span style={{ width: `${run.up}%` }} />
+              {run.down > 0 && (
+                <span
+                  className="h-full"
+                  style={{ width: `${run.down}%`, background: seriesInk[key] }}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    );
+
     return (
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[black] p-4 sm:p-6 lg:p-8">
         <div className="mx-auto max-w-5xl space-y-6 lg:space-y-8">
 
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-center justify-between rounded-lg border border-zinc-800 bg-[#09090b] p-3">
-              <span className="truncate text-sm font-medium">A <span className="text-zinc-500 ml-2">Baseline</span></span>
-              <ChevronDown size={14} className="ml-2 flex-shrink-0 text-zinc-500" />
-            </div>
-            <div className="flex-shrink-0 font-mono text-zinc-600">VS</div>
-            <div className="flex min-w-0 flex-1 items-center justify-between rounded-lg border border-zinc-800 bg-[#09090b] p-3 ring-1 ring-blue-500/50">
-              <span className="truncate text-sm font-medium">B <span className="text-zinc-500 ml-2">Optimized</span></span>
-              <ChevronDown size={14} className="ml-2 flex-shrink-0 text-zinc-500" />
-            </div>
+          {/* The two operands: A is the reference, B the candidate, and the
+              weight of each says which is which. */}
+          <div className="flex items-stretch gap-3 sm:gap-4">
+            {([
+              { key: 'A', label: 'Baseline', lead: false },
+              { key: 'B', label: 'Optimized', lead: true }
+            ] as const).map((side, index) => (
+              <React.Fragment key={side.key}>
+                {index === 1 && (
+                  <div className="flex flex-shrink-0 items-center font-data text-[10px] tracking-[0.08em] text-zinc-600">
+                    VS
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center gap-3 border px-3 py-2.5 text-left transition-colors focus-visible:outline-none",
+                    side.lead
+                      ? "border-zinc-600 hover:border-zinc-400 focus-visible:border-zinc-300"
+                      : "border-rule-strong hover:border-zinc-600 focus-visible:border-zinc-400"
+                  )}
+                >
+                  <span className={cn("font-data text-[11px]", side.lead ? "text-zinc-300" : "text-zinc-500")}>
+                    {side.key}
+                  </span>
+                  <span className={cn("truncate font-label text-[13px]", side.lead ? "text-zinc-100" : "text-zinc-400")}>
+                    {side.label}
+                  </span>
+                  <ChevronDown size={13} className="ml-auto flex-shrink-0 text-zinc-600" />
+                </button>
+              </React.Fragment>
+            ))}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-            <Card className="bg-[#09090b]">
-              <CardHeader><CardTitle>Availability</CardTitle></CardHeader>
-              <CardContent>
-                <div className="flex items-end justify-between gap-2">
-                  <div className="space-y-1">
-                    <div className="text-xs text-zinc-500 font-mono">Baseline</div>
-                    <div className="text-lg font-mono text-zinc-300">96.7%</div>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <div className="text-xs text-zinc-500 font-mono">Optimized</div>
-                    <div className="text-2xl font-mono text-blue-400">98.1%</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-zinc-800/50 text-right text-blue-400 font-mono text-sm">
-                  +1.4%
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-[#09090b]">
-              <CardHeader><CardTitle>Max Outage</CardTitle></CardHeader>
-              <CardContent>
-                <div className="flex items-end justify-between gap-2">
-                  <div className="space-y-1">
-                    <div className="text-xs text-zinc-500 font-mono">Baseline</div>
-                    <div className="text-lg font-mono text-zinc-300">26 min</div>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <div className="text-xs text-zinc-500 font-mono">Optimized</div>
-                    <div className="text-2xl font-mono text-blue-400">14 min</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-zinc-800/50 text-right text-blue-400 font-mono text-sm">
-                  -46%
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-[#09090b] sm:col-span-2 lg:col-span-1">
-              <CardHeader><CardTitle>Critical Nodes</CardTitle></CardHeader>
-              <CardContent>
-                <div className="flex items-end justify-between gap-2">
-                  <div className="space-y-1">
-                    <div className="text-xs text-zinc-500 font-mono">Baseline</div>
-                    <div className="text-lg font-mono text-zinc-300">5</div>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <div className="text-xs text-zinc-500 font-mono">Optimized</div>
-                    <div className="text-2xl font-mono text-blue-400">2</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-zinc-800/50 text-right text-blue-400 font-mono text-sm">
-                  -3 nodes
-                </div>
-              </CardContent>
-            </Card>
+          {/* Three metrics in aligned columns beat three cards: the eye can run
+              down a column instead of hopping between boxes. */}
+          <div className="border border-rule-strong">
+            <div className="flex items-baseline gap-2 border-b border-rule px-3 py-2 font-data text-[9px] tracking-[0.08em] text-zinc-500 sm:gap-3">
+              <span className="min-w-0 flex-1">METRIC</span>
+              <span className="w-16 text-right sm:w-20">BASELINE</span>
+              <span className="w-16 text-right sm:w-20">OPTIMIZED</span>
+              <span className="w-16 text-right sm:w-20">DELTA</span>
+            </div>
+            {comparison.map(row => (
+              <div
+                key={row.metric}
+                className="flex items-baseline gap-2 border-b border-rule px-3 py-2.5 last:border-b-0 sm:gap-3"
+              >
+                <span className="min-w-0 flex-1 truncate font-label text-[13px] text-zinc-400">{row.metric}</span>
+                <span className="w-16 text-right font-data text-[12px] tabular-nums text-zinc-500 sm:w-20">{row.baseline}</span>
+                <span className="w-16 text-right font-data text-[13px] tabular-nums text-zinc-100 sm:w-20">{row.optimized}</span>
+                <span className="w-16 text-right font-data text-[12px] tabular-nums text-zinc-300 sm:w-20">{row.delta}</span>
+              </div>
+            ))}
           </div>
 
-          <Card className="bg-[#09090b] p-4 pb-2 sm:p-6 sm:pb-2">
-            <h3 className="mb-4 text-xs font-semibold tracking-widest text-zinc-400 sm:mb-6">AVAILABILITY OVER 24 HOURS</h3>
-            <div className="h-48 sm:h-56 lg:h-64">
+          <div className="border border-rule-strong p-4 sm:p-5">
+            <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
+              <h3 className="font-label text-[13px] text-zinc-300">Availability over 24 hours</h3>
+              {/* Legend carries the dash pattern, so it maps to the plot even
+                  in greyscale print or forced-colours mode. */}
+              <div className="flex items-center gap-4">
+                {([
+                  { label: 'Baseline', ink: seriesInk.baseline, dash: '4 3' },
+                  { label: 'Optimized', ink: seriesInk.optimized, dash: undefined },
+                  { label: 'Target 90%', ink: '#52525b', dash: '2 3' }
+                ] as const).map(series => (
+                  <div key={series.label} className="flex items-center gap-1.5">
+                    <svg width="16" height="2" aria-hidden="true">
+                      <line
+                        x1="0" y1="1" x2="16" y2="1"
+                        stroke={series.ink}
+                        strokeWidth="2"
+                        strokeDasharray={series.dash}
+                      />
+                    </svg>
+                    <span className="font-label text-[12px] text-zinc-400">{series.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 h-48 sm:h-56 lg:h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-                  <XAxis dataKey="time" stroke="#475569" fontSize={11} tickMargin={10} minTickGap={40} />
-                  <YAxis domain={[70, 100]} stroke="#475569" fontSize={11} width={38} tickFormatter={(v) => `${v}%`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '6px' }}
-                    itemStyle={{ fontFamily: 'monospace' }}
-                    labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
+                <LineChart data={chartData} margin={{ top: 6, right: 12, bottom: 0, left: 0 }}>
+                  <CartesianGrid stroke="#1f1f23" strokeDasharray="0" vertical={false} />
+                  <XAxis
+                    dataKey="time"
+                    stroke="#3f3f46"
+                    tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
+                    tickMargin={8}
+                    minTickGap={40}
                   />
-                  <ReferenceLine y={90} stroke="#64748b" strokeDasharray="3 3" label={{ position: 'insideTopLeft', value: 'Target 90%', fill: '#64748b', fontSize: 10 }} />
-                  <Line type="monotone" dataKey="baseline" stroke="#64748b" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="optimized" stroke="#10b981" strokeWidth={2} dot={false} />
+                  <YAxis
+                    domain={[70, 100]}
+                    ticks={[70, 80, 90, 100]}
+                    stroke="#3f3f46"
+                    tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
+                    width={40}
+                    tickFormatter={v => `${v}%`}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: '#52525b', strokeWidth: 1 }}
+                    contentStyle={{
+                      backgroundColor: '#000',
+                      border: '1px solid #2e2e34',
+                      borderRadius: 0,
+                      fontFamily: 'IBM Plex Mono, monospace',
+                      fontSize: 11
+                    }}
+                    itemStyle={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 11 }}
+                    labelStyle={{ color: '#a1a1aa', marginBottom: 4, fontSize: 11 }}
+                    formatter={(value: unknown, name: unknown) => [
+                      `${value}%`,
+                      String(name) === 'baseline' ? 'Baseline' : 'Optimized'
+                    ]}
+                  />
+                  <ReferenceLine y={90} stroke="#52525b" strokeDasharray="2 3" />
+                  <Line
+                    type="monotone"
+                    dataKey="baseline"
+                    stroke={seriesInk.baseline}
+                    strokeWidth={2}
+                    strokeDasharray="4 3"
+                    dot={false}
+                    activeDot={{ r: 4, fill: seriesInk.baseline, stroke: '#000', strokeWidth: 2 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="optimized"
+                    stroke={seriesInk.optimized}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4, fill: seriesInk.optimized, stroke: '#000', strokeWidth: 2 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </Card>
+          </div>
 
-          <Card className="bg-[#09090b] p-4 sm:p-6">
-            <h3 className="mb-4 text-xs font-semibold tracking-widest text-zinc-400 sm:mb-6">OUTAGE TIMELINE COMPARISON</h3>
+          <div className="border border-rule-strong p-4 sm:p-5">
+            <h3 className="font-label text-[13px] text-zinc-300">Outage windows</h3>
 
-            <div className="space-y-5 sm:space-y-6">
-              <div className="flex items-center">
-                <div className="w-20 flex-shrink-0 text-xs text-zinc-400 sm:w-24 sm:text-sm">Baseline</div>
-                <div className="flex h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-blue-500/20">
-                  <div className="w-[10%] bg-blue-500"></div>
-                  <div className="w-[5%] bg-red-500"></div>
-                  <div className="w-[15%] bg-blue-500"></div>
-                  <div className="w-[8%] bg-red-500"></div>
-                  <div className="w-[30%] bg-blue-500"></div>
-                  <div className="w-[12%] bg-red-500"></div>
-                  <div className="w-[20%] bg-blue-500"></div>
+            <div className="mt-4 space-y-3">
+              {([
+                { key: 'baseline' as const, label: 'Baseline', total: '26 min' },
+                { key: 'optimized' as const, label: 'Optimized', total: '14 min' }
+              ]).map(row => (
+                <div key={row.key} className="flex items-center gap-3">
+                  <span
+                    className={cn(
+                      "w-20 flex-shrink-0 font-label text-[12px]",
+                      row.key === 'optimized' ? "text-zinc-200" : "text-zinc-500"
+                    )}
+                  >
+                    {row.label}
+                  </span>
+                  {renderOutageStrip(row.key)}
+                  <span className="w-14 flex-shrink-0 text-right font-data text-[11px] tabular-nums text-zinc-400">
+                    {row.total}
+                  </span>
                 </div>
-              </div>
-
-              <div className="flex items-center">
-                <div className="w-20 flex-shrink-0 text-xs font-medium text-blue-400 sm:w-24 sm:text-sm">Optimized</div>
-                <div className="flex h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-blue-500/20">
-                  <div className="w-[30%] bg-blue-500"></div>
-                  <div className="w-[3%] bg-red-500"></div>
-                  <div className="w-[45%] bg-blue-500"></div>
-                  <div className="w-[2%] bg-red-500"></div>
-                  <div className="w-[20%] bg-blue-500"></div>
-                </div>
-              </div>
+              ))}
             </div>
-          </Card>
+
+            <div className="mt-2 flex justify-between pl-[5.75rem] pr-[4.25rem] font-data text-[9px] tabular-nums text-zinc-600">
+              <span>00:00</span>
+              <span>24:00</span>
+            </div>
+          </div>
         </div>
       </div>
     );
