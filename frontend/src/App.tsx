@@ -1375,11 +1375,24 @@ export default function App() {
   };
 
   /** Switches the viewport between the globe and the flat map. */
-  const renderViewToggle = () => (
-    <div className="absolute bottom-3 right-3 z-20 flex border border-rule-strong bg-black/85 backdrop-blur lg:bottom-6 lg:right-6">
+  const renderViewToggle = () => {
+    // Keep the toggle in the top-right of the *visible* viewport: on desktop
+    // the collapsed-panel button and the satellite detail overlay both sit in
+    // that corner, and the toggle has to clear whichever is showing.
+    const desktopRight = !isDesktop
+      ? undefined
+      : 24 + (dataPanelHidden ? 40 : selectedSatellite ? satellitePanelWidth : 0);
+
+    return (
+    <div
+      style={desktopRight === undefined ? undefined : { right: desktopRight }}
+      // Below lg the drawer button owns the top-right corner, so the toggle
+      // sits just under it.
+      className="absolute right-3 top-[3.25rem] z-20 flex border border-rule-strong bg-black/85 backdrop-blur lg:top-6"
+    >
       {([
-        { id: '3d' as const, label: 'Globe', icon: <GlobeIcon size={13} /> },
-        { id: '2d' as const, label: 'Map', icon: <MapIcon size={13} /> }
+        { id: '3d' as const, label: 'Globe', icon: <GlobeIcon size={15} /> },
+        { id: '2d' as const, label: 'Map', icon: <MapIcon size={15} /> }
       ]).map(view => (
         <button
           key={view.id}
@@ -1387,7 +1400,7 @@ export default function App() {
           onClick={() => setViewMode(view.id)}
           aria-pressed={viewMode === view.id}
           className={cn(
-            "flex h-7 items-center gap-1.5 border-l border-rule-strong px-2.5 font-label text-[12px] transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none",
+            "flex h-9 items-center gap-2 border-l border-rule-strong px-3.5 font-label text-[13px] transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none",
             viewMode === view.id
               ? "bg-white/[0.12] text-zinc-100"
               : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
@@ -1397,7 +1410,8 @@ export default function App() {
         </button>
       ))}
     </div>
-  );
+    );
+  };
 
   /** Floating toggle that opens the data column as a drawer below `lg`. */
   const renderMobilePanelToggle = (label: string, icon: React.ReactNode) => (
@@ -1485,6 +1499,15 @@ export default function App() {
       {/* Left - Globe + timeline */}
       <motion.div layout transition={sidebarTransition} className="flex min-w-0 flex-1 flex-col bg-[black]">
         <div className="relative min-h-0 flex-1">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={viewMode}
+              className="absolute inset-0"
+              initial={{ opacity: 0, scale: 0.985 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.012 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+            >
           {viewMode === '3d' ? (
             <Globe
               satellites={dynamicSatellites}
@@ -1510,6 +1533,8 @@ export default function App() {
               selectedSatellite={selectedSatellite}
             />
           )}
+            </motion.div>
+          </AnimatePresence>
           {renderViewToggle()}
           {renderNetworkHealthCard()}
           {renderMobilePanelToggle('Panel', <Activity size={13} />)}
@@ -1615,6 +1640,15 @@ export default function App() {
   const renderResilienceTab = () => (
     <div className="relative flex min-h-0 flex-1 overflow-hidden">
       <motion.div layout transition={sidebarTransition} className="relative flex min-w-0 flex-1 flex-col bg-[black]">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={viewMode}
+            className="absolute inset-0"
+            initial={{ opacity: 0, scale: 0.985 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.012 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+          >
         {viewMode === '3d' ? (
           <Globe
             satellites={satellites}
@@ -1638,6 +1672,8 @@ export default function App() {
             mode="resilience"
           />
         )}
+          </motion.div>
+        </AnimatePresence>
         {renderViewToggle()}
         {renderMobilePanelToggle('Critical nodes', <ShieldAlert size={13} />)}
         {/* Legend for the globe dots: swatches come from the shared scale, so

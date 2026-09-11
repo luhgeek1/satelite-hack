@@ -163,3 +163,16 @@ select.param-select {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* react-simple-maps makes every country a focusable target, so a stray click
+   puts the browser's focus ring around a whole landmass. The basemap is a
+   backdrop, not a control — the satellites are what can be picked. */
+.rsm-svg,
+.rsm-geography,
+.rsm-marker,
+.rsm-geography:focus,
+.rsm-geography:focus-visible,
+.rsm-marker:focus,
+.rsm-marker:focus-visible {
+  outline: none !important;
+}

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'motion/react';
 import { Plus, Minus, RotateCcw } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, Marker, Line, ZoomableGroup, Graticule } from 'react-simple-maps';
+import { geoCircle } from 'd3-geo';
 import countries110m from 'world-atlas/countries-110m.json';
 import { Satellite, GroundStation, Link } from '../types';
-import { planeColors } from './Globe';
+import { planeColors, COVERAGE_RADIUS_KM, EARTH_RADIUS_KM_EXPORT } from './Globe';
 import { criticalityLevel } from '../lib/criticality';
 
 interface Map2DProps {
@@ -23,6 +25,11 @@ const geography = countries110m as any;
 const ALARM = '#e4483a';
 const RULE = '#2e2e34';
 const LAND_FILL = '#131316';
+
+/** The same footprint the globe draws, in the degrees d3 wants. */
+const COVERAGE_DEGREES = (COVERAGE_RADIUS_KM / EARTH_RADIUS_KM_EXPORT) * (180 / Math.PI);
+/** Matches the globe's coverage reveal, so the two views feel like one tool. */
+const COVERAGE_TWEEN_MS = 220;
 
 /**
  * Equirectangular view of the same constellation the globe shows: ground track
@@ -60,6 +67,49 @@ export const Map2D: React.FC<Map2DProps> = ({
     centredOnRef.current = selectedSatellite;
     setPosition({ coordinates: [sat.lon, sat.lat], zoom: 4 });
   }, [selectedSatellite, satellites]);
+
+  // Tweened so the footprint grows out of the satellite rather than popping in.
+  const [coverage, setCoverage] = useState<{ id: string | null; scale: number }>({
+    id: selectedSatellite ?? null,
+    scale: selectedSatellite ? 1 : 0
+  });
+  const coverageScaleRef = useRef(coverage.scale);
+  coverageScaleRef.current = coverage.scale;
+
+  useEffect(() => {
+    const target = selectedSatellite ? 1 : 0;
+    const from = coverageScaleRef.current;
+    const id = selectedSatellite ?? coverage.id;
+    if (from === target && coverage.id === id) return;
+
+    let frame = 0;
+    const start = performance.now();
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - start) / COVERAGE_TWEEN_MS);
+      const eased = progress * (2 - progress);
+      setCoverage({ id, scale: from + (target - from) * eased });
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSatellite]);
+
+  const coverageSat = coverage.scale > 0.001 ? satellites.find(s => s.id === coverage.id) : undefined;
+  const coverageShape = coverageSat
+    ? {
+        type: 'FeatureCollection' as const,
+        features: [
+          {
+            type: 'Feature' as const,
+            properties: {},
+            geometry: geoCircle()
+              .center([coverageSat.lon, coverageSat.lat])
+              .radius(COVERAGE_DEGREES * coverage.scale)()
+          }
+        ]
+      }
+    : null;
 
   const handleZoomIn = () => setPosition(pos => (pos.zoom >= 8 ? pos : { ...pos, zoom: pos.zoom * 1.5 }));
   const handleZoomOut = () => setPosition(pos => (pos.zoom <= 1 ? pos : { ...pos, zoom: pos.zoom / 1.5 }));
@@ -152,15 +202,40 @@ export const Map2D: React.FC<Map2DProps> = ({
                   fill={LAND_FILL}
                   stroke={RULE}
                   strokeWidth={0.4 * k}
+                  tabIndex={-1}
+                  /* Land is a backdrop. Leaving it focusable meant a stray click
+                     put a focus ring around a whole country. */
                   style={{
-                    default: { outline: 'none' },
-                    hover: { outline: 'none' },
-                    pressed: { outline: 'none' }
+                    default: { outline: 'none', pointerEvents: 'none' },
+                    hover: { outline: 'none', pointerEvents: 'none' },
+                    pressed: { outline: 'none', pointerEvents: 'none' }
                   } as any}
                 />
               ))
             }
           </Geographies>
+
+          {coverageShape && (
+            <Geographies geography={coverageShape}>
+              {({ geographies }: { geographies: any[] }) =>
+                geographies.map((geo, index) => (
+                  <Geography
+                    key={`coverage-${index}`}
+                    geography={geo}
+                    tabIndex={-1}
+                    fill="rgba(228,228,231,0.10)"
+                    stroke="rgba(228,228,231,0.45)"
+                    strokeWidth={0.6 * k}
+                    style={{
+                      default: { outline: 'none', pointerEvents: 'none' },
+                      hover: { outline: 'none', pointerEvents: 'none' },
+                      pressed: { outline: 'none', pointerEvents: 'none' }
+                    } as any}
+                  />
+                ))
+              }
+            </Geographies>
+          )}
 
           {links.map((link, index) => {
             const find = (id: string) =>
@@ -242,17 +317,17 @@ export const Map2D: React.FC<Map2DProps> = ({
                 style={{ cursor: onSatelliteClick ? 'pointer' : 'default', outline: 'none' } as any}
               >
                 {/* The dot is 1.5px across; this is what the pointer actually hits. */}
-                <circle r={6 * k} fill="transparent" style={{ cursor: 'pointer' }} />
+                <circle r={9 * k} fill="transparent" style={{ cursor: 'pointer' }} />
 
                 {isFailed ? (
                   <g style={{ pointerEvents: 'none' }}>
-                    <circle r={3 * k} fill="transparent" stroke={ALARM} strokeWidth={k} />
-                    <line x1={-2 * k} y1={-2 * k} x2={2 * k} y2={2 * k} stroke={ALARM} strokeWidth={k} />
-                    <line x1={-2 * k} y1={2 * k} x2={2 * k} y2={-2 * k} stroke={ALARM} strokeWidth={k} />
+                    <circle r={4 * k} fill="transparent" stroke={ALARM} strokeWidth={1.2 * k} />
+                    <line x1={-2.6 * k} y1={-2.6 * k} x2={2.6 * k} y2={2.6 * k} stroke={ALARM} strokeWidth={1.2 * k} />
+                    <line x1={-2.6 * k} y1={2.6 * k} x2={2.6 * k} y2={-2.6 * k} stroke={ALARM} strokeWidth={1.2 * k} />
                   </g>
                 ) : (
                   <circle
-                    r={(isSelected || isActiveRoute ? 2.5 : 1.5) * k}
+                    r={(isSelected || isActiveRoute ? 3.4 : 2.3) * k}
                     fill={satelliteColor(sat)}
                     opacity={0.9}
                     style={{ pointerEvents: 'none' }}
@@ -260,19 +335,22 @@ export const Map2D: React.FC<Map2DProps> = ({
                 )}
 
                 {isSelected && (
-                  <circle
-                    r={5 * k}
+                  <motion.circle
+                    r={7 * k}
                     fill="transparent"
                     stroke="#fafafa"
-                    strokeWidth={k}
-                    strokeDasharray={`${k},${k}`}
+                    strokeWidth={1.2 * k}
+                    strokeDasharray={`${1.5 * k},${1.5 * k}`}
                     style={{ pointerEvents: 'none' }}
+                    initial={{ opacity: 0, scale: 0.4 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
                   />
                 )}
 
                 {isActiveRoute && !isSelected && (
                   <circle
-                    r={4 * k}
+                    r={5.5 * k}
                     fill="transparent"
                     stroke="#d4d4d8"
                     strokeWidth={0.5 * k}

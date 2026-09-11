@@ -20,7 +20,8 @@ export const planeColors: Record<Plane, string> = {
 const SATELLITE_ALTITUDE = 0.05;
 const EARTH_RADIUS_KM = 6371;
 // TODO(BACKEND): Receive this from each satellite's beam/coverage capability.
-const COVERAGE_RADIUS_KM = 1700;
+export const COVERAGE_RADIUS_KM = 1700;
+export const EARTH_RADIUS_KM_EXPORT = 6371;
 /** Short enough to feel instant, long enough to read as a reveal. */
 const COVERAGE_TWEEN_MS = 220;
 const COVERAGE_CAP_OPACITY = 0.22;
@@ -685,7 +686,7 @@ export const Globe: React.FC<GlobeProps> = ({
         pointAltitude="globeAltitude"
         pointRadius="radius"
         pointResolution={32}
-        pointsTransitionDuration={0}
+        pointsTransitionDuration={260}
         onPointClick={(pt: any) => onPointClick(pt)}
         pointLabel={satelliteTooltip}
 
