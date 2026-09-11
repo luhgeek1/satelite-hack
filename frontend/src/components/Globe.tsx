@@ -86,6 +86,13 @@ const altitudeToDistance = (altitude: number) => GLOBE_RADIUS * (1 + altitude);
  */
 const MAX_ZOOM_OUT_FACTOR = 1.7;
 
+/**
+ * Closest approach. The globe is radius 1 in altitude units and the satellite
+ * shell sits at 0.05, so anything below this puts the camera inside the Earth
+ * and the view goes black.
+ */
+const MIN_ALTITUDE = 0.35;
+
 const STAR_COUNT = 3200;
 /** Globe radius is 100 scene units and the camera far plane sits at 4000. */
 const STAR_SHELL_MIN = 700;
@@ -340,6 +347,7 @@ export const Globe: React.FC<GlobeProps> = ({
     const controls = globeRef.current?.controls?.();
     if (!controls || !dimensions.width || !dimensions.height) return;
 
+    controls.minDistance = altitudeToDistance(MIN_ALTITUDE);
     controls.maxDistance =
       altitudeToDistance(fitAltitude(dimensions.width, dimensions.height)) * MAX_ZOOM_OUT_FACTOR;
   }, [dimensions.width, dimensions.height]);
