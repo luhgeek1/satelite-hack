@@ -30,6 +30,19 @@ where the work stands.
 | Database | ✅ Postgres + Alembic, Redis as an optional cache |
 | Docker | ✅ `docker compose up -d --build` |
 
+### Frontend — rewritten on Next.js + Feature-Sliced Design
+
+| Area | Status |
+|---|---|
+| Stack | ✅ Next.js 15 App Router, React 19, TanStack Query v5, Tailwind v4 |
+| Architecture | ✅ FSD: app → views → widgets → features → entities → shared |
+| API layer | ✅ typed client, endpoints, query keys; `/api/*` rewritten to the backend so CORS never applies |
+| Live data | ✅ scenarios, simulation, snapshots, availability series, resilience, optimizer job, variants, comparison |
+| Optimistic updates | ✅ failure injection, variant save/delete, scenario import — each with rollback |
+| Globe / flat map | ✅ ported to the new domain model, plane colours derived from the scenario |
+| WebGL failure | ✅ caught, falls back to the flat map instead of taking the page down |
+| Verified in a browser | ✅ real metrics render, failure injection flips the UI in 60 ms and reconciles at ~2.5 s |
+
 ### Documentation
 
 | File | Purpose |
@@ -56,26 +69,18 @@ where the work stands.
 4. Deployment: pick a host, get the public URL live. **A14 requires it to stay up
    from code freeze until the end of all defences.**
 
-### Frontend integration
+### Frontend
 
-Work through [`API_CONTRACT.md`](API_CONTRACT.md). Two fixture bugs to fix first:
+Everything on the mandatory path is wired to the API. What is left:
 
-- `src/mockData.ts` — `ORBIT_INCLINATION_DEG = 70` should be **87**.
-- `src/types.ts` — `NetworkMetrics.availability` is typed `{C65, C70, C72}`;
-  **the jury uploads different ground sites**, so it must be
-  `Record<string, number>` or read from the `clients` array.
-
-Then, in order of graded value:
-
-1. Load a scenario → run → globe + timeline from real data.
-2. The three-state availability strip (`routed` / `visible_no_route` /
-   `no_satellite`).
-3. Click an outage → jump the timeline there → show the network at that instant.
-   *(A8 — the organisers named this flow explicitly.)*
-4. Failure injection from the satellite list or the globe.
-5. Save variant → compare, showing changed parameters.
-6. Export buttons: result document and effective scenario.
-7. Resilience tab, then the optimizer.
+1. **Click an outage to jump the timeline to it.** The bands are drawn and
+   `outage_windows` carry `start_s`; the click handler is not there yet. The
+   organisers named this flow explicitly (A8), so it is the highest-value gap.
+2. Partial failure windows in the UI — the config and the backend both support
+   `start_s`/`end_s`, only the whole-day case is exposed.
+3. A sensitivity view over the ISL sweep; the endpoint and the finding both
+   exist, nothing renders them.
+4. Keyboard access pass over the new dropdowns.
 
 ### Team deliverables
 

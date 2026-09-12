@@ -233,5 +233,11 @@ so the framing matters. *(Currently flagged `environment_modified`.)*
 none is specified and it "должна проектироваться" — so is there an industry figure
 worth citing in the recommendation?
 
-**O5.** How large might the jury's scenario be? Guard rails currently allow 500
+**O5.** Is there a sensible maximum number of relays in a route? Measured: with
+one satellite failed, the genuine shortest path can reach **15 hops** because the
+client and the gateway see disjoint parts of the mesh. BFS is returning the true
+minimum, so this is a modelling question, not a bug — but presenting a 15-relay
+path as a recommendation invites the question.
+
+**O6.** How large might the jury's scenario be? Guard rails currently allow 500
 satellites and 5000 steps; the official validator permits a 48-hour horizon.

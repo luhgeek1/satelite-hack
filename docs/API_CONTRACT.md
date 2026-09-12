@@ -502,11 +502,35 @@ marker sizes, animation timing.
 | `POST /failures/{id}` | `config.failures` on the run | Failures are part of a configuration, so a variant round-trips whole |
 | `coverageRadiusKm` | not provided | The case has no beam model; a footprint circle would be decoration presented as data |
 
-### Two fixture bugs to fix at integration
+## 10. Gaps the backend does not fill
 
-1. **`ORBIT_INCLINATION_DEG = 70`** in `src/mockData.ts`. The real inclination is
-   **87°** — a near-polar orbit, which is the whole reason this constellation
-   serves the far north. At 70° the ground tracks are visibly wrong.
-2. **`NetworkMetrics.availability` is typed `{ C65, C70, C72 }`** in
-   `src/types.ts`. This will break on the jury's file. Make it
-   `Record<string, number>`, or read the `clients` array.
+Found while wiring the frontend. None block the integration; each is either
+solved on the client or is a decision to take.
+
+**Orbit track polylines.** The globe draws one line per plane. The API returns
+positions, not tracks, so `shared/lib/geo.ts` derives them from the scenario's
+inclination, the plane's RAAN and the Earth-rotation angle at the current
+instant — the same spherical relations `geometry.py` uses, so the line and the
+satellites on it agree.
+
+**Beam footprint radius.** `COVERAGE_RADIUS_KM` is a frontend constant. The case
+has no beam model and the backend deliberately does not invent one; the circle
+on the globe is an illustration, not data.
+
+**Per-step link topology during playback.** A snapshot is one request per
+calculation instant (~13 KB). Playback advances through 720 of them, so a run
+costs up to 720 requests spread over a pass, each cached forever afterwards. On
+localhost this is invisible. If the deployed backend turns out to be far away, a
+bulk endpoint returning every instant's edges — or edges at a coarser stride —
+would remove the chatter.
+
+**Satellite failures are windows, not a flag.** The UI's "simulate failure"
+writes `start_s: 0, end_s: horizon_s`. A partial window is expressible in
+`config.failures` and the backend honours it; no UI exposes it yet.
+
+**Hop count is unbounded.** Verified against the engine: with `S20` failed at
+`t=0`, `C65` can see only `S19` while the gateway can only be seen by `S04`, so
+the true shortest path is **15 hops** the long way around the mesh. The routing
+is right — BFS returns the genuine minimum — but a 15-relay store-and-forward
+path is questionable as an engineering answer, and neither the case nor the Q&A
+defines a limit. See [DECISIONS.md](DECISIONS.md#o-open-questions).
