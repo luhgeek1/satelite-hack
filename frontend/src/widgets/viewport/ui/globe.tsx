@@ -9,6 +9,7 @@ import { routeEdgeIndex, edgeKey, type RouteTrace } from '@/entities/simulation'
 import { criticalityLevel } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
+import type { CoverageGap } from '../model/coverage-gaps';
 import {
   useFailurePings,
   FAILURE_RING_FLIGHT_MS,
@@ -40,6 +41,10 @@ const failureRingFade = (t: number) => `rgba(239,68,68,${(0.92 * (1 - t * t)).to
 
 type FailurePingDatum = { id: string; lat: number; lng: number };
 const NO_FAILURE_PINGS: FailurePingDatum[] = [];
+const NO_COVERAGE_GAPS: CoverageGap[] = [];
+
+/** Degrees of arc between surface subdivisions in a gap footprint's cap. */
+const GAP_CAP_CURVATURE = 4;
 
 const toRadians = (degrees: number) => degrees * (Math.PI / 180);
 const toDegrees = (radians: number) => radians * (180 / Math.PI);
@@ -188,6 +193,8 @@ interface GlobeProps {
   focusOn?: { id: string; nonce: number } | null;
   /** Ground-contact radius derived from the scenario's elevation mask. */
   contactRadiusKm?: number;
+  /** Footprints that fall short of the selected terminal, drawn as they fall. */
+  coverageGaps?: CoverageGap[];
 }
 
 export const Globe: React.FC<GlobeProps> = ({
@@ -207,7 +214,8 @@ export const Globe: React.FC<GlobeProps> = ({
   selectedSatellite,
   mode = 'simulation',
   focusOn = null,
-  contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM
+  contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM,
+  coverageGaps = NO_COVERAGE_GAPS
 }) => {
   const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -231,6 +239,38 @@ export const Globe: React.FC<GlobeProps> = ({
   );
 
   useEffect(() => () => coverageCapMaterial.dispose(), [coverageCapMaterial]);
+
+  // Footprints drawn for a stranded terminal are several at once, each in its
+  // own node's colour, so one shared material will not do. Cached by colour —
+  // there are as many as there are planes — and disposed with the globe.
+  const gapCapMaterials = useRef(new Map<string, THREE.MeshBasicMaterial>());
+  const gapOpacityRef = useRef(0);
+
+  const gapCapMaterial = (color: string) => {
+    const cache = gapCapMaterials.current;
+    let material = cache.get(color);
+
+    if (!material) {
+      material = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: gapOpacityRef.current,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      cache.set(color, material);
+    }
+
+    return material;
+  };
+
+  useEffect(() => {
+    const cache = gapCapMaterials.current;
+    return () => {
+      cache.forEach(material => material.dispose());
+      cache.clear();
+    };
+  }, []);
 
   // The footprint grows in and collapses out over a short eased tween. It is
   // driven here rather than through polygonsTransitionDuration so that it only
@@ -288,6 +328,40 @@ export const Globe: React.FC<GlobeProps> = ({
   useEffect(() => {
     coverageCapMaterial.opacity = COVERAGE_CAP_OPACITY * coverageScale;
   }, [coverageCapMaterial, coverageScale]);
+
+  const gapFocus = coverageGaps.length ? focusClientId : null;
+
+  useEffect(() => {
+    const apply = (value: number) => {
+      gapOpacityRef.current = value;
+      gapCapMaterials.current.forEach(material => {
+        material.opacity = value;
+      });
+    };
+
+    if (!gapFocus) {
+      apply(0);
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      apply(COVERAGE_CAP_OPACITY);
+      return;
+    }
+
+    let frame = 0;
+    const start = performance.now();
+
+    const step = (now: number) => {
+      const t = Math.max(0, Math.min(1, (now - start) / COVERAGE_TWEEN_MS));
+      apply(COVERAGE_CAP_OPACITY * (1 - Math.pow(1 - t, 3)));
+      if (t < 1) frame = requestAnimationFrame(step);
+    };
+
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [gapFocus]);
 
   // One geometry for every satellite sphere; materials are cached per color and
   // meshes per satellite, so playback does not churn objects 10x a second.
@@ -664,6 +738,29 @@ export const Globe: React.FC<GlobeProps> = ({
     };
   }, [satellites, coverageSatelliteId, coverageScale, contactRadiusKm, coverageColor]);
 
+  const gapCoverage = useMemo(() => {
+    return coverageGaps.map(gap => {
+      const color = pointsData.find(point => point.id === gap.id)?.color ?? '#ffffff';
+      const boundary = coverageRing(gap.lat, gap.lon, contactRadiusKm);
+
+      return {
+        geometry: {
+          type: 'Polygon',
+          coordinates: [boundary.map(point => [point.lng, point.lat])]
+        },
+        borderPoints: boundary.map(point => [point.lat, point.lng, 0.008] as [number, number, number]),
+        color,
+        material: gapCapMaterial(color),
+        // A cap is re-tessellated whenever its node moves, and a stranded
+        // terminal draws three of them. At the finest setting that costs
+        // about 2.5 ms a frame each, which is most of a frame during
+        // playback; the coarse mesh is indistinguishable at this radius.
+        curvature: GAP_CAP_CURVATURE
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coverageGaps, contactRadiusKm, pointsData]);
+
   // Prepare links data
   const arcsData = useMemo(() => {
     return links.map(link => {
@@ -752,10 +849,22 @@ export const Globe: React.FC<GlobeProps> = ({
       };
     });
 
-    if (!selectedCoverage) return orbitPaths;
+    // The edge of every footprint that misses the selected terminal, drawn the
+    // way a picked node's own edge is.
+    const gapPaths = gapCoverage.map(gap => ({
+      points: gap.borderPoints,
+      color: `#${new THREE.Color(gap.color).getHexString()}e6`,
+      stroke: 0.34,
+      dashLength: 0.05,
+      dashGap: 0.035,
+      dashAnimateTime: 0
+    }));
+
+    if (!selectedCoverage) return [...orbitPaths, ...gapPaths];
 
     return [
       ...orbitPaths,
+      ...gapPaths,
       {
         points: selectedCoverage.borderPoints,
         color: `#${new THREE.Color(selectedCoverage.color).getHexString()}${Math.round(255 * 0.9 * selectedCoverage.borderOpacity).toString(16).padStart(2, '0')}`,
@@ -765,7 +874,7 @@ export const Globe: React.FC<GlobeProps> = ({
         dashAnimateTime: 0
       }
     ];
-  }, [orbits, highlightedPlane, selectedCoverage]);
+  }, [orbits, highlightedPlane, selectedCoverage, gapCoverage]);
 
   /** One datum per satellite, reused for as long as that node is deployed. */
   const satelliteChipData = useRef(new Map<string, any>());
@@ -1086,13 +1195,13 @@ export const Globe: React.FC<GlobeProps> = ({
         arcAltitudeAutoScale={0.2}
         arcsTransitionDuration={0}
 
-        polygonsData={selectedCoverage ? [selectedCoverage] : []}
+        polygonsData={selectedCoverage ? [...gapCoverage, selectedCoverage] : gapCoverage}
         polygonGeoJsonGeometry="geometry"
-        polygonCapMaterial={coverageCapMaterial}
+        polygonCapMaterial={(d: any) => d.material ?? coverageCapMaterial}
         polygonSideColor="rgba(148,163,184,0)"
         polygonStrokeColor={null}
         polygonAltitude={0.006}
-        polygonCapCurvatureResolution={1}
+        polygonCapCurvatureResolution={(d: any) => d.curvature ?? 1}
         polygonsTransitionDuration={0}
 
         ringsData={failurePingData}

@@ -12,6 +12,7 @@ import { routeEdgeIndex, edgeKey, type RouteTrace } from '@/entities/simulation'
 import { cn, criticalityLevel, isFiniteNumber, isRecord, readStored, writeStored } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
+import type { CoverageGap } from '../model/coverage-gaps';
 import {
   useFailurePings,
   FAILURE_RING_COUNT,
@@ -48,12 +49,15 @@ interface Map2DProps {
   mode?: 'simulation' | 'resilience';
   /** Ground-contact radius derived from the scenario's elevation mask. */
   contactRadiusKm?: number;
+  /** Footprints that fall short of the selected terminal, drawn as they fall. */
+  coverageGaps?: CoverageGap[];
 }
 
 /** Bundled rather than fetched, so the map also draws with no network. */
 const geography = countries110m as any;
 
 const ALARM = '#e4483a';
+const NO_COVERAGE_GAPS: CoverageGap[] = [];
 /** A ground link the site's own horizon hides: present in geometry, unusable on the ground. */
 const MASKED_LINK = '#fb7185';
 
@@ -162,7 +166,8 @@ export const Map2D: React.FC<Map2DProps> = ({
   onSatelliteClick,
   selectedSatellite,
   mode = 'simulation',
-  contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM
+  contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM,
+  coverageGaps = NO_COVERAGE_GAPS
 }) => {
   const { t } = useI18n();
   const failurePings = useFailurePings(satellites);
@@ -228,6 +233,26 @@ export const Map2D: React.FC<Map2DProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSatellite]);
 
+  const gapFocus = coverageGaps.length ? focusClientId : null;
+  const [gapScale, setGapScale] = useState(0);
+
+  useEffect(() => {
+    if (!gapFocus) {
+      setGapScale(0);
+      return;
+    }
+
+    let frame = 0;
+    const start = performance.now();
+    const step = (now: number) => {
+      const progress = Math.max(0, Math.min(1, (now - start) / COVERAGE_TWEEN_MS));
+      setGapScale(progress * (2 - progress));
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [gapFocus]);
+
   const coverageSat = coverage.scale > 0.001 ? satellites.find(s => s.id === coverage.id) : undefined;
   const coverageShape = coverageSat
     ? {
@@ -267,6 +292,34 @@ export const Map2D: React.FC<Map2DProps> = ({
     if (mode === 'resilience') return criticalityLevel(sat.criticality).color;
     return sat.color;
   };
+
+  // The footprints that miss the selected terminal, each drawn where it
+  // actually falls and looking exactly like the footprint a picked node
+  // draws — same circle, same fill, same edge, in that node's own colour.
+  // A footprint that swallows a pole projects as a band across the full width
+  // of an equirectangular map, which reads as a huge zone rather than as a
+  // circle that misses. Those are left to the globe, where they are a circle.
+  const drawableGaps =
+    gapScale > 0.001
+      ? coverageGaps.filter(gap => Math.abs(gap.lat) + coverageDegrees < 88)
+      : [];
+
+  const gapShape = drawableGaps.length
+    ? {
+        type: 'FeatureCollection' as const,
+        features: drawableGaps.map(gap => {
+          const satellite = satellites.find(s => s.id === gap.id);
+
+          return {
+            type: 'Feature' as const,
+            properties: { color: satellite ? satelliteColor(satellite) : '#ffffff' },
+            geometry: geoCircle()
+              .center([gap.lon, gap.lat])
+              .radius(coverageDegrees * gapScale)()
+          };
+        })
+      }
+    : null;
 
   const routeEdges = useMemo(() => routeEdgeIndex(routes), [routes]);
 
@@ -443,6 +496,30 @@ export const Map2D: React.FC<Map2DProps> = ({
               ))
             }
           </Geographies>
+
+          {gapShape && (
+            <Geographies geography={gapShape}>
+              {({ geographies }: { geographies: any[] }) =>
+                geographies.map((geo, index) => (
+                  <Geography
+                    key={`gap-${index}`}
+                    geography={geo}
+                    tabIndex={-1}
+                    fill={geo.properties?.color ?? '#ffffff'}
+                    fillOpacity={palette.coverageFill}
+                    stroke={geo.properties?.color ?? '#ffffff'}
+                    strokeOpacity={palette.coverageStroke}
+                    strokeWidth={0.6 * k}
+                    style={{
+                      default: { outline: 'none', pointerEvents: 'none' },
+                      hover: { outline: 'none', pointerEvents: 'none' },
+                      pressed: { outline: 'none', pointerEvents: 'none' }
+                    } as any}
+                  />
+                ))
+              }
+            </Geographies>
+          )}
 
           {coverageShape && coverageSat && (
             <Geographies geography={coverageShape}>

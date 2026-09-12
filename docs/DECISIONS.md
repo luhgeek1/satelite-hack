@@ -292,6 +292,22 @@ moving part that can fail during a defence. `prefer_instance` rather than
 `instance` so a job whose machine has been replaced still gets an honest 404,
 and a request the proxy has already moved is never moved again.
 
+**D12. Picking a terminal with nothing in view draws the three footprints that
+come closest to it.** Drawn exactly as a picked node's own footprint is — same
+circle, same fill, same edge, each in its node's colour — with the terminal
+outside all of them.
+*Why:* "no satellite in view" is a sentence in a panel; the hole the terminal
+sits in is a picture, and it answers the next question — how far short the
+constellation falls — without a second click. It is the one no-route reason that
+is purely geometric, so it is the only one that gets the treatment: drawing
+circles for a broken mesh or a downed gateway would point at the wrong cause.
+*What is left out:* nodes whose circle does reach the terminal. The drawing
+claims "these do not reach", and a covering circle would contradict it — that
+case is the surroundings hiding the sky, and the masked link already says so in
+its own colour. On the flat map a footprint that swallows a pole is skipped as
+well: equirectangular projects it as a band across the full width, which reads
+as a huge zone rather than as a circle that misses. The globe keeps it.
+
 ---
 
 ## E. Findings worth presenting

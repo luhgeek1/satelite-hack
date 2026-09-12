@@ -34,6 +34,25 @@ export function orbitTrack(
 
 export const EARTH_RADIUS_KM = 6371;
 
+/** Distance along the ground between two points, in kilometres. */
+export function greatCircleKm(
+  latA: number,
+  lonA: number,
+  latB: number,
+  lonB: number,
+): number {
+  const phiA = toRadians(latA);
+  const phiB = toRadians(latB);
+  const deltaPhi = toRadians(latB - latA);
+  const deltaLambda = toRadians(lonB - lonA);
+
+  const a =
+    Math.sin(deltaPhi / 2) ** 2
+    + Math.cos(phiA) * Math.cos(phiB) * Math.sin(deltaLambda / 2) ** 2;
+
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
 /**
  * Radius on the ground inside which a satellite clears the elevation mask.
  *

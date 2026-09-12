@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
 import { useSession } from '@/entities/session';
@@ -9,6 +9,7 @@ import { useI18n } from '@/shared/i18n';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import type { RouteTrace } from '@/entities/simulation';
+import { coverageGaps } from '../model/coverage-gaps';
 import { GlobeBoundary } from './globe-boundary';
 import type { GlobeCameraPosition, OrbitTrack } from './globe';
 
@@ -79,7 +80,46 @@ export function Viewport({
   const select = (satellite: SatelliteView) =>
     dispatch({ type: 'selectSatellite', satelliteId: satellite.id });
 
-  const selectSite = (siteId: string) => dispatch({ type: 'selectClient', clientId: siteId });
+  // Clicking the terminal that is already picked puts its footprints away, and
+  // clicking it again brings them back. A terminal is focused even when nobody
+  // picked one — the first client stands in — so the dismissal is held here
+  // rather than by clearing the selection, which would not change anything.
+  const [dismissedSiteId, setDismissedSiteId] = useState<string | null>(null);
+
+  // The dismissal belongs to the terminal that was picked; focusing another
+  // one from the panel starts it over, rather than that terminal arriving
+  // already dismissed.
+  useEffect(() => {
+    setDismissedSiteId(null);
+  }, [focusClientId]);
+
+  const selectSite = (siteId: string) => {
+    if (siteId === focusClientId) {
+      setDismissedSiteId((current) => (current === siteId ? null : siteId));
+      return;
+    }
+
+    setDismissedSiteId(null);
+    dispatch({ type: 'selectClient', clientId: siteId });
+  };
+
+  // Picking a terminal that has nothing in view draws the footprints that come
+  // closest to it, so the reason it is red is on the map rather than only in
+  // the panel: the circles fall short, and by how much.
+  // Memoised: both views key their footprint geometry off this array, and a
+  // fresh one every render would have them rebuild it every render.
+  const gaps = useMemo(
+    () =>
+      dismissedSiteId === focusClientId
+        ? []
+        : coverageGaps(
+            clients.find((client) => client.id === focusClientId),
+            routes.find((route) => route.clientId === focusClientId),
+            satellites,
+            contactRadiusKm,
+          ),
+    [dismissedSiteId, clients, routes, focusClientId, satellites, contactRadiusKm],
+  );
 
   const flatMap = (
     <Map2D
@@ -94,6 +134,7 @@ export function Viewport({
       selectedSatellite={state.selectedSatelliteId}
       mode={mode}
       contactRadiusKm={contactRadiusKm}
+      coverageGaps={gaps}
     />
   );
 
@@ -131,6 +172,7 @@ export function Viewport({
               focusOn={state.focusRequest}
               mode={mode}
               contactRadiusKm={contactRadiusKm}
+              coverageGaps={gaps}
             />
           </GlobeBoundary>
         ) : (
