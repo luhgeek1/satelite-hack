@@ -352,7 +352,6 @@ export function StudioPage() {
               {state.tab === 'simulation' && (
                 <NetworkHealth
                   clients={summary?.clients ?? []}
-                  target={summary?.target_availability ?? geometry.targetAvailability}
                   traces={routeTraces}
                   selectedClientId={focusClientId}
                   onSelectClient={(clientId) => dispatch({ type: 'selectClient', clientId })}
@@ -404,10 +403,13 @@ export function StudioPage() {
                 playing={playback.playing}
                 speed={playback.speed}
                 bands={bands}
+                clients={summary?.clients ?? []}
+                target={summary?.target_availability ?? geometry.targetAvailability}
                 focusClientId={focusClientId}
                 onToggle={playback.toggle}
                 onSpeed={playback.setSpeed}
                 onSeek={playback.seek}
+                onSelectClient={(clientId) => dispatch({ type: 'selectClient', clientId })}
               />
             )}
           </motion.div>

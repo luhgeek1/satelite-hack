@@ -4,13 +4,12 @@ import { useState } from 'react';
 import { ChevronDown, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { RouteChain, type RouteTrace } from '@/entities/simulation';
-import { cn, formatPercent } from '@/shared/lib';
+import { cn } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import type { ClientMetrics } from '@/shared/api';
 
 interface NetworkHealthProps {
   clients: ClientMetrics[];
-  target: number;
   traces: RouteTrace[];
   selectedClientId: string | null;
   onSelectClient: (clientId: string) => void;
@@ -21,7 +20,6 @@ interface NetworkHealthProps {
 
 export function NetworkHealth({
   clients,
-  target,
   traces,
   selectedClientId,
   onSelectClient,
@@ -90,9 +88,6 @@ export function NetworkHealth({
                         <span className={focused ? 'text-zinc-100' : 'text-zinc-400'}>
                           {client.client_id}
                         </span>
-                        <span className={client.meets_target ? 'text-zinc-100' : 'text-alarm'}>
-                          {formatPercent(client.availability)}
-                        </span>
                       </span>
                       <span
                         className={cn(
@@ -120,11 +115,6 @@ export function NetworkHealth({
                   </div>
                 );
               })}
-            </div>
-
-            <div className="mt-2 flex items-baseline justify-between gap-2 pl-2 font-data text-[12px] tabular-nums text-zinc-500 sm:text-[13px]">
-              <span className="font-label text-[13px]">{t('health.target')}</span>
-              <span>&ge; {formatPercent(target, 0)}</span>
             </div>
 
             <div className="my-3 border-t border-rule" />
