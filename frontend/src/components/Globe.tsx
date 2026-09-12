@@ -3,6 +3,11 @@ import GlobeGL from 'react-globe.gl';
 import * as THREE from 'three';
 import { Satellite, GroundStation, Link, Plane } from '../types';
 import { criticalityLevel } from '../lib/criticality';
+import {
+  useFailurePings,
+  FAILURE_RING_FLIGHT_MS,
+  FAILURE_RING_INTERVAL_MS
+} from '../hooks/useFailurePings';
 
 export type OrbitTrack = {
   plane: Plane;
@@ -21,13 +26,31 @@ const SATELLITE_ALTITUDE = 0.05;
 const EARTH_RADIUS_KM = 6371;
 // TODO(BACKEND): Receive this from each satellite's beam/coverage capability.
 export const COVERAGE_RADIUS_KM = 1700;
-export const EARTH_RADIUS_KM_EXPORT = 6371;
 /** Short enough to feel instant, long enough to read as a reveal. */
 const COVERAGE_TWEEN_MS = 220;
 /** Long enough to see which way the globe turned, short enough not to wait. */
 const FOCUS_FLIGHT_MS = 700;
 const COVERAGE_CAP_OPACITY = 0.22;
 const COVERAGE_SEGMENTS = 72;
+
+/** The same footprint, in the degrees of arc the ring layer measures in. */
+export const COVERAGE_DEGREES = (COVERAGE_RADIUS_KM / EARTH_RADIUS_KM) * (180 / Math.PI);
+
+/**
+ * A failure sends three red waves out from the node, each stopping at that
+ * node's own footprint — the area it just stopped serving. Deg/s rather than a
+ * duration is what the ring layer takes, so the flight time is converted here.
+ */
+const FAILURE_RING_SPEED_DEG_S = COVERAGE_DEGREES / (FAILURE_RING_FLIGHT_MS / 1000);
+/**
+ * Brightest at the node, gone by the time the wave reaches the rim. The falloff
+ * is held back at first: a WebGL line is one pixel wide whatever the zoom, so a
+ * linear fade leaves most of the sweep too faint to read.
+ */
+const failureRingFade = (t: number) => `rgba(239,68,68,${(0.92 * (1 - t * t)).toFixed(3)})`;
+
+type FailurePingDatum = { id: string; lat: number; lng: number };
+const NO_FAILURE_PINGS: FailurePingDatum[] = [];
 
 const toRadians = (degrees: number) => degrees * (Math.PI / 180);
 const toDegrees = (radians: number) => radians * (180 / Math.PI);
@@ -545,6 +568,37 @@ export const Globe: React.FC<GlobeProps> = ({
     });
   }, [satellites, selectedSatellite, activeRoute, mode, playing, coverageSatelliteId, coverageScale]);
 
+  // Rings keep their datum identity for the whole burst: the layer animates the
+  // waves itself, and a replaced datum would tear the ones in flight down. Only
+  // the position is written through, so a burst travels with its node.
+  const failurePings = useFailurePings(satellites);
+  const failurePingStore = useRef(new Map<string, FailurePingDatum>());
+
+  const failurePingData = useMemo(() => {
+    if (!failurePings.size) {
+      failurePingStore.current.clear();
+      return NO_FAILURE_PINGS;
+    }
+
+    const store = failurePingStore.current;
+    store.forEach((_, id) => {
+      if (!failurePings.has(id)) store.delete(id);
+    });
+
+    return [...failurePings]
+      .map(id => {
+        const sat = satellites.find(s => s.id === id);
+        if (!sat) return null;
+
+        const datum = store.get(id) ?? { id, lat: sat.lat, lng: sat.lon };
+        datum.lat = sat.lat;
+        datum.lng = sat.lon;
+        store.set(id, datum);
+        return datum;
+      })
+      .filter((datum): datum is FailurePingDatum => datum !== null);
+  }, [failurePings, satellites]);
+
   const highlightedPlane = useMemo(
     () => satellites.find(s => s.id === selectedSatellite)?.plane ?? null,
     [satellites, selectedSatellite]
@@ -768,6 +822,16 @@ export const Globe: React.FC<GlobeProps> = ({
         polygonAltitude={0.006}
         polygonCapCurvatureResolution={1}
         polygonsTransitionDuration={0}
+
+        ringsData={failurePingData}
+        ringLat="lat"
+        ringLng="lng"
+        ringAltitude={0.01}
+        ringColor={() => failureRingFade}
+        ringMaxRadius={COVERAGE_DEGREES}
+        ringPropagationSpeed={FAILURE_RING_SPEED_DEG_S}
+        ringRepeatPeriod={FAILURE_RING_INTERVAL_MS}
+        ringResolution={96}
 
         pathsData={pathsData}
         pathPoints="points"

@@ -2,11 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Minus, RotateCcw } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, Marker, Line, ZoomableGroup, Graticule } from 'react-simple-maps';
-import { geoCircle } from 'd3-geo';
+import { geoCircle, geoEquirectangular } from 'd3-geo';
 import countries110m from 'world-atlas/countries-110m.json';
 import { Satellite, GroundStation, Link } from '../types';
-import { planeColors, COVERAGE_RADIUS_KM, EARTH_RADIUS_KM_EXPORT } from './Globe';
+import { planeColors, COVERAGE_DEGREES } from './Globe';
 import { criticalityLevel } from '../lib/criticality';
+import {
+  useFailurePings,
+  FAILURE_RING_COUNT,
+  FAILURE_RING_FLIGHT_MS,
+  FAILURE_RING_INTERVAL_MS
+} from '../hooks/useFailurePings';
 
 interface Map2DProps {
   satellites: Satellite[];
@@ -26,10 +32,24 @@ const ALARM = '#e4483a';
 const RULE = '#2e2e34';
 const LAND_FILL = '#131316';
 
-/** The same footprint the globe draws, in the degrees d3 wants. */
-const COVERAGE_DEGREES = (COVERAGE_RADIUS_KM / EARTH_RADIUS_KM_EXPORT) * (180 / Math.PI);
 /** Matches the globe's coverage reveal, so the two views feel like one tool. */
 const COVERAGE_TWEEN_MS = 220;
+
+/**
+ * Map units per degree of arc, read off the projection itself rather than
+ * assumed: ComposableMap builds an unscaled geoEquirectangular, and everything
+ * drawn in map units has to agree with it.
+ */
+const MAP_UNITS_PER_DEGREE = geoEquirectangular().scale() * (Math.PI / 180);
+/** A failure wave stops at the node's own footprint, same as on the globe. */
+const FAILURE_RING_UNITS = COVERAGE_DEGREES * MAP_UNITS_PER_DEGREE;
+/**
+ * Equirectangular stretches longitude towards the poles, so a circular
+ * footprint projects as an oval. The clamp keeps a near-polar node's wave from
+ * running off across the whole map.
+ */
+const failureRingWidth = (lat: number) =>
+  FAILURE_RING_UNITS / Math.max(0.28, Math.cos(lat * (Math.PI / 180)));
 
 /**
  * Equirectangular view of the same constellation the globe shows: ground track
@@ -47,6 +67,7 @@ export const Map2D: React.FC<Map2DProps> = ({
   selectedSatellite,
   mode = 'simulation'
 }) => {
+  const failurePings = useFailurePings(satellites);
   const [tooltip, setTooltip] = useState<{ content: React.ReactNode; x: number; y: number } | null>(null);
   const [position, setPosition] = useState({ coordinates: [0, 0] as [number, number], zoom: 1 });
   const centredOnRef = useRef<string | null>(null);
@@ -290,6 +311,7 @@ export const Map2D: React.FC<Map2DProps> = ({
             const isFailed = sat.status === 'failed';
             const isSelected = selectedSatellite === sat.id;
             const isActiveRoute = activeRoute.includes(sat.id);
+            const isPinging = failurePings.has(sat.id);
 
             return (
               <Marker
@@ -327,6 +349,41 @@ export const Map2D: React.FC<Map2DProps> = ({
                 onClick={() => onSatelliteClick?.(sat)}
                 style={{ cursor: onSatelliteClick ? 'pointer' : 'default', outline: 'none' } as any}
               >
+                {/* Waves out to the footprint the node has just stopped
+                    serving. Drawn first so they pass under the marker, and
+                    scaled rather than re-pathed so the burst costs one
+                    transform per frame instead of a re-render of the map. */}
+                {isPinging && (
+                  <g style={{ pointerEvents: 'none' }}>
+                    {Array.from({ length: FAILURE_RING_COUNT }, (_, index) => (
+                      <motion.ellipse
+                        key={index}
+                        rx={failureRingWidth(sat.lat)}
+                        ry={FAILURE_RING_UNITS}
+                        fill="transparent"
+                        stroke={ALARM}
+                        strokeWidth={1.4}
+                        vectorEffect="non-scaling-stroke"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: [0, 0.95, 0.6, 0] }}
+                        transition={{
+                          duration: FAILURE_RING_FLIGHT_MS / 1000,
+                          delay: (index * FAILURE_RING_INTERVAL_MS) / 1000,
+                          ease: 'easeOut',
+                          opacity: {
+                            duration: FAILURE_RING_FLIGHT_MS / 1000,
+                            delay: (index * FAILURE_RING_INTERVAL_MS) / 1000,
+                            // Held bright over the first half, the way the
+                            // globe's waves are, so the two views read alike.
+                            times: [0, 0.07, 0.55, 1],
+                            ease: 'linear'
+                          }
+                        }}
+                      />
+                    ))}
+                  </g>
+                )}
+
                 {/* The dot is 1.5px across; this is what the pointer actually hits. */}
                 <circle r={9 * k} fill="transparent" style={{ cursor: 'pointer' }} />
 
