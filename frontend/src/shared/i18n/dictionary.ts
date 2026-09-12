@@ -116,6 +116,44 @@ export const en = {
   'changes.minHops': 'fewest hops',
   'changes.minDistance': 'shortest distance',
 
+  'deploy.title': 'Deployment plan',
+  'deploy.intro':
+    "A ring's angles are chosen when it launches and never change. One design, three moments.",
+  'deploy.open': 'Details and planning',
+  'deploy.close': 'Close the deployment plan',
+  'deploy.month': 'month {month}',
+  'deploy.colStage': 'LAUNCH',
+  'deploy.colRings': 'IN ORBIT',
+  'deploy.colWorst': 'WORST',
+  'deploy.colOutage': 'MAX GAP',
+  'deploy.sv': '{count} SV',
+  'deploy.show': 'Show launch {stage} on the globe',
+  'deploy.commits': 'Commits {rings}',
+  'deploy.commitsNone': 'Nothing new committed',
+  'deploy.planFrom': 'Plan from here',
+  'deploy.planFromStage': 'Plan from launch {stage}',
+  'deploy.planFromHint':
+    'Hold everything already in orbit, choose this launch and the later ones together, and score the finished constellation at launch {last}.',
+  'deploy.planNote':
+    'Planning a launch for its own stage alone buys a few points for three months and costs far more for the rest of the constellation\u2019s life, so the search always scores the finished constellation.',
+  'deploy.stripLabel': 'Connectivity over the day at this launch stage',
+  'deploy.spread': 'Ring spread',
+  'deploy.spreadEven': 'EVEN',
+  'deploy.spreadUneven': 'UNEVEN',
+  'deploy.spreadEvenNote':
+    'Rings sit {ideal}\u00b0 apart around the Earth, which is what a working end state looks like.',
+  'deploy.spreadUnevenNote':
+    'Rings should sit about {ideal}\u00b0 apart. Bunched rings leave a swathe of the Earth to one ring alone and the end state suffers.',
+  'deploy.tipTitle': 'Launches, not settings',
+  'deploy.tipText':
+    'A ring keeps the angles it was launched with, so all three launches share one design. Switching launch changes which rings have arrived, never their angles. Plan from the first launch still on the ground.',
+  'deploy.ringsTitle': 'Rings',
+  'deploy.ringLaunch': 'launch {stage}',
+  'deploy.ringInOrbit': 'in orbit',
+  'deploy.ringWaiting': 'not launched yet',
+  'deploy.ringCommitted': 'Committed: this ring has flown and its angles are held',
+  'deploy.ringFree': 'Free: a search may move this ring',
+
   'config.deployment': 'Deployment',
   'config.deploymentHint': 'Stage {stage} of {total}, {planes} orbital planes.',
   'config.deployAria': 'Deploy {count} satellites',
@@ -311,6 +349,7 @@ export const en = {
   'optimizer.longestOutage': 'Longest outage',
   'optimizer.orbitChanges': 'Orbit changes',
   'optimizer.apply': 'Apply configuration',
+  'optimizer.scoredAt': 'Scored on the finished constellation, launch {stage}, not on the stage shown.',
   'optimizer.appliedBadge': 'APPLIED',
   'optimizer.appliedNote': 'Applied to the configuration',
   'optimizer.saveCompare': 'Save and compare',
@@ -319,6 +358,7 @@ export const en = {
   'optimizer.nameLabel': 'Name for this variant',
   'optimizer.optimizedSuffix': 'optimised',
   'optimizer.baselineSuffix': 'as in the file',
+  'optimizer.beforeSuffix': 'before the search',
 
   'compare.vs': 'VS',
   'compare.pick': 'Pick a saved variant',
@@ -468,6 +508,44 @@ export const ru: Record<TranslationKey, string> = {
   'changes.strategy': 'Маршрутизация',
   'changes.minHops': 'минимум переходов',
   'changes.minDistance': 'минимум расстояния',
+
+  'deploy.title': 'План развёртывания',
+  'deploy.intro':
+    'Углы кольца выбираются при его запуске и больше не меняются. Один проект, три момента.',
+  'deploy.open': 'Подробнее и планирование',
+  'deploy.close': 'Закрыть план развёртывания',
+  'deploy.month': 'месяц {month}',
+  'deploy.colStage': 'ОЧЕР.',
+  'deploy.colRings': 'НА ОРБИТЕ',
+  'deploy.colWorst': 'ХУДШИЙ',
+  'deploy.colOutage': 'МАКС. ПЕРЕРЫВ',
+  'deploy.sv': '{count} КА',
+  'deploy.show': 'Показать очередь {stage} на глобусе',
+  'deploy.commits': 'Фиксирует {rings}',
+  'deploy.commitsNone': 'Новых колец нет',
+  'deploy.planFrom': 'Планировать отсюда',
+  'deploy.planFromStage': 'Спланировать с очереди {stage}',
+  'deploy.planFromHint':
+    'Удержать всё, что уже на орбите, выбрать эту очередь и последующие вместе и оценить по полной группировке на очереди {last}.',
+  'deploy.planNote':
+    'Подбор очереди только под неё саму даёт несколько пунктов на три месяца и стоит гораздо больше на всю оставшуюся жизнь группировки, поэтому поиск всегда оценивает полную группировку.',
+  'deploy.stripLabel': 'Связность за сутки на этой очереди запуска',
+  'deploy.spread': 'Разнос колец',
+  'deploy.spreadEven': 'РАВНОМЕРНО',
+  'deploy.spreadUneven': 'НЕРАВНОМЕРНО',
+  'deploy.spreadEvenNote':
+    'Кольца стоят через {ideal}\u00b0 вокруг Земли — так выглядит работающее конечное состояние.',
+  'deploy.spreadUnevenNote':
+    'Кольца должны стоять примерно через {ideal}\u00b0. Сбитые в кучу кольца оставляют часть Земли одному кольцу, и конечное состояние страдает.',
+  'deploy.tipTitle': 'Очереди, а не настройки',
+  'deploy.tipText':
+    'Кольцо навсегда сохраняет углы, с которыми его запустили, поэтому у всех трёх очередей один общий проект. Переключение очереди меняет то, какие кольца уже прилетели, а не их углы. Планировать надо с той очереди, которая ещё на земле.',
+  'deploy.ringsTitle': 'Кольца',
+  'deploy.ringLaunch': 'очередь {stage}',
+  'deploy.ringInOrbit': 'на орбите',
+  'deploy.ringWaiting': 'ещё не запущено',
+  'deploy.ringCommitted': 'Зафиксировано: кольцо улетело, его углы удерживаются',
+  'deploy.ringFree': 'Свободно: поиск может двигать это кольцо',
 
   'config.deployment': 'Развёртывание',
   'config.deploymentHint': 'Этап {stage} из {total}, орбитальных плоскостей: {planes}.',
@@ -664,6 +742,7 @@ export const ru: Record<TranslationKey, string> = {
   'optimizer.longestOutage': 'Самый долгий простой',
   'optimizer.orbitChanges': 'Изменения орбит',
   'optimizer.apply': 'Применить конфигурацию',
+  'optimizer.scoredAt': 'Оценка по полной группировке, очередь {stage}, а не по показанной очереди.',
   'optimizer.appliedBadge': 'ПРИМЕНЕНО',
   'optimizer.appliedNote': 'Применено к конфигурации',
   'optimizer.saveCompare': 'Сохранить и сравнить',
@@ -672,6 +751,7 @@ export const ru: Record<TranslationKey, string> = {
   'optimizer.nameLabel': 'Название варианта',
   'optimizer.optimizedSuffix': 'оптимизировано',
   'optimizer.baselineSuffix': 'как в файле',
+  'optimizer.beforeSuffix': 'до подбора',
 
   'compare.vs': 'ПРОТИВ',
   'compare.pick': 'Выберите сохранённый вариант',

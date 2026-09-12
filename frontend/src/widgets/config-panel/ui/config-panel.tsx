@@ -16,6 +16,8 @@ import { ChangeSummary } from './change-summary';
 import { cn, formatClock, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { Button, ParamGroup } from '@/shared/ui';
+import type { PlaneLock } from '@/entities/scenario';
+import type { RunInput } from '@/entities/simulation';
 import type { ClientMetrics, ScenarioDocument, SimulationSummary } from '@/shared/api';
 import type { FailureRequest } from '@/features/inject-failure';
 
@@ -38,6 +40,13 @@ interface ConfigPanelProps {
   summary: SimulationSummary | undefined;
   /** The same scenario with nothing changed, so the panel can show what the changes bought. */
   baseline: SimulationSummary | undefined;
+  runInput: RunInput;
+  planning: boolean;
+  nextFreeStage: number;
+  locks: PlaneLock[];
+  onLocksChange: (locks: PlaneLock[]) => void;
+  onPlanFrom: (stage: number) => void;
+  onOpenDeploymentPlan: () => void;
 }
 
 export function ConfigPanel({
@@ -56,6 +65,13 @@ export function ConfigPanel({
   scenarioHref,
   summary,
   baseline,
+  runInput,
+  planning,
+  nextFreeStage,
+  locks,
+  onLocksChange,
+  onPlanFrom,
+  onOpenDeploymentPlan,
 }: ConfigPanelProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
@@ -102,7 +118,15 @@ export function ConfigPanel({
           open={open.deployment}
           onToggle={() => toggle('deployment')}
         >
-          <DeploymentControl scenario={scenario} />
+          <DeploymentControl
+            scenario={scenario}
+            runInput={runInput}
+            colors={colors}
+            planning={planning}
+            nextFreeStage={nextFreeStage}
+            onPlanFrom={onPlanFrom}
+            onOpenPlan={onOpenDeploymentPlan}
+          />
         </ParamGroup>
 
         <ParamGroup
@@ -112,7 +136,13 @@ export function ConfigPanel({
           open={open.planes}
           onToggle={() => toggle('planes')}
         >
-          <PlaneControls scenario={scenario} colors={colors} />
+          <PlaneControls
+            scenario={scenario}
+            colors={colors}
+            stage={state.config.launch_stage ?? scenario.design.launch_stage}
+            locks={locks}
+            onLocksChange={onLocksChange}
+          />
         </ParamGroup>
 
         <ParamGroup

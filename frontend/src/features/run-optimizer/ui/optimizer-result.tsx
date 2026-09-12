@@ -4,15 +4,23 @@ import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { formatDegrees, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
-import type { OptimizeResult, ScenarioDocument } from '@/shared/api';
+import type { OptimizeResult, ScenarioDocument, SimulationConfig } from '@/shared/api';
 
 interface OptimizerResultProps {
   result: OptimizeResult;
   scenario: ScenarioDocument;
+  /** The configuration the search ran against, whose angles it moved away from. */
+  searchedConfig: SimulationConfig;
   colors: Record<string, string>;
   /** True once the found angles are in the configuration on screen. */
   applied: boolean;
   saving: boolean;
+  /**
+   * Launch stage the search was scored at, when that is not the stage on
+   * screen. Planning a launch judges the finished constellation, so without
+   * this the readings below silently describe a different network.
+   */
+  scoredAtStage: number | null;
   onApply: () => void;
   onSaveAndCompare: (name: string) => void;
   onDismiss: () => void;
@@ -30,9 +38,11 @@ interface OptimizerResultProps {
 export function OptimizerResult({
   result,
   scenario,
+  searchedConfig,
   colors,
   applied,
   saving,
+  scoredAtStage,
   onApply,
   onSaveAndCompare,
   onDismiss,
@@ -55,15 +65,20 @@ export function OptimizerResult({
     },
   ];
 
+  // Where each angle stood when the search started, which is the file's value
+  // only until something has been moved by hand or by an earlier search.
   const changes = Object.entries(result.changed_planes).flatMap(([planeId, change]) =>
     (['raan_deg', 'phase_deg'] as const)
       .filter((key) => change[key] !== null)
       .map((key) => {
         const plane = scenario.design.planes.find((item) => item.id === planeId);
+        const configured = searchedConfig.planes?.[planeId]?.[key];
         return {
           planeId,
           param: key === 'raan_deg' ? 'RAAN' : 'PHASE',
-          from: key === 'raan_deg' ? (plane?.raan_deg ?? 0) : (plane?.phase_deg ?? 0),
+          from:
+            configured
+            ?? (key === 'raan_deg' ? (plane?.raan_deg ?? 0) : (plane?.phase_deg ?? 0)),
           to: change[key] as number,
         };
       }),
@@ -124,6 +139,12 @@ export function OptimizerResult({
               ))}
             </div>
           </div>
+        )}
+
+        {scoredAtStage !== null && (
+          <p className="border-b border-rule px-3 py-2 font-label text-[11px] leading-relaxed text-zinc-500">
+            {t('optimizer.scoredAt', { stage: scoredAtStage })}
+          </p>
         )}
 
         <p className="px-3 py-2.5 font-label text-[11px] leading-relaxed text-zinc-400">
