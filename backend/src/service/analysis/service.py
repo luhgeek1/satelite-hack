@@ -120,6 +120,7 @@ class AnalysisService:
                     per_client_drop={k: round(v, 6) for k, v in i.per_client_drop.items()},
                     breaks_target=i.breaks_target,
                     criticality=i.criticality,
+                    per_client_outage_growth_s=dict(i.per_client_outage_growth_s),
                 )
                 for i in impacts
             ],

@@ -23,6 +23,10 @@ async def test_resilience_ranks_satellites_and_reports_gateway_exposure(client):
     assert drops == sorted(drops, reverse=True)
     assert all(0 <= i["criticality"] <= 100 for i in impacts)
     assert impacts[0]["plane_id"] in {"P1", "P2", "P3"}
+    # Every client is reported, and an outage can only get longer, never shorter.
+    growth = impacts[0]["per_client_outage_growth_s"]
+    assert set(growth) == set(impacts[0]["per_client_drop"])
+    assert all(value >= 0 for value in growth.values())
 
     gateway = report["gateway_dependency"][0]
     assert gateway["gateway_id"] == "G_MUR"
