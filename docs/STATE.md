@@ -18,7 +18,7 @@ where the work stands.
 | Routing | ✅ BFS + Dijkstra, client-no-relay rule, four no-route reasons, deterministic |
 | Metrics | ✅ visibility, availability, outage windows, edge-of-horizon handling, hop stats |
 | Scenario import / validate | ✅ field-precise errors, JSON body and multipart upload |
-| Configuration overrides | ✅ launch stage, RAAN, phase 0–360, failures, gateway outages, site surroundings, environment |
+| Configuration overrides | ✅ launch stage, RAAN, phase 0-360, failures, gateway outages, site surroundings, environment |
 | Site surroundings | ✅ per-site profile / mask / azimuth horizon / altitude, only ever removes links, reference figures untouched (DECISIONS D9, E6) |
 | Simulation API | ✅ synchronous, content-addressed, idempotent |
 | Snapshot / ephemeris / availability strip / route timeline | ✅ cached |
@@ -128,7 +128,7 @@ What is left:
   questions (A19); the old five-minute script has to lose a minute.
 - The technical jury reads the repository from code freeze, apart from the
   defence: the root README is what they open first.
-- A 20–30 s sped-up screencast of the interface.
+- A 20-30 s sped-up screencast of the interface.
 - Book the two consultation slots per checkpoint (one tracker, one expert) and
   take the open questions from [DECISIONS.md](DECISIONS.md#o-open-questions).
 
@@ -145,7 +145,7 @@ Measured, reproducible via `make test`.
 | 03 ten failures | 79.3% | 80.8% | 82.5% | 24 / 24 / 20 min |
 | 04 ISL 2000 km | 77.5% | 62.2% | 65.1% | 94 / 178 / 4 min |
 
-Target 90% per client. Full simulation: ~0.15–0.24 s — the unit every other cost
+Target 90% per client. Full simulation: ~0.15-0.24 s — the unit every other cost
 is counted in.
 
 ### What surroundings do to scenario 01

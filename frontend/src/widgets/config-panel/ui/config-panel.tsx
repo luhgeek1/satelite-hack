@@ -194,7 +194,7 @@ export function ConfigPanel({
                   <span className="font-data text-[10px] tabular-nums text-zinc-600">
                     {failure.start_s === 0 && failure.end_s >= horizonS
                       ? t('config.allDay')
-                      : `${formatClock(failure.start_s)}–${formatClock(failure.end_s)}`}
+                      : `${formatClock(failure.start_s)}-${formatClock(failure.end_s)}`}
                   </span>
                   <button
                     type="button"
@@ -260,7 +260,7 @@ export function ConfigPanel({
                 <span className="font-data text-[10px] tabular-nums text-zinc-600">
                   {outage.start_s === 0 && outage.end_s >= horizonS
                     ? t('config.allDay')
-                    : `${formatClock(outage.start_s)}–${formatClock(outage.end_s)}`}
+                    : `${formatClock(outage.start_s)}-${formatClock(outage.end_s)}`}
                 </span>
                 <button
                   type="button"

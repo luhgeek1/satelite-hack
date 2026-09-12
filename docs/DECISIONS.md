@@ -29,7 +29,7 @@ our earlier guesses.
 | A11 | **`geometry.py` may be replaced or rewritten** as long as the documented formulas and rules hold. | We vendor it unchanged instead — strictly safer, and it makes "корректность расчётов" unarguable. |
 | A12 | Organisers were unsure whether the script returns inter-satellite links. | **It does** — `snapshot()["edges"]`. Verified. Worth saying out loud at a consultation. |
 | A13 | A manual failure-injection tool is required: pick a satellite, set an interval inside the day or from a moment to the end. | `ConfigModel.failures` with `start_s` / `end_s`. |
-| A14 | Deliverables: a deployed link live **from code freeze until the end of all defences**, plus a 20–30 s sped-up screencast. Presentation should name which criteria it covers. | Team task — tracked in [STATE.md](STATE.md). |
+| A14 | Deliverables: a deployed link live **from code freeze until the end of all defences**, plus a 20-30 s sped-up screencast. Presentation should name which criteria it covers. | Team task — tracked in [STATE.md](STATE.md). |
 
 ### Second session, 12 September 2026 ([`transcript.txt`](../transcript.txt); the case owner, Андрей Цветков, was present)
 
@@ -298,7 +298,7 @@ under the target; the five compared metrics follow as tiles; the per-site chart
 is a dumbbell per ground site on an axis starting one 5-point step below the
 lowest figure plotted, not at zero and not at the target.
 *Why:* three clients are three categories, not a series — the line chart implied
-a trend between C65 and C70 that does not exist, and on a 0–100% axis every
+a trend between C65 and C70 that does not exist, and on a 0-100% axis every
 variant is a flat line across the top, so the 1.7 pp a whole optimisation buys
 was invisible. Fitting the axis to the data costs the "how far above the target
 are we" reading, which the verdict sentence and the tiles already give in
@@ -390,7 +390,7 @@ launch settled at a time. `committedStages` lives in the persisted session; a
 fixed launch is held against every search and against the scales, and only an
 explicit *Withdraw* frees it. Planning launch N holds every fixed launch *and*
 every launch before N, because by the time N is designed those have flown.
-Fixing launch 1 does not discard what a search proposed for launches 2–3: those
+Fixing launch 1 does not discard what a search proposed for launches 2-3: those
 stay as a draft and are the starting point of the next step.
 *Which scales move:* a ring of a fixed launch is locked (drawn with a lock); a
 ring that flies after the launch on screen is disabled because it is not in the
