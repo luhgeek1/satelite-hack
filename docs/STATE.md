@@ -9,7 +9,7 @@ where the work stands.
 
 ### Backend — runnable end to end
 
-60 tests green (41 unit, 19 integration), ruff clean.
+66 tests green (47 unit, 19 integration), ruff clean.
 
 | Area | Status |
 |---|---|
@@ -26,7 +26,8 @@ where the work stands.
 | Resilience (criticality) | ✅ ~2.3 s across a process pool |
 | Gateway dependency | ✅ |
 | Sensitivity sweep | ✅ finds the 2700 km threshold |
-| Optimizer | ✅ job + progress, parameter locks, configurable objective |
+| Optimizer | ✅ coordinate descent by default, full grid still selectable, job + progress, parameter locks, configurable objective |
+| Fan-out cost | ✅ two cores left free, numpy pinned to one thread per worker, one pool per search |
 | Database | ✅ Postgres + Alembic, Redis as an optional cache |
 | Docker | ✅ `docker compose up -d --build` |
 
@@ -41,6 +42,11 @@ where the work stands.
 | Optimistic updates | ✅ failure injection, variant save/delete, scenario import — each with rollback |
 | Globe / flat map | ✅ ported to the new domain model, plane colours derived from the scenario |
 | WebGL failure | ✅ caught, falls back to the flat map instead of taking the page down |
+| Routes | ✅ every client's path drawn in its own colour, focused one emphasised; sites clickable on globe and map |
+| Network health | ✅ per-client hop count or no-route reason, stranded clients named outright |
+| Satellite card | ✅ names the clients it carries right now, each chain clickable |
+| Optimizer UI | ✅ depth picker, run count and time estimate before the click, time remaining during |
+| Localization | ✅ Russian and English through one dictionary |
 | Verified in a browser | ✅ real metrics render, failure injection flips the UI in 60 ms and reconciles at ~2.5 s |
 
 ### Documentation
@@ -62,12 +68,11 @@ where the work stands.
 ### Backend
 
 1. **Nothing blocking.** The API covers every mandatory case requirement.
-2. Optimizer search quality — the coarse grid is coarse. A finer grid or a proper
-   local search would find improvements the current one misses. Low priority:
-   E3 suggests the baseline is already near-optimal.
-3. Prune old runs (`SimulationRunInterface.prune` exists, nothing calls it yet).
-4. Deployment: pick a host, get the public URL live. **A14 requires it to stay up
-   from code freeze until the end of all defences.**
+2. Prune old runs (`SimulationRunInterface.prune` exists, nothing calls it yet).
+3. Deployment: pick a host, get the public URL live. **A14 requires it to stay up
+   from code freeze until the end of all defences.** Budget CPU, not RAM: a search
+   needs about 34 MB per worker but is bound by core count and memory traffic, so
+   a two-vCPU box runs roughly four times slower than a laptop.
 
 ### Frontend
 
@@ -82,7 +87,12 @@ What is left:
 2. A route inspector — `/simulations/{id}/routes/{client_id}` is typed and
    unused; it would let the whole day's paths be scrubbed without refetching
    snapshots.
-3. Deployment. **A14 requires the link to stay up from code freeze until the
+3. The two optimizer entry points carry different labels — "Optimize deployment"
+   on the simulation tab, "Optimize configuration" on the resilience tab — for
+   the same job with the same settings. Worth naming consistently before the
+   defence. A lock set on the resilience tab also silently applies to the
+   simulation button, with nothing on that tab to show it.
+4. Deployment. **A14 requires the link to stay up from code freeze until the
    end of all defences.**
 
 ### Team deliverables
@@ -108,4 +118,19 @@ Measured, reproducible via `make test`.
 | 03 ten failures | 79.3% | 80.8% | 82.5% | 24 / 24 / 20 min |
 | 04 ISL 2000 km | 77.5% | 62.2% | 65.1% | 94 / 178 / 4 min |
 
-Target 90% per client. Full simulation: ~0.15 s.
+Target 90% per client. Full simulation: ~0.15–0.24 s — the unit every other cost
+is counted in.
+
+### What the optimizer does to scenario 01
+
+All three planes free, ranked on the worst-served client:
+
+| | Worst availability | Longest outage | Runs | Wall clock |
+|---|---:|---:|---:|---|
+| Baseline, as flown | 96.667% | 480 s | — | — |
+| Grid, 4 samples per axis | 97.361% | 360 s | 4109 | 285 s |
+| **Coordinate descent** | **98.333%** | **240 s** | **158** | **17 s** |
+
+The headline for the defence is the outage, not the percentage: the longest gap
+halves with the same 48 satellites, only re-phased. See [DECISIONS.md](DECISIONS.md)
+C7 for why the cheap search is also the better one.

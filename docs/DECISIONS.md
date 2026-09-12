@@ -49,7 +49,8 @@ why it is now excluded from both the linter and the formatter.
 **B3. Simulation is synchronous; only the optimizer is a job.**
 *Why:* measured. A full 720-instant run is **0.15 s**. A job queue would add
 latency, a polling loop and a failure mode in front of the jury, in exchange for
-nothing. The optimizer evaluates hundreds of runs (~25 s) and genuinely needs it.
+nothing. The optimizer evaluates hundreds of runs (17 s for the default search,
+minutes for the exhaustive one) and genuinely needs it.
 
 **B4. The job registry is in-process, not Celery/ARQ.**
 *Why:* one job kind, a single process, a demo. A broker is another thing that can
@@ -230,10 +231,33 @@ least 2700 km" — not a parameter to tune. Confirmed live: the API returns an
 **E2. Launch stage 2 is also not enough.** 61.8 / 62.5 / 66.0%. Only full
 deployment reaches the target.
 
-**E3. The organisers' RAAN spacing is already a local optimum.** 730 candidates
-explored around `0/60/120°` on the outage scenario found nothing better. Their
-configuration is good, and saying so is a more credible result than inventing an
-improvement.
+**E3. Re-phasing improves every official scenario — the earlier "already optimal"
+finding was an artefact of a coarse search.** This entry previously claimed that
+730 grid candidates around `0/60/120°` found nothing better on the outage
+scenario, and concluded the organisers' spacing was a local optimum. That
+conclusion was wrong: the grid sampled RAAN only every 90°, which steps over the
+optimum rather than finding it. A coordinate descent at 12 samples per angle, 158
+runs, improves all four:
+
+| Scenario | Worst availability | Longest outage |
+|---|---|---|
+| 01 full constellation | 96.67% → **98.33%** | 480 s → **240 s** |
+| 02 first launch | 12.64% → 13.89% | 47760 s → 49440 s |
+| 03 satellite outages | 79.31% → **80.83%** | 1440 s → **1080 s** |
+| 04 link range | 62.22% → **70.28%** | 10680 s → 12720 s |
+
+Two honest qualifications to carry into the defence:
+
+- **Nothing reaches 90% that did not already.** Re-phasing is real engineering
+  headroom, not a fix for a constellation that is too small or a link budget that
+  is too short. Scenario 02 moves by a point and stays hopeless; 04 gains eight
+  points and still misses. That is the correct conclusion and a stronger one than
+  a rescue story.
+- **In 02 and 04 the longest outage gets worse while availability improves.** The
+  objective is lexicographic and availability leads, so outage is only a
+  tiebreak — the search will trade a longer worst gap for more covered instants.
+  If a judge asks, that is deliberate (C7), and `mean_first` or a reordered key
+  would trade differently.
 
 **E4. The gateway last hop is not the bottleneck.** All 48 satellites deliver to
 `G_MUR` at some point and the busiest carries only 2.4% — so when connectivity

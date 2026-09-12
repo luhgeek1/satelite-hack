@@ -437,8 +437,12 @@ The only background operation. A `null` range means the parameter is **locked**:
 {
   "scenario_id": "01_full_constellation",
   "objective": "worst_first",        // | "mean_first"
-  "coarse_steps": 6,
-  "refine_rounds": 2,
+  "method": "coordinate_descent",    // | "grid"
+  "axis_steps": 12,                  // descent: samples per axis sweep
+  "passes": 3,                       // descent: sweeps over every axis
+  "starts": 3,                       // descent: independent starting points
+  "coarse_steps": 4,                 // grid: samples per axis
+  "refine_rounds": 2,                // both: local steps around the winner
   "bounds": [
     { "plane_id": "P1" },                                            // fully locked
     { "plane_id": "P2", "raan_deg": [0, 360], "phase_deg": [0, 22.5] },
@@ -449,7 +453,28 @@ The only background operation. A `null` range means the parameter is **locked**:
 
 Locks are the feature that makes the optimizer and the manual controls both
 necessary rather than redundant: a real project has constraints the tool cannot
-see, and the engineer pins them.
+see, and the engineer pins them. They also cut the cost: each locked angle
+removes a dimension from the search.
+
+Only RAAN and phase move. Altitude, ISL range and the elevation mask are
+hardware, not design choices — `POST /analysis/sweep` measures those separately
+and flags the run `environment_modified`.
+
+**Cost.** Every candidate is a full-horizon simulation, so the run count is the
+unit the caller should budget in. The client can quote it before committing;
+the formula matches `planned_runs` in the engine, with `axes` the number of
+unlocked angles:
+
+```
+coordinate_descent   starts * (1 + passes * axes * axis_steps) + refine_rounds * 2 * axes + 1
+grid                 coarse_steps ** axes + refine_rounds * 2 * axes + 1
+```
+
+At three free planes that is 158 runs for one descent against 4109 for a
+four-sample grid. The descent is the default because it measured *better* as
+well as cheaper — see [DECISIONS.md](DECISIONS.md) C7. An early-stopping descent
+spends less than its quote, never more, so `total` in the job status is an upper
+bound and `explored` may finish below it.
 
 `202` returns a job; poll `GET /jobs/{id}`:
 
@@ -513,9 +538,20 @@ inclination, the plane's RAAN and the Earth-rotation angle at the current
 instant — the same spherical relations `geometry.py` uses, so the line and the
 satellites on it agree.
 
-**Beam footprint radius.** `COVERAGE_RADIUS_KM` is a frontend constant. The case
-has no beam model and the backend deliberately does not invent one; the circle
-on the globe is an illustration, not data.
+**Ground contact radius.** *Closed.* The case gives an elevation mask, not a
+radius, but on a spherical Earth the mask **is** a circle. `shared/lib/geo.ts`
+derives it per scenario:
+
+```
+lambda = arccos(R cos(eps) / (R + h)) - eps      ->  14.968 deg  ->  1664 km
+```
+
+Verified against the organisers' own elevation function, which puts a site at
+14.9 deg from the sub-satellite point at 10.109 deg elevation and one at 15.0 deg
+below the 10 deg mask. The constant in `shared/config` is only a fallback for the
+instant before a scenario has loaded. Note this is a different mechanism from the
+3000 km ISL range, which is a straight-line budget between two satellites, not a
+footprint on the ground.
 
 **Per-step link topology during playback.** A snapshot is one request per
 calculation instant (~13 KB). Playback advances through 720 of them, so a run
@@ -524,9 +560,15 @@ localhost this is invisible. If the deployed backend turns out to be far away, a
 bulk endpoint returning every instant's edges — or edges at a coarser stride —
 would remove the chatter.
 
-**Satellite failures are windows, not a flag.** The UI's "simulate failure"
-writes `start_s: 0, end_s: horizon_s`. A partial window is expressible in
-`config.failures` and the backend honours it; no UI exposes it yet.
+**Satellite failures are windows, not a flag.** *Closed.* The card's one-click
+"simulate failure" still writes the whole horizon, which is what a demo wants,
+but the configuration panel's failure form takes a start and an end, so a
+satellite can be dropped for part of the day and recovered.
+
+**Every client's route is drawn.** *Closed.* A snapshot carries a `routes` entry
+per client and the viewport consumes all of them, one colour each, with the
+focused client's line given the faster dash. Nothing extra is needed from the
+API.
 
 **Hop count is unbounded.** Verified against the engine: with `S20` failed at
 `t=0`, `C65` can see only `S19` while the gateway can only be seen by `S04`, so
