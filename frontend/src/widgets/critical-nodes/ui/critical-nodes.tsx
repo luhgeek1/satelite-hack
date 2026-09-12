@@ -25,6 +25,7 @@ interface CriticalNodesProps {
   runInput: RunInput;
   /** Owned by the studio: the run is reported in the corner, not in here. */
   optimizer: Optimizer;
+  onOptimize: () => void;
   depth: SearchDepth;
   onDepthChange: (depth: SearchDepth) => void;
   locks: PlaneLock[];
@@ -38,6 +39,7 @@ export function CriticalNodes({
   colors,
   runInput,
   optimizer,
+  onOptimize,
   depth,
   onDepthChange,
   locks,
@@ -194,7 +196,7 @@ export function CriticalNodes({
 
         <button
           type="button"
-          onClick={() => optimizer.start.mutate({ locks, depth })}
+          onClick={onOptimize}
           disabled={optimizer.running || optimizer.start.isPending || gridSize(locks, depth) === 0}
           className="group flex h-10 w-full items-center justify-between border border-zinc-600 px-3 font-label text-[13px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none disabled:opacity-50"
         >

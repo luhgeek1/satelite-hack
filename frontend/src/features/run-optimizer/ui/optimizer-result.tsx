@@ -1,6 +1,7 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { useState } from 'react';
+import { Check, X } from 'lucide-react';
 import { formatDegrees, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import type { OptimizeResult, ScenarioDocument } from '@/shared/api';
@@ -9,25 +10,37 @@ interface OptimizerResultProps {
   result: OptimizeResult;
   scenario: ScenarioDocument;
   colors: Record<string, string>;
+  /** True once the found angles are in the configuration on screen. */
+  applied: boolean;
+  saving: boolean;
   onApply: () => void;
-  onCompare: () => void;
+  onSaveAndCompare: (name: string) => void;
   onDismiss: () => void;
 }
 
 /**
- * What the search found, in the same corner it ran in. Every reading is stated
- * as a move — the value it had, then the value it would have — so the
- * recommendation can be judged without opening anything else.
+ * What the search found, in the same corner it ran in.
+ *
+ * Every reading is stated as a move — the value it had, then the value it would
+ * have — so the recommendation can be judged without opening anything else.
+ * The card deliberately survives being applied: a search costs tens of seconds,
+ * and a result that vanishes the moment it is used leaves nothing on screen to
+ * say the configuration is no longer the file.
  */
 export function OptimizerResult({
   result,
   scenario,
   colors,
+  applied,
+  saving,
   onApply,
-  onCompare,
+  onSaveAndCompare,
   onDismiss,
 }: OptimizerResultProps) {
   const { t, formatDuration } = useI18n();
+  const suggested = `${scenario.meta.id} · ${t('optimizer.optimizedSuffix')}`;
+  const [naming, setNaming] = useState(false);
+  const [name, setName] = useState(suggested);
 
   const rows = [
     {
@@ -57,12 +70,16 @@ export function OptimizerResult({
   );
 
   return (
-    <div className="flex max-h-[min(30rem,70vh)] w-[19rem] max-w-[calc(100vw-1.5rem)] flex-col border border-rule-strong bg-black/90 backdrop-blur">
+    <div className="flex max-h-[min(32rem,74vh)] w-[19rem] max-w-[calc(100vw-1.5rem)] flex-col border border-rule-strong bg-black/90 backdrop-blur">
       <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-rule px-3 py-2">
         <span className="font-label text-[12px] text-zinc-300">{t('optimizer.title')}</span>
         <div className="flex items-center gap-2.5">
           <span className="font-data text-[10px] tracking-[0.08em] text-zinc-500">
-            {result.improved ? t('optimizer.done') : t('optimizer.noGain')}
+            {applied
+              ? t('optimizer.appliedBadge')
+              : result.improved
+                ? t('optimizer.done')
+                : t('optimizer.noGain')}
           </span>
           <button
             type="button"
@@ -115,21 +132,70 @@ export function OptimizerResult({
       </div>
 
       <div className="flex-shrink-0 space-y-2 border-t border-rule p-3">
-        <button
-          type="button"
-          disabled={!result.improved}
-          onClick={onApply}
-          className="flex h-9 w-full items-center justify-center border border-zinc-600 font-label text-[12px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
-        >
-          {t('optimizer.apply')}
-        </button>
-        <button
-          type="button"
-          onClick={onCompare}
-          className="flex h-8 w-full items-center justify-center border border-rule-strong font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:border-zinc-400 focus-visible:text-zinc-100 focus-visible:outline-none"
-        >
-          {t('optimizer.compare')}
-        </button>
+        {applied ? (
+          <div className="flex h-9 w-full items-center justify-center gap-1.5 border border-rule-strong font-label text-[12px] text-zinc-400">
+            <Check size={13} />
+            {t('optimizer.appliedNote')}
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={!result.improved}
+            onClick={onApply}
+            className="flex h-9 w-full items-center justify-center border border-zinc-600 font-label text-[12px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
+          >
+            {t('optimizer.apply')}
+          </button>
+        )}
+
+        {/* Saving is what makes the result durable: the configuration alone is
+            one editable thing, and the comparison needs two named ones. */}
+        {naming ? (
+          <div className="space-y-2">
+            <label htmlFor="optimizer-variant-name" className="block font-label text-[11px] text-zinc-400">
+              {t('optimizer.nameLabel')}
+            </label>
+            <input
+              id="optimizer-variant-name"
+              value={name}
+              autoFocus
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && name.trim()) onSaveAndCompare(name.trim());
+                if (event.key === 'Escape') setNaming(false);
+              }}
+              className="w-full border border-rule-strong bg-black px-2 py-1.5 font-data text-[11px] text-zinc-100 focus:border-zinc-500 focus:outline-none"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={saving || !name.trim()}
+                onClick={() => onSaveAndCompare(name.trim())}
+                className="flex-1 border border-zinc-600 py-1.5 font-label text-[11px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none disabled:opacity-40"
+              >
+                {saving ? t('optimizer.saving') : t('optimizer.saveConfirm')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setNaming(false)}
+                className="flex-1 border border-rule py-1.5 font-label text-[11px] text-zinc-500 transition-colors hover:border-rule-strong hover:text-zinc-300 focus-visible:outline-none"
+              >
+                {t('failure.cancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setName(suggested);
+              setNaming(true);
+            }}
+            className="flex h-8 w-full items-center justify-center border border-rule-strong font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:border-zinc-400 focus-visible:text-zinc-100 focus-visible:outline-none"
+          >
+            {t('optimizer.saveCompare')}
+          </button>
+        )}
       </div>
     </div>
   );
