@@ -22,8 +22,8 @@ import { SatelliteDetails } from '@/widgets/satellite-details';
 import { DeploymentPlan } from '@/widgets/deployment-plan';
 import { Viewport, type OrbitTrack } from '@/widgets/viewport';
 import { ViewToggle } from '@/features/toggle-view';
+import { TourOverlay, useTour } from '@/features/guided-tour';
 import {
-  freeLocks,
   toPlaneOverrides,
   useOptimizer,
   OptimizerProgress,
@@ -36,9 +36,9 @@ import type { OutageNode, OutageTarget, OutageWindow } from '@/features/schedule
 import { impactIndex, useResilience } from '@/features/analyze-resilience';
 import { snapToGrid, usePlayback } from '@/features/timeline-playback';
 import {
-  firstFreeStage,
   launchStages,
-  locksForStage,
+  locksForPlanning,
+  locksFromCommitted,
   planeColorMap,
   planeCommitStage,
   readGeometry,
@@ -88,6 +88,7 @@ export function StudioPage() {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
   const scenarios = useScenarios();
+  const { autoStart } = useTour();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const renameScenario = useRenameScenario();
   const [renameDraft, setRenameDraft] = useState<string | null>(null);
@@ -131,6 +132,16 @@ export function StudioPage() {
 
   const scenarioQuery = useScenario(state.scenarioId);
   const scenario = scenarioQuery.data?.scenario;
+
+  // Only once the studio has something in it: a tour that lights up an empty
+  // frame explains nothing, and every step points at a real element.
+  const offered = useRef(false);
+
+  useEffect(() => {
+    if (!scenario || offered.current) return;
+    offered.current = true;
+    autoStart();
+  }, [scenario, autoStart]);
   const geometry = scenario ? readGeometry(scenario) : null;
   const colors = useMemo(() => planeColorMap(scenario), [scenario]);
   const activeSummary = scenarios.data?.find((item) => item.id === state.scenarioId);
@@ -253,7 +264,7 @@ export function StudioPage() {
       if (!scenario) return;
       const stages = launchStages(scenario);
       const lastStage = stages[stages.length - 1]?.stage ?? 3;
-      const staged = locksForStage(scenario, stage);
+      const staged = locksForPlanning(scenario, state.committedStages, stage);
 
       setOptimizerApplied(false);
       setPlanOpen(false);
@@ -265,7 +276,7 @@ export function StudioPage() {
         config: { ...state.config, launch_stage: lastStage as 1 | 2 | 3 },
       });
     },
-    [scenario, depth, optimizer.start, state.config],
+    [scenario, depth, optimizer.start, state.config, state.committedStages],
   );
 
   const dismissOptimizer = useCallback(() => {
@@ -362,11 +373,17 @@ export function StudioPage() {
       t,
     ],
   );
-  const planeIds = scenario?.design.planes.map((plane) => plane.id).join(',') ?? '';
+  // What the campaign holds. The resilience tab may then hold more by hand —
+  // an agreed slot, a plane nobody wants touched — so the search reads the
+  // local copy, and settling a launch resets it to what the campaign says.
+  const campaignLocks = useMemo(
+    () => (scenario ? locksFromCommitted(scenario, state.committedStages) : []),
+    [scenario, state.committedStages],
+  );
 
   useEffect(() => {
-    setLocks(planeIds ? freeLocks(planeIds.split(',')) : []);
-  }, [planeIds]);
+    setLocks(campaignLocks);
+  }, [campaignLocks]);
 
   const launchStage = state.config.launch_stage ?? scenario?.design.launch_stage ?? 3;
   const failedIds = useMemo(() => allFailedIds(state.config), [state.config]);
@@ -632,9 +649,6 @@ export function StudioPage() {
       baseline={baseline}
       runInput={runInput}
       planning={optimizer.running || optimizer.start.isPending}
-      nextFreeStage={scenario ? firstFreeStage(scenario, locks) : 1}
-      locks={locks}
-      onLocksChange={setLocks}
       onPlanFrom={planFromStage}
       onOpenDeploymentPlan={() => setPlanOpen(true)}
     />
@@ -665,15 +679,15 @@ export function StudioPage() {
       ) : (
         <div className="relative flex min-h-0 flex-1 overflow-hidden">
           <motion.div layout transition={SPRING} className="flex min-w-0 flex-1 flex-col bg-black">
-            <div className="relative min-h-0 flex-1">
+            <div className="relative min-h-0 flex-1" data-tour="globe">
               <Viewport
                 satellites={visibleSatellites}
-                links={state.tab === 'simulation' ? links : []}
+                links={links}
                 clients={clients}
                 gateways={gateways}
                 routes={state.tab === 'simulation' ? routeTraces : []}
                 focusClientId={focusClientId}
-                orbits={state.tab === 'simulation' ? orbits : []}
+                orbits={orbits}
                 mode={state.tab === 'resilience' ? 'resilience' : 'simulation'}
                 contactRadiusKm={contactRadius}
               />
@@ -770,7 +784,7 @@ export function StudioPage() {
             {state.tab === 'simulation' && (
               // The strip keeps step with the data column: one scale for the
               // two frames around the map, so neither reads as the odd one.
-              <div ref={playbackRef} style={{ zoom: panel.scale }}>
+              <div ref={playbackRef} data-tour="timeline" style={{ zoom: panel.scale }}>
               <PlaybackBar
                 tS={tS}
                 horizonS={horizonS}
@@ -912,6 +926,8 @@ export function StudioPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <TourOverlay />
     </div>
   );
 }

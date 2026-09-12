@@ -362,13 +362,13 @@ Phase: 15°
 ### Распределение спутников
 
 ```text
-P1: S01–S16
+P1: S01-S16
 launch_batch = 1
 
-P2: S17–S32
+P2: S17-S32
 launch_batch = 2
 
-P3: S33–S48
+P3: S33-S48
 launch_batch = 3
 ```
 
@@ -924,7 +924,7 @@ Default:
 ```text
 satellites        visible
 orbit lines       low opacity
-all ISL           ~10–20% opacity
+all ISL           ~10-20% opacity
 ground links      low opacity / optionally hidden
 active route      100% + glow
 ```
@@ -1935,14 +1935,14 @@ Compare with...
 
 ## 52. Recommended five-minute pitch
 
-### 0:00–0:30 — проблема
+### 0:00-0:30 — проблема
 
 ```text
 Видимый спутник ещё не означает связь:
 данные должны пройти через динамическую сеть до gateway.
 ```
 
-### 0:30–1:30 — baseline
+### 0:30-1:30 — baseline
 
 - Full constellation.
 - 3 clients.
@@ -1950,24 +1950,24 @@ Compare with...
 - Все проходят target.
 - Показать текущий маршрут.
 
-### 1:30–2:30 — early deployment
+### 1:30-2:30 — early deployment
 
 - Stage 3 → Stage 1.
 - Availability резко падает.
 - Compare.
 
-### 2:30–3:30 — failure
+### 2:30-3:30 — failure
 
 - Добавить отказ спутника текущего route или открыть official outages preset.
 - Пересчитать.
 - Timeline/outage reason.
 
-### 3:30–4:20 — resilience / recommendation
+### 3:30-4:20 — resilience / recommendation
 
 - Показать vulnerable nodes или влияние параметра.
 - Обосновать рекомендацию цифрами.
 
-### 4:20–5:00 — итог
+### 4:20-5:00 — итог
 
 - Compare.
 - Import/export.

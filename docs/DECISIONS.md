@@ -29,7 +29,7 @@ our earlier guesses.
 | A11 | **`geometry.py` may be replaced or rewritten** as long as the documented formulas and rules hold. | We vendor it unchanged instead — strictly safer, and it makes "корректность расчётов" unarguable. |
 | A12 | Organisers were unsure whether the script returns inter-satellite links. | **It does** — `snapshot()["edges"]`. Verified. Worth saying out loud at a consultation. |
 | A13 | A manual failure-injection tool is required: pick a satellite, set an interval inside the day or from a moment to the end. | `ConfigModel.failures` with `start_s` / `end_s`. |
-| A14 | Deliverables: a deployed link live **from code freeze until the end of all defences**, plus a 20–30 s sped-up screencast. Presentation should name which criteria it covers. | Team task — tracked in [STATE.md](STATE.md). |
+| A14 | Deliverables: a deployed link live **from code freeze until the end of all defences**, plus a 20-30 s sped-up screencast. Presentation should name which criteria it covers. | Team task — tracked in [STATE.md](STATE.md). |
 
 ### Second session, 12 September 2026 ([`transcript.txt`](../transcript.txt); the case owner, Андрей Цветков, was present)
 
@@ -298,7 +298,7 @@ under the target; the five compared metrics follow as tiles; the per-site chart
 is a dumbbell per ground site on an axis starting one 5-point step below the
 lowest figure plotted, not at zero and not at the target.
 *Why:* three clients are three categories, not a series — the line chart implied
-a trend between C65 and C70 that does not exist, and on a 0–100% axis every
+a trend between C65 and C70 that does not exist, and on a 0-100% axis every
 variant is a flat line across the top, so the 1.7 pp a whole optimisation buys
 was invisible. Fitting the axis to the data costs the "how far above the target
 are we" reading, which the verdict sentence and the tiles already give in
@@ -380,6 +380,41 @@ separate activity: angles are always chosen *for* some launch. Making it
 prominent inside the simulation tab serves the same end at a lower cost.
 *What a saved variant means, as a result:* the whole campaign. The angles in it
 apply to every stage, so a variant is a plan and not a snapshot.
+
+**D16. A launch is a draft or a decision, and the session keeps which.** Locks
+were a per-plane switch held in component state on the resilience tab: invisible
+from the deployment group, lost on reload, and read by a "plan from launch N"
+button that therefore always said launch 1 (nothing locked ⇒ the first free
+launch is the first one). The campaign is now planned the way it happens — one
+launch settled at a time. `committedStages` lives in the persisted session; a
+fixed launch is held against every search and against the scales, and only an
+explicit *Withdraw* frees it. Planning launch N holds every fixed launch *and*
+every launch before N, because by the time N is designed those have flown.
+Fixing launch 1 does not discard what a search proposed for launches 2-3: those
+stay as a draft and are the starting point of the next step.
+*Which scales move:* a ring of a fixed launch is locked (drawn with a lock); a
+ring that flies after the launch on screen is disabled because it is not in the
+picture, and its legend row jumps to its own launch. Merely dimming them, as
+before, is how a stray drag moved a ring nobody was looking at.
+*Why keep two angles per plane in the resilience tab:* it serves constraints the
+campaign cannot see — an agreed slot, one angle fixed by contract. It starts
+from whatever the campaign holds and may hold more.
+*Why the scales stay grouped by parameter, not by plane:* the question the
+block answers is how far rings sit from each other, and one ruler per angle
+answers it by alignment (see the spread dial, which reads the same relation).
+
+**D17. A guided tour replaces the first-visit bubbles.** Three controls used to
+introduce themselves unprompted, at different moments and in no order. The
+criterion is a reviewer with minutes and no training (A-series, "пройти основные
+сценарии"), so the studio now opens with an eight-step tour: one element lit,
+the rest dimmed and unclickable, one sentence each — globe, network health,
+day strip, the interval tool, deployment, planes, saving a variant, and the lamp
+that replays it. The deployment group has its own six-step tour behind its own
+lamp, because its question is different: what to do with three launches. Steps
+point at `data-tour` anchors and are skipped when their element is absent (a
+collapsed panel, a phone), so the tour never points at an empty corner. The
+remaining hints are hover-only. Marked as seen when it opens, not when it ends:
+being met by the same overlay on every reload is worse than missing a step.
 
 ## E. Findings worth presenting
 

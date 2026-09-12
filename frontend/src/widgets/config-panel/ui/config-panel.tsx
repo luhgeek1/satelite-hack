@@ -9,6 +9,7 @@ import { FailureForm } from '@/features/inject-failure';
 import { GatewayOutageForm } from '@/features/inject-gateway-outage';
 import { OutageList } from '@/features/inspect-outages';
 import { SaveVariantButton } from '@/features/manage-variants';
+import { TourTrigger } from '@/features/guided-tour';
 import { useSession } from '@/entities/session';
 import type { SatelliteView } from '@/entities/satellite';
 import { effectiveSiteConditions, type GroundSiteView } from '@/entities/ground-site';
@@ -16,7 +17,6 @@ import { ChangeSummary } from './change-summary';
 import { cn, formatClock, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { Button, ParamGroup } from '@/shared/ui';
-import type { PlaneLock } from '@/entities/scenario';
 import type { RunInput } from '@/entities/simulation';
 import type { ClientMetrics, ScenarioDocument, SimulationSummary } from '@/shared/api';
 import type { FailureRequest } from '@/features/inject-failure';
@@ -42,9 +42,6 @@ interface ConfigPanelProps {
   baseline: SimulationSummary | undefined;
   runInput: RunInput;
   planning: boolean;
-  nextFreeStage: number;
-  locks: PlaneLock[];
-  onLocksChange: (locks: PlaneLock[]) => void;
   onPlanFrom: (stage: number) => void;
   onOpenDeploymentPlan: () => void;
 }
@@ -67,9 +64,6 @@ export function ConfigPanel({
   baseline,
   runInput,
   planning,
-  nextFreeStage,
-  locks,
-  onLocksChange,
   onPlanFrom,
   onOpenDeploymentPlan,
 }: ConfigPanelProps) {
@@ -111,39 +105,47 @@ export function ConfigPanel({
       <ChangeSummary scenario={scenario} current={summary} baseline={baseline} />
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <ParamGroup
-          code="DPL"
-          title={t('config.deployment')}
-          value={`${deployed.length} ${t('config.sv')}`}
-          open={open.deployment}
-          onToggle={() => toggle('deployment')}
-        >
-          <DeploymentControl
-            scenario={scenario}
-            runInput={runInput}
-            colors={colors}
-            planning={planning}
-            nextFreeStage={nextFreeStage}
-            onPlanFrom={onPlanFrom}
-            onOpenPlan={onOpenDeploymentPlan}
-          />
-        </ParamGroup>
+        <div data-tour="deploy">
+          <ParamGroup
+            code="DPL"
+            title={t('config.deployment')}
+            value={`${deployed.length} ${t('config.sv')}`}
+            open={open.deployment}
+            onToggle={() => toggle('deployment')}
+          >
+            <DeploymentControl
+              scenario={scenario}
+              runInput={runInput}
+              colors={colors}
+              planning={planning}
+              onPlanFrom={onPlanFrom}
+              onOpenPlan={onOpenDeploymentPlan}
+              guide={
+                <TourTrigger tour="deployment" label="tour.deployment" className="mt-px" />
+              }
+            />
+          </ParamGroup>
+        </div>
 
-        <ParamGroup
-          code="ORB"
-          title={t('config.planes')}
-          value={planeSummary}
-          open={open.planes}
-          onToggle={() => toggle('planes')}
-        >
-          <PlaneControls
-            scenario={scenario}
-            colors={colors}
-            stage={state.config.launch_stage ?? scenario.design.launch_stage}
-            locks={locks}
-            onLocksChange={onLocksChange}
-          />
-        </ParamGroup>
+        <div data-tour="planes">
+          <ParamGroup
+            code="ORB"
+            title={t('config.planes')}
+            value={planeSummary}
+            open={open.planes}
+            onToggle={() => toggle('planes')}
+          >
+            <PlaneControls
+              scenario={scenario}
+              colors={colors}
+              stage={state.config.launch_stage ?? scenario.design.launch_stage}
+              committed={state.committedStages}
+              onSelectStage={(stage) =>
+                dispatch({ type: 'setLaunchStage', stage: stage as 1 | 2 | 3 })
+              }
+            />
+          </ParamGroup>
+        </div>
 
         <ParamGroup
           code="OUT"
@@ -192,7 +194,7 @@ export function ConfigPanel({
                   <span className="font-data text-[10px] tabular-nums text-zinc-600">
                     {failure.start_s === 0 && failure.end_s >= horizonS
                       ? t('config.allDay')
-                      : `${formatClock(failure.start_s)}–${formatClock(failure.end_s)}`}
+                      : `${formatClock(failure.start_s)}-${formatClock(failure.end_s)}`}
                   </span>
                   <button
                     type="button"
@@ -258,7 +260,7 @@ export function ConfigPanel({
                 <span className="font-data text-[10px] tabular-nums text-zinc-600">
                   {outage.start_s === 0 && outage.end_s >= horizonS
                     ? t('config.allDay')
-                    : `${formatClock(outage.start_s)}–${formatClock(outage.end_s)}`}
+                    : `${formatClock(outage.start_s)}-${formatClock(outage.end_s)}`}
                 </span>
                 <button
                   type="button"
@@ -433,7 +435,9 @@ export function ConfigPanel({
       </div>
 
       <div className="flex-shrink-0 space-y-2 border-t border-rule p-3">
-        <SaveVariantButton suggestedName={scenario.meta.id} />
+        <div data-tour="save">
+          <SaveVariantButton suggestedName={scenario.meta.id} />
+        </div>
 
         <div className="flex gap-2">
           <Button

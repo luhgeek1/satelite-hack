@@ -1,67 +1,40 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { cn, readStored, writeStored } from '@/shared/lib';
+import { cn } from '@/shared/lib';
 
 interface FeatureHintProps {
-  /** Remembers, per browser, that this control has introduced itself. */
-  storageKey: string;
   title: string;
   text: string;
   /** Which side of the control the bubble hangs from. */
   side?: 'top' | 'bottom';
-  /** How long after the page settles the first sighting appears. */
-  delayMs?: number;
   className?: string;
   children: ReactNode;
 }
 
-const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
-
 /**
- * A control explaining itself, once and then on demand.
+ * A control explaining itself under the pointer.
  *
- * Two controls in this studio do something nobody would guess at from their
- * label, and both are easy to walk past. They say what they are on the first
- * visit, remember that they have, and stay available under the pointer after
- * that — so the explanation is never in the way and never gone.
+ * These used to introduce themselves unprompted on a first visit, several at
+ * once, which is how a studio greets somebody with a scatter of bubbles and no
+ * order to them. The guided tour does the introducing now, in a sequence; what
+ * is left here is the answer to "what is this", where the thing is.
  *
  * Solid blue on purpose. Red means an outage here and grey means a reading;
  * this is neither, it is the interface talking about itself.
  */
 export function FeatureHint({
-  storageKey,
   title,
   text,
   side = 'top',
-  delayMs = 900,
   className,
   children,
 }: FeatureHintProps) {
   const reduce = useReducedMotion();
-  const [onboarding, setOnboarding] = useState(false);
   const [hovering, setHovering] = useState(false);
   /** Clicked away: gone until the pointer leaves and comes back. */
   const [closed, setClosed] = useState(false);
-
-  useEffect(() => {
-    if (readStored(storageKey, isBoolean)) return;
-    const timer = window.setTimeout(() => setOnboarding(true), delayMs);
-    return () => window.clearTimeout(timer);
-  }, [storageKey, delayMs]);
-
-  const seen = () => {
-    setOnboarding(false);
-    writeStored(storageKey, true);
-  };
-
-  useEffect(() => {
-    if (!onboarding) return;
-    document.addEventListener('pointerdown', seen);
-    return () => document.removeEventListener('pointerdown', seen);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onboarding, storageKey]);
 
   return (
     <span
@@ -77,15 +50,12 @@ export function FeatureHint({
       {children}
 
       <AnimatePresence>
-        {(onboarding || hovering) && !closed && (
+        {hovering && !closed && (
           <motion.span
             role="tooltip"
             // Clicking the bubble puts it away — it is an explanation, and an
             // explanation in the way of the thing it explains is a nuisance.
-            onClick={() => {
-              setClosed(true);
-              seen();
-            }}
+            onClick={() => setClosed(true)}
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: side === 'top' ? 4 : -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: side === 'top' ? 2 : -2 }}

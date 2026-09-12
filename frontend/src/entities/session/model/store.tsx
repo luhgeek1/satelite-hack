@@ -45,6 +45,17 @@ export interface SessionState {
   resetNonce: number;
   /** Which saved variants the Compare tab holds, so a tab switch does not clear them. */
   compareSlots: [string | null, string | null];
+  /**
+   * Launches whose angles are decided.
+   *
+   * A ring keeps the angles it was launched with, so a campaign is planned by
+   * settling one launch at a time. A settled launch is held against every
+   * search and against the sliders, and only an explicit withdrawal frees it —
+   * which is the whole point: a plan the tool can undo by accident is not a
+   * plan. Kept beside the configuration rather than inside it because the
+   * engine has no notion of it; it constrains what we may ask the engine.
+   */
+  committedStages: number[];
 }
 
 type Action =
@@ -74,6 +85,8 @@ type Action =
   | { type: 'setViewMode'; viewMode: ViewMode }
   | { type: 'setTab'; tab: StudioTab }
   | { type: 'setCompareSlots'; slots: [string | null, string | null] }
+  | { type: 'commitStage'; stage: number }
+  | { type: 'releaseStage'; stage: number }
   | { type: 'openVariant'; scenarioId: string; config: SimulationConfig; strategy: RoutingStrategy }
   | { type: 'resetConfig' }
   | { type: 'restore'; state: Partial<SessionState> };
@@ -93,6 +106,7 @@ const initialState: SessionState = {
   commitNonce: 0,
   resetNonce: 0,
   compareSlots: [null, null],
+  committedStages: [],
 };
 
 function reducer(state: SessionState, action: Action): SessionState {
@@ -102,6 +116,7 @@ function reducer(state: SessionState, action: Action): SessionState {
         ...state,
         scenarioId: action.scenarioId,
         config: {},
+        committedStages: [],
         tS: 0,
         playing: false,
         selectedSatelliteId: null,
@@ -270,6 +285,20 @@ function reducer(state: SessionState, action: Action): SessionState {
     case 'setCompareSlots':
       return { ...state, compareSlots: action.slots };
 
+    case 'commitStage':
+      return state.committedStages.includes(action.stage)
+        ? state
+        : {
+            ...state,
+            committedStages: [...state.committedStages, action.stage].sort((a, b) => a - b),
+          };
+
+    case 'releaseStage':
+      return {
+        ...state,
+        committedStages: state.committedStages.filter((stage) => stage !== action.stage),
+      };
+
     // A saved variant is a scenario plus a configuration, so opening one
     // restores both and lands on the simulation tab where they can be seen.
     case 'openVariant':
@@ -277,6 +306,7 @@ function reducer(state: SessionState, action: Action): SessionState {
         ...state,
         scenarioId: action.scenarioId,
         config: action.config,
+        committedStages: [],
         strategy: action.strategy,
         tab: 'simulation',
         tS: 0,
@@ -285,7 +315,14 @@ function reducer(state: SessionState, action: Action): SessionState {
       };
 
     case 'resetConfig':
-      return { ...state, config: {}, tS: 0, playing: false, resetNonce: state.resetNonce + 1 };
+      return {
+        ...state,
+        config: {},
+        committedStages: [],
+        tS: 0,
+        playing: false,
+        resetNonce: state.resetNonce + 1,
+      };
 
     // Whatever survived the last visit, merged over the defaults. Playback is
     // deliberately not among the restored fields: a page that starts running
@@ -318,6 +355,7 @@ type PersistedSession = Pick<
   | 'viewMode'
   | 'tab'
   | 'compareSlots'
+  | 'committedStages'
 >;
 
 const TABS: StudioTab[] = ['simulation', 'resilience', 'compare'];
@@ -325,7 +363,13 @@ const VIEW_MODES: ViewMode[] = ['3d', '2d'];
 
 const isSession = (value: unknown): value is Partial<PersistedSession> => {
   if (!isRecord(value)) return false;
-  const { scenarioId, config, tS, selectedSatelliteId, selectedClientId, viewMode, tab, compareSlots } = value;
+  const { scenarioId, config, tS, selectedSatelliteId, selectedClientId, viewMode, tab, compareSlots, committedStages } = value;
+  if (
+    committedStages !== undefined
+    && !(Array.isArray(committedStages) && committedStages.every(isFiniteNumber))
+  ) {
+    return false;
+  }
   if (
     compareSlots !== undefined
     && !(
@@ -356,6 +400,7 @@ const persisted = (state: SessionState): PersistedSession => ({
   viewMode: state.viewMode,
   tab: state.tab,
   compareSlots: state.compareSlots,
+  committedStages: state.committedStages,
 });
 
 interface SessionContextValue {

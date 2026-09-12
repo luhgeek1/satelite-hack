@@ -18,7 +18,7 @@ where the work stands.
 | Routing | ✅ BFS + Dijkstra, client-no-relay rule, four no-route reasons, deterministic |
 | Metrics | ✅ visibility, availability, outage windows, edge-of-horizon handling, hop stats |
 | Scenario import / validate | ✅ field-precise errors, JSON body and multipart upload |
-| Configuration overrides | ✅ launch stage, RAAN, phase 0–360, failures, gateway outages, site surroundings, environment |
+| Configuration overrides | ✅ launch stage, RAAN, phase 0-360, failures, gateway outages, site surroundings, environment |
 | Site surroundings | ✅ per-site profile / mask / azimuth horizon / altitude, only ever removes links, reference figures untouched (DECISIONS D9, E6) |
 | Simulation API | ✅ synchronous, content-addressed, idempotent |
 | Snapshot / ephemeris / availability strip / route timeline | ✅ cached |
@@ -46,7 +46,8 @@ where the work stands.
 | Routes | ✅ every client's path drawn in its own colour, focused one emphasised; sites clickable on globe and map |
 | Network health | ✅ per-client hop count or no-route reason, stranded clients named outright |
 | Satellite card | ✅ names the clients it carries right now, each chain clickable |
-| Deployment campaign | ✅ all three launches listed with their figures, the row is the switch, rings named by the launch that commits them, ghost orbit tracks for rings still on the ground, per-launch planning that holds what has flown (DECISIONS D15, E8) |
+| Deployment campaign | ✅ all three launches with their figures, the row is the switch; the selected launch is a draft or fixed, with find/fix/withdraw beside it; fixed launches persist and lock their rings' scales, later rings are disabled with a jump to their launch (DECISIONS D15, D16, E8) |
+| Guided tour | ✅ eight-step studio tour on first visit (dimmed spotlight, replay lamp in the header) and a six-step deployment tour behind the group's own lamp (DECISIONS D17) |
 | Optimizer UI | ✅ depth picker, run count and time estimate before the click, time remaining during; phase period derived from the plane's slots |
 | Site surroundings UI | ✅ picker on every site card, effective horizon, share of the day hidden, dashed masked links on globe and map |
 | Gateway outages UI | ✅ whole day / from now / window, same as satellite failures |
@@ -127,7 +128,7 @@ What is left:
   questions (A19); the old five-minute script has to lose a minute.
 - The technical jury reads the repository from code freeze, apart from the
   defence: the root README is what they open first.
-- A 20–30 s sped-up screencast of the interface.
+- A 20-30 s sped-up screencast of the interface.
 - Book the two consultation slots per checkpoint (one tracker, one expert) and
   take the open questions from [DECISIONS.md](DECISIONS.md#o-open-questions).
 
@@ -144,7 +145,7 @@ Measured, reproducible via `make test`.
 | 03 ten failures | 79.3% | 80.8% | 82.5% | 24 / 24 / 20 min |
 | 04 ISL 2000 km | 77.5% | 62.2% | 65.1% | 94 / 178 / 4 min |
 
-Target 90% per client. Full simulation: ~0.15–0.24 s — the unit every other cost
+Target 90% per client. Full simulation: ~0.15-0.24 s — the unit every other cost
 is counted in.
 
 ### What surroundings do to scenario 01

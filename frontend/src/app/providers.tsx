@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api';
 import { SessionProvider } from '@/entities/session';
+import { TourProvider } from '@/features/guided-tour';
 import { LanguageProvider, type Language } from '@/shared/i18n';
 
 export function Providers({
@@ -34,7 +35,9 @@ export function Providers({
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider language={language}>
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <TourProvider>{children}</TourProvider>
+        </SessionProvider>
       </LanguageProvider>
     </QueryClientProvider>
   );

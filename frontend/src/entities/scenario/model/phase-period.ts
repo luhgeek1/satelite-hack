@@ -9,7 +9,7 @@ const SPACING_TOLERANCE_DEG = 1e-6;
  * Both angles are free over the whole circle — the organisers confirmed there
  * is no other constraint — but when a plane's satellites sit at uniform slots,
  * shifting the phase by exactly one slot maps the set onto itself and every
- * metric comes out identical. A search that sweeps 0–360° would then spend
+ * metric comes out identical. A search that sweeps 0-360° would then spend
  * most of its budget re-measuring the same geometry, so the optimizer sweeps
  * one period instead. Two things break that symmetry and widen the period
  * back to a full turn:

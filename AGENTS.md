@@ -132,7 +132,7 @@ does. Re-check these before assuming something needs to be asynchronous.
 
 | Operation | Cost |
 |---|---|
-| Full 720-instant simulation, 48 satellites, 3 clients | **~0.15–0.24 s** |
+| Full 720-instant simulation, 48 satellites, 3 clients | **~0.15-0.24 s** |
 | Edges in one snapshot | ~81 |
 | One snapshot as JSON | ~13 KB |
 | Whole-day ephemeris (positions only) | 1 MB → **324 KB gzipped** |

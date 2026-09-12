@@ -1,12 +1,7 @@
 'use client';
 
-import { Lock, Unlock } from 'lucide-react';
-import {
-  isPlaneLocked,
-  planeCommitStage,
-  setPlaneLocked,
-  type PlaneLock,
-} from '@/entities/scenario';
+import { ArrowRight, Lock, Pencil } from 'lucide-react';
+import { planeCommitStage } from '@/entities/scenario';
 import { cn } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import type { ScenarioDocument } from '@/shared/api';
@@ -14,41 +9,54 @@ import type { ScenarioDocument } from '@/shared/api';
 interface RingLegendProps {
   scenario: ScenarioDocument;
   colors: Record<string, string>;
-  /** Launch stage on screen, which decides what counts as already in orbit. */
+  /** The launch on screen, which decides which rings are in the picture. */
   stage: number;
-  locks: PlaneLock[];
-  onLocksChange: (locks: PlaneLock[]) => void;
+  /** Launches whose angles are settled. */
+  committed: number[];
+  onSelectStage: (stage: number) => void;
 }
 
 /**
- * Which ring is which, and whether it is still a design choice.
+ * Which ring is which, and why its scales do or do not move.
  *
- * The scales above stack every plane under one ruler, which answers how far
- * the planes sit from each other but says nothing about them individually. Two
- * things about a ring decide whether moving its scale means anything: the
- * launch that puts it up, and whether that launch has already flown. A ring
- * still on the ground can be designed freely; one in orbit keeps the angles it
- * launched with, and the lock is how that is stated to every search.
+ * The rulers below stack every plane under one axis, which answers how far the
+ * planes sit from each other but says nothing about them one at a time. Three
+ * things can be true of a ring, and each disables its scales for a different
+ * reason: its launch is settled, it is the one being designed now, or it flies
+ * later and is therefore designed on its own launch. Saying which, in the
+ * ring's own row, is what keeps a dimmed slider from reading as a fault.
  */
-export function RingLegend({ scenario, colors, stage, locks, onLocksChange }: RingLegendProps) {
+export function RingLegend({
+  scenario,
+  colors,
+  stage,
+  committed,
+  onSelectStage,
+}: RingLegendProps) {
   const { t } = useI18n();
 
   return (
     <div className="mb-2.5 space-y-px">
       {scenario.design.planes.map((plane) => {
         const commitStage = planeCommitStage(scenario, plane.id);
-        const flying = commitStage <= stage;
-        const locked = isPlaneLocked(locks, plane.id);
+        const settled = committed.includes(commitStage);
+        const later = commitStage > stage;
         const count = scenario.design.satellites.filter(
           (satellite) => satellite.plane_id === plane.id,
         ).length;
 
+        const state = settled ? 'settled' : later ? 'later' : 'designing';
+        const Icon = settled ? Lock : later ? ArrowRight : Pencil;
+
         return (
-          <div
+          <button
             key={plane.id}
+            type="button"
+            onClick={() => onSelectStage(commitStage)}
+            title={t('deploy.ringGo', { stage: commitStage })}
             className={cn(
-              'flex items-center gap-2 py-0.5 transition-opacity',
-              !flying && 'opacity-45',
+              'flex w-full items-center gap-2 py-0.5 text-left transition-colors focus-visible:outline-none',
+              later ? 'opacity-50 hover:opacity-80' : 'hover:bg-white/[0.03]',
             )}
           >
             <span
@@ -57,24 +65,22 @@ export function RingLegend({ scenario, colors, stage, locks, onLocksChange }: Ri
             />
             <span className="font-data text-[11px] text-zinc-200">{plane.id}</span>
             <span className="truncate font-label text-[10px] text-zinc-500">
-              {t('deploy.ringLaunch', { stage: commitStage })} ·{' '}
-              {t('deploy.sv', { count })} ·{' '}
-              {t(flying ? 'deploy.ringInOrbit' : 'deploy.ringWaiting')}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => onLocksChange(setPlaneLocked(locks, plane.id, !locked))}
-              aria-pressed={locked}
-              title={t(locked ? 'deploy.ringCommitted' : 'deploy.ringFree')}
-              className={cn(
-                'ml-auto flex-shrink-0 transition-colors focus-visible:outline-none',
-                locked ? 'text-zinc-200' : 'text-zinc-600 hover:text-zinc-300',
+              {t('deploy.ringLaunch', { stage: commitStage })} · {t('deploy.sv', { count })} ·{' '}
+              {t(
+                state === 'settled'
+                  ? 'deploy.ringSettled'
+                  : state === 'later'
+                    ? 'deploy.ringLater'
+                    : 'deploy.ringDesigning',
+                { stage: commitStage },
               )}
-            >
-              {locked ? <Lock size={11} /> : <Unlock size={11} />}
-            </button>
-          </div>
+            </span>
+            <Icon
+              size={10}
+              aria-hidden="true"
+              className={cn('ml-auto flex-shrink-0', settled ? 'text-zinc-400' : 'text-zinc-600')}
+            />
+          </button>
         );
       })}
     </div>

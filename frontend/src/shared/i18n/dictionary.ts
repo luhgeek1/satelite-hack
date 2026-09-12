@@ -127,6 +127,7 @@ export const en = {
     "A ring's angles are chosen when it launches and never change. One design, three moments.",
   'deploy.open': 'Details and planning',
   'deploy.close': 'Close the deployment plan',
+  'deploy.info': 'How deployment works',
   'deploy.month': 'month {month}',
   'deploy.colStage': 'LAUNCH',
   'deploy.colRings': 'IN ORBIT',
@@ -136,8 +137,34 @@ export const en = {
   'deploy.show': 'Show launch {stage} on the globe',
   'deploy.commits': 'Commits {rings}',
   'deploy.commitsNone': 'Nothing new committed',
+  'deploy.badgeFixed': 'FIXED',
+  'deploy.badgeDraft': 'DRAFT',
+  'deploy.stateDraft': 'Launch {stage} · draft',
+  'deploy.stateFixed': 'Launch {stage} · fixed',
+  'deploy.draftHint':
+    'Find the angles automatically, or set them on the scales below, then fix this launch — launch {next} is then planned on top of it.',
+  'deploy.draftHintLast':
+    'The last launch. Find or set its angles and fix it, and the campaign is planned end to end.',
+  'deploy.fixedHint':
+    'These rings are held: neither a search nor a scale moves them. Next step is launch {next}.',
+  'deploy.fixedHintAll':
+    'Every launch is fixed, so the campaign is settled. Withdraw one to revisit it.',
+  'deploy.fixedRing': '{ring} · RAAN {raan}° · phase {phase}°',
+  'deploy.find': 'Find the angles',
+  'deploy.finding': 'Searching',
+  'deploy.findHint':
+    'Holds what is fixed, chooses this launch and the later ones together, and scores the finished constellation.',
+  'deploy.fix': 'Fix this launch',
+  'deploy.fixHint': 'Nothing moves these rings afterwards — not a search, not a scale.',
+  'deploy.release': 'Withdraw',
+  'deploy.releaseHint':
+    'The rocket has not flown yet, so the plan may still be revisited. After the launch the angles cannot change.',
+  'deploy.goNext': 'Launch {stage}',
+  'deploy.planStart': 'Nothing is fixed yet. Start with launch {stage}: settle its angles, then move on.',
+  'deploy.planProgress': '{fixed} of {total} launches fixed. A fixed launch is held until you withdraw it.',
+  'deploy.fixedKept': 'Fixed and kept: this launch survives a reload, and only Withdraw frees it.',
+  'deploy.fixedQuiet': 'Fixed',
   'deploy.planFrom': 'Plan from here',
-  'deploy.planFromStage': 'Plan from launch {stage}',
   'deploy.planFromHint':
     'Hold everything already in orbit, choose this launch and the later ones together, and score the finished constellation at launch {last}.',
   'deploy.planNote':
@@ -153,19 +180,69 @@ export const en = {
   'deploy.tipTitle': 'Launches, not settings',
   'deploy.tipText':
     'A ring keeps the angles it was launched with, so all three launches share one design. Switching launch changes which rings have arrived, never their angles. Plan from the first launch still on the ground.',
-  'deploy.ringsTitle': 'Rings',
   'deploy.ringLaunch': 'launch {stage}',
-  'deploy.ringInOrbit': 'in orbit',
-  'deploy.ringWaiting': 'not launched yet',
-  'deploy.ringCommitted': 'Committed: this ring has flown and its angles are held',
-  'deploy.ringFree': 'Free: a search may move this ring',
+  'deploy.ringSettled': 'fixed',
+  'deploy.ringDesigning': 'being designed',
+  'deploy.ringLater': 'designed at launch {stage}',
+  'deploy.ringGo': 'Go to launch {stage}',
+
+  'tour.label': 'Guided tour',
+  'tour.next': 'Next',
+  'tour.back': 'Back',
+  'tour.done': 'Done',
+  'tour.skip': 'Skip',
+  'tour.replay': 'Show me around',
+  'tour.deployment': 'How deployment works',
+
+  'tour.globeTitle': 'The constellation at one instant',
+  'tour.globeText':
+    'Satellites, the links between them and the route each ground terminal is using right now.',
+  'tour.healthTitle': 'The number being graded',
+  'tour.healthText':
+    'Connectivity over the day for every terminal. The worst one is the score, and red means it misses the target.',
+  'tour.timeTitle': 'A day, at a glance',
+  'tour.timeText':
+    'The strip is 24 hours: the marks are the minutes with no route. Drag the handle or press play to watch them happen.',
+  'tour.windowTitle': 'Break something on purpose',
+  'tour.windowText':
+    'Turn this on, drag a span across the strip, and switch off a satellite or a gateway inside it to see what the network does.',
+  'tour.deployTitle': 'Three launches, one design',
+  'tour.deployText':
+    'Sixteen satellites per launch, three months apart. A ring keeps the angles it launched with, so the campaign is planned one launch at a time.',
+  'tour.planesTitle': 'The two angles',
+  'tour.planesText':
+    'RAAN spaces the rings around the Earth; phase spaces the satellites inside a ring. Everything else follows from these six numbers.',
+  'tour.saveTitle': 'Keep a design',
+  'tour.saveText':
+    'Save what is on screen as a variant, then put two variants side by side on the Compare tab.',
+  'tour.helpTitle': 'That is the tour',
+  'tour.helpText': 'The lamp brings it back, and the one in deployment explains the campaign in detail.',
+
+  'tour.dTableTitle': 'Three moments, not three settings',
+  'tour.dTableText':
+    'Each row is a moment in the campaign: which rings are up by then, and what the network delivers. The row is the switch.',
+  'tour.dStepTitle': 'The launch you are working on',
+  'tour.dStepText':
+    'The selected launch is either a draft or a decision. What it is, and what to do about it, is said here.',
+  'tour.dFindTitle': 'Let the search choose',
+  'tour.dFindText':
+    'It holds every fixed launch, picks this one and the later ones together, and scores the finished constellation — never this stage alone.',
+  'tour.dFixTitle': 'Fix what you decided',
+  'tour.dFixText':
+    'A fixed launch is held against every search and every scale, survives a reload, and is freed only by Withdraw.',
+  'tour.dRingsTitle': 'Why a scale will not move',
+  'tour.dRingsText':
+    'A ring of a fixed launch is locked; a ring that flies later is designed on its own launch, one click away in this legend.',
+  'tour.dPanelTitle': 'The whole campaign',
+  'tour.dPanelText':
+    'The same three launches with a day of connectivity each, the angles they hold, and how evenly the rings are spread.',
 
   'config.deployment': 'Deployment',
   'config.deploymentHint': 'Stage {stage} of {total}, {planes} orbital planes.',
   'config.deployAria': 'Deploy {count} satellites',
   'config.planes': 'Orbital planes',
-  'config.planesHint': 'RAAN and phase 0–360° per plane, no other constraint.',
-  'config.editScale': 'Edit {label}: 0–{max}°, step {step}°. Enter to apply, Esc to cancel.',
+  'config.planesHint': 'RAAN and phase 0-360° per plane, no other constraint.',
+  'config.editScale': 'Edit {label}: 0-{max}°, step {step}°. Enter to apply, Esc to cancel.',
   'config.satellitesInPlane': '{count} SV',
   'config.outages': 'Outages',
   'config.gaps': '{count} gaps',
@@ -531,6 +608,7 @@ export const ru: Record<TranslationKey, string> = {
     'Углы кольца выбираются при его запуске и больше не меняются. Один проект, три момента.',
   'deploy.open': 'Подробнее и планирование',
   'deploy.close': 'Закрыть план развёртывания',
+  'deploy.info': 'Как устроено развёртывание',
   'deploy.month': 'месяц {month}',
   'deploy.colStage': 'ОЧЕР.',
   'deploy.colRings': 'НА ОРБИТЕ',
@@ -540,8 +618,34 @@ export const ru: Record<TranslationKey, string> = {
   'deploy.show': 'Показать очередь {stage} на глобусе',
   'deploy.commits': 'Фиксирует {rings}',
   'deploy.commitsNone': 'Новых колец нет',
+  'deploy.badgeFixed': 'ЗАФИКС.',
+  'deploy.badgeDraft': 'ЧЕРНОВИК',
+  'deploy.stateDraft': 'Очередь {stage} · черновик',
+  'deploy.stateFixed': 'Очередь {stage} · зафиксирована',
+  'deploy.draftHint':
+    'Подберите углы автоматически или выставьте их на шкалах ниже, затем зафиксируйте — очередь {next} будет планироваться поверх этой.',
+  'deploy.draftHintLast':
+    'Последняя очередь. Подберите или выставьте её углы и зафиксируйте — кампания спланирована целиком.',
+  'deploy.fixedHint':
+    'Эти кольца удерживаются: их не двигает ни поиск, ни шкала. Следующий шаг — очередь {next}.',
+  'deploy.fixedHintAll':
+    'Зафиксированы все очереди, кампания собрана. Снимите фиксацию с любой, чтобы пересмотреть её.',
+  'deploy.fixedRing': '{ring} · RAAN {raan}° · фаза {phase}°',
+  'deploy.find': 'Подобрать углы',
+  'deploy.finding': 'Идёт подбор',
+  'deploy.findHint':
+    'Держит зафиксированное, выбирает эту очередь и последующие вместе и оценивает по полной группировке.',
+  'deploy.fix': 'Зафиксировать',
+  'deploy.fixHint': 'После этого кольца очереди не двигает ничто: ни поиск, ни шкала.',
+  'deploy.release': 'Снять фиксацию',
+  'deploy.releaseHint':
+    'Пуск ещё не состоялся, значит план можно пересмотреть. После пуска углы уже не меняются.',
+  'deploy.goNext': 'Очередь {stage}',
+  'deploy.planStart': 'Пока ничего не зафиксировано. Начните с очереди {stage}: решите её углы и идите дальше.',
+  'deploy.planProgress': 'Зафиксировано очередей: {fixed} из {total}. Зафиксированное держится, пока вы его не снимете.',
+  'deploy.fixedKept': 'Зафиксировано и сохранено: переживёт перезагрузку, снимается только кнопкой «Снять фиксацию».',
+  'deploy.fixedQuiet': 'Зафиксировано',
   'deploy.planFrom': 'Планировать отсюда',
-  'deploy.planFromStage': 'Спланировать с очереди {stage}',
   'deploy.planFromHint':
     'Удержать всё, что уже на орбите, выбрать эту очередь и последующие вместе и оценить по полной группировке на очереди {last}.',
   'deploy.planNote':
@@ -557,19 +661,69 @@ export const ru: Record<TranslationKey, string> = {
   'deploy.tipTitle': 'Очереди, а не настройки',
   'deploy.tipText':
     'Кольцо навсегда сохраняет углы, с которыми его запустили, поэтому у всех трёх очередей один общий проект. Переключение очереди меняет то, какие кольца уже прилетели, а не их углы. Планировать надо с той очереди, которая ещё на земле.',
-  'deploy.ringsTitle': 'Кольца',
   'deploy.ringLaunch': 'очередь {stage}',
-  'deploy.ringInOrbit': 'на орбите',
-  'deploy.ringWaiting': 'ещё не запущено',
-  'deploy.ringCommitted': 'Зафиксировано: кольцо улетело, его углы удерживаются',
-  'deploy.ringFree': 'Свободно: поиск может двигать это кольцо',
+  'deploy.ringSettled': 'зафиксировано',
+  'deploy.ringDesigning': 'настраивается',
+  'deploy.ringLater': 'настраивается на очереди {stage}',
+  'deploy.ringGo': 'Перейти к очереди {stage}',
+
+  'tour.label': 'Обзорный тур',
+  'tour.next': 'Далее',
+  'tour.back': 'Назад',
+  'tour.done': 'Готово',
+  'tour.skip': 'Пропустить',
+  'tour.replay': 'Показать, как всё устроено',
+  'tour.deployment': 'Как устроено развёртывание',
+
+  'tour.globeTitle': 'Группировка в один момент',
+  'tour.globeText':
+    'Спутники, связи между ними и маршрут, которым каждый наземный пункт пользуется прямо сейчас.',
+  'tour.healthTitle': 'Оценка, по которой судят',
+  'tour.healthText':
+    'Связность за сутки по каждому пункту. Худший из них и есть результат, красный — не дотягивает до цели.',
+  'tour.timeTitle': 'Сутки одним взглядом',
+  'tour.timeText':
+    'Полоса — это 24 часа: отметки на ней те минуты, когда маршрута не было. Тяните бегунок или включите воспроизведение.',
+  'tour.windowTitle': 'Сломать нарочно',
+  'tour.windowText':
+    'Включите режим, обведите интервал на полосе и выключите в нём спутник или шлюз — увидите, как сеть это переживёт.',
+  'tour.deployTitle': 'Три запуска, один проект',
+  'tour.deployText':
+    'По 16 аппаратов, раз в три месяца. Кольцо навсегда сохраняет углы, с которыми взлетело, поэтому кампания планируется по очереди.',
+  'tour.planesTitle': 'Два угла',
+  'tour.planesText':
+    'RAAN разводит кольца вокруг Земли, фаза — аппараты внутри кольца. Всё остальное вытекает из этих шести чисел.',
+  'tour.saveTitle': 'Сохранить проект',
+  'tour.saveText':
+    'Сохраните то, что на экране, вариантом, а потом поставьте два варианта рядом на вкладке «Сравнение».',
+  'tour.helpTitle': 'Это весь тур',
+  'tour.helpText': 'Лампочка вернёт его, а лампочка в развёртывании подробно разберёт кампанию.',
+
+  'tour.dTableTitle': 'Три момента, а не три набора настроек',
+  'tour.dTableText':
+    'Каждая строка — момент кампании: какие кольца к нему уже на орбите и что сеть в этот момент даёт. Строка и есть переключатель.',
+  'tour.dStepTitle': 'Очередь, с которой вы работаете',
+  'tour.dStepText':
+    'Выбранная очередь — либо черновик, либо принятое решение. Что именно и что с этим делать, написано здесь.',
+  'tour.dFindTitle': 'Пусть углы выберет поиск',
+  'tour.dFindText':
+    'Он держит все зафиксированные очереди, подбирает эту и последующие вместе и оценивает полную группировку — никогда одну очередь отдельно.',
+  'tour.dFixTitle': 'Зафиксировать решение',
+  'tour.dFixText':
+    'Зафиксированная очередь удерживается против любого поиска и любой шкалы, переживает перезагрузку и снимается только кнопкой «Снять фиксацию».',
+  'tour.dRingsTitle': 'Почему шкала не двигается',
+  'tour.dRingsText':
+    'Кольцо зафиксированной очереди заблокировано, а кольцо будущей настраивается на своей очереди — один клик по этой легенде.',
+  'tour.dPanelTitle': 'Вся кампания сразу',
+  'tour.dPanelText':
+    'Те же три очереди, но с сутками связности на каждую, удерживаемыми углами и разносом колец.',
 
   'config.deployment': 'Развёртывание',
   'config.deploymentHint': 'Этап {stage} из {total}, орбитальных плоскостей: {planes}.',
   'config.deployAria': 'Развернуть {count} спутников',
   'config.planes': 'Плоскости',
-  'config.planesHint': 'RAAN и фаза 0–360° на плоскость, других ограничений нет.',
-  'config.editScale': 'Изменить {label}: 0–{max}°, шаг {step}°. Enter — применить, Esc — отменить.',
+  'config.planesHint': 'RAAN и фаза 0-360° на плоскость, других ограничений нет.',
+  'config.editScale': 'Изменить {label}: 0-{max}°, шаг {step}°. Enter — применить, Esc — отменить.',
   'config.satellitesInPlane': '{count} КА',
   'config.outages': 'Простои',
   'config.gaps': 'окон: {count}',

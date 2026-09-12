@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { Lock } from 'lucide-react';
 import { cn, formatDegrees } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 
@@ -68,8 +69,12 @@ interface ScaleRowProps {
   ticks: number;
   majorEvery: number;
   disabled?: boolean;
-  /** Dimmed but still usable: the row is being set for a moment that has not arrived. */
-  muted?: boolean;
+  /**
+   * Settled: the reading is a decision that has been taken, not a control.
+   * Inert and marked with a lock, because a value that must not move and a
+   * value that merely looks quiet are not the same thing to a hand on a mouse.
+   */
+  locked?: boolean;
   onChange: (value: number) => void;
   onCommit?: (value: number) => void;
 }
@@ -91,11 +96,12 @@ export function ScaleRow({
   ticks,
   majorEvery,
   disabled,
-  muted,
+  locked,
   onChange,
   onCommit,
 }: ScaleRowProps) {
   const { t } = useI18n();
+  const off = disabled || locked;
   const [draft, setDraft] = useState<string | null>(null);
   const cancelEdit = useRef(false);
 
@@ -124,16 +130,15 @@ export function ScaleRow({
         htmlFor={id}
         className={cn(
           'flex items-center gap-1.5',
-          disabled && 'opacity-50',
-          muted && 'opacity-55',
-          !disabled && 'cursor-ew-resize',
+          off ? 'cursor-not-allowed opacity-40' : 'cursor-ew-resize',
         )}
       >
         {accent && <span className="h-2.5 w-0.5 flex-shrink-0" style={{ background: accent }} />}
         <span className="font-data text-[11px] text-zinc-300">{label}</span>
+        {locked && <Lock size={9} className="flex-shrink-0 text-zinc-500" aria-hidden="true" />}
       </label>
 
-      <div className={cn('relative h-[15px] min-w-0', disabled && 'opacity-50', muted && 'opacity-55')}>
+      <div className={cn('relative h-[15px] min-w-0', off && 'pointer-events-none opacity-40')}>
         <div
           className="pointer-events-none absolute inset-x-[5px] top-1/2 flex items-start justify-between"
           aria-hidden="true"
@@ -155,7 +160,7 @@ export function ScaleRow({
           max={max}
           step={step}
           value={value}
-          disabled={disabled}
+          disabled={off}
           onChange={(event) => onChange(parseFloat(event.target.value))}
           onPointerUp={(event) => onCommit?.(parseFloat((event.target as HTMLInputElement).value))}
           onKeyUp={(event) => onCommit?.(parseFloat((event.target as HTMLInputElement).value))}
@@ -165,7 +170,7 @@ export function ScaleRow({
       <label
         className={cn(
           'group relative flex items-baseline justify-end',
-          disabled ? 'opacity-50' : 'cursor-text',
+          off ? 'cursor-not-allowed opacity-40' : 'cursor-text',
         )}
         title={t('config.editScale', { label, max, step })}
       >
@@ -177,7 +182,7 @@ export function ScaleRow({
           autoComplete="off"
           spellCheck={false}
           value={draft ?? formatDegrees(value)}
-          disabled={disabled}
+          disabled={off}
           onFocus={(event) => event.currentTarget.select()}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={commitDraft}

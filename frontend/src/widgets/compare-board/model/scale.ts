@@ -21,7 +21,7 @@ export const siteRows = (perClient: CompareResponse['per_client_availability']):
     .sort((left, right) => Math.min(...left.values) - Math.min(...right.values));
 
 /**
- * A 0–100% axis spends its whole range on nothing: these availabilities live in
+ * A 0-100% axis spends its whole range on nothing: these availabilities live in
  * the last few points, and a 1.7 pp gain is invisible at that scale. The window
  * starts one 5-point step below the lowest figure plotted, which is as much
  * resolution as the comparison can have while every site stays on one axis.
