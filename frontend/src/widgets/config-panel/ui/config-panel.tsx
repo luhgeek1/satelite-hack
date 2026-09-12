@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, RotateCcw } from 'lucide-react';
+import { Plus, RadioTower, RotateCcw, SatelliteDish } from 'lucide-react';
 import { DeploymentControl } from '@/features/configure-deployment';
 import { PlaneControls } from '@/features/configure-planes';
 import { FailureForm } from '@/features/inject-failure';
@@ -10,7 +10,7 @@ import { SaveVariantButton } from '@/features/manage-variants';
 import { useSession } from '@/entities/session';
 import type { SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
-import { cn, formatClock, formatLatitude, formatLongitude } from '@/shared/lib';
+import { cn, formatClock, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
 import { Button, ParamGroup } from '@/shared/ui';
 import type { ClientMetrics, ScenarioDocument } from '@/shared/api';
 import type { FailureRequest } from '@/features/inject-failure';
@@ -55,7 +55,7 @@ export function ConfigPanel({
     outages: true,
     failures: false,
     satellites: false,
-    sites: false,
+    sites: true,
   });
   const [picking, setPicking] = useState(false);
 
@@ -229,35 +229,65 @@ export function ConfigPanel({
         <ParamGroup
           code="GND"
           title="Ground sites"
-          value={`${gateways.length} GW  ${clients.length} CL`}
+          value={`${sites.length}`}
           open={open.sites}
           onToggle={() => toggle('sites')}
         >
-          <div className="space-y-2.5">
-            {[...gateways, ...clients].map((site) => (
-              <div key={site.id} className="flex items-start gap-2.5">
-                <span
-                  className={cn(
-                    'mt-1 h-2 w-2 shrink-0 bg-zinc-500',
-                    site.role === 'gateway'
-                      ? 'rotate-45'
-                      : '[clip-path:polygon(50%_0,100%_100%,0_100%)]',
-                  )}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-data text-[11px] text-zinc-200">{site.id}</span>
-                    <span className="truncate font-label text-[11px] text-zinc-500">{site.name}</span>
-                    <span className="ml-auto font-data text-[9px] tracking-[0.08em] text-zinc-500">
-                      {site.role === 'gateway' ? 'GW' : 'CL'}
+          <div className="space-y-2">
+            {[...clients, ...gateways].map((site) => {
+              const isTerminal = site.role === 'client';
+              const selected = isTerminal && site.id === focusClientId;
+              const metrics = clientMetrics.find((client) => client.client_id === site.id);
+              const Icon = isTerminal ? SatelliteDish : RadioTower;
+              const className = cn(
+                'block w-full border p-2.5 text-left',
+                selected ? 'border-zinc-500 bg-white/[0.06]' : 'border-rule-strong bg-white/[0.02]',
+                isTerminal && 'transition-colors hover:border-zinc-500 focus-visible:outline focus-visible:outline-1 focus-visible:outline-zinc-300',
+              );
+              const content = (
+                <>
+                  <span className="flex items-center gap-2">
+                    <Icon size={14} className="shrink-0 text-zinc-400" aria-hidden="true" />
+                    <span className="break-all font-data text-[12px] text-zinc-200">{site.id}</span>
+                    <span className="ml-auto shrink-0 font-label text-[10px] text-zinc-500">
+                      {isTerminal ? 'Terminal' : 'Gateway'}
                     </span>
-                  </div>
-                  <div className="font-data text-[10px] tabular-nums text-zinc-500">
-                    {formatLatitude(site.lat)} {formatLongitude(site.lon)}
-                  </div>
-                </div>
-              </div>
-            ))}
+                  </span>
+                  <span className="mt-1.5 block break-words font-label text-[11px] leading-relaxed text-zinc-400">
+                    {site.name}
+                  </span>
+                  <span className="mt-1 block font-data text-[10px] tabular-nums text-zinc-500">
+                    {formatLatitude(site.lat)} · {formatLongitude(site.lon)}
+                  </span>
+                  {isTerminal && (
+                    <span className="mt-2 flex items-baseline justify-between gap-2 border-t border-rule pt-2">
+                      <span className="font-label text-[10px] text-zinc-500">Daily connectivity</span>
+                      <span className={cn('font-data text-[11px] tabular-nums', metrics && !metrics.meets_target ? 'text-alarm' : 'text-zinc-300')}>
+                        {metrics ? formatPercent(metrics.availability) : '—'}
+                      </span>
+                    </span>
+                  )}
+                </>
+              );
+
+              return isTerminal ? (
+                <button
+                  key={site.id}
+                  type="button"
+                  aria-pressed={selected}
+                  title={`Show route for ${site.id}`}
+                  onClick={() => dispatch({ type: 'selectClient', clientId: site.id })}
+                  className={className}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div key={site.id} className={className}>{content}</div>
+              );
+            })}
+            {sites.length === 0 && (
+              <p className="font-label text-[11px] text-zinc-500">No ground sites in this scenario.</p>
+            )}
           </div>
         </ParamGroup>
       </div>
