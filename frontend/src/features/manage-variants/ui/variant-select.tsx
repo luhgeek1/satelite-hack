@@ -59,7 +59,7 @@ export function VariantSelect({ slot, value, exclude, lead, onSelect }: VariantS
           <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[50vh] overflow-y-auto border border-rule-strong bg-black">
             {options.length === 0 && (
               <div className="px-3 py-3 font-label text-[11px] text-zinc-500">
-                No saved variants yet. Configure the network and save one from the Simulation tab.
+                {t('compare.nothingHint')}
               </div>
             )}
             {options.map((variant) => (
@@ -77,7 +77,8 @@ export function VariantSelect({ slot, value, exclude, lead, onSelect }: VariantS
                 >
                   <span className="truncate font-label text-[12px] text-zinc-200">{variant.name}</span>
                   <span className="font-data text-[10px] tabular-nums text-zinc-500">
-                    worst {formatPercent(variant.worst_availability)} · {variant.strategy}
+                    {t('compare.worst', { value: formatPercent(variant.worst_availability) })} ·{' '}
+                    {variant.strategy}
                   </span>
                 </button>
                 <button

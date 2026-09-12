@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { VariantSelect } from '@/features/manage-variants';
 import { useComparison, useVariants } from '@/entities/variant';
+import { useSession } from '@/entities/session';
 import { cn, formatPercent, formatPoints } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { EmptyState, ErrorNote } from '@/shared/ui';
@@ -23,7 +24,12 @@ const SERIES_INK = ['#6b6b72', '#d9d9de'];
 export function CompareBoard() {
   const { t } = useI18n();
   const variants = useVariants();
-  const [slots, setSlots] = useState<[string | null, string | null]>([null, null]);
+  // The pair lives in the session, so arriving here from an optimizer result
+  // lands on the right two variants and a tab switch does not clear them.
+  const { state, dispatch } = useSession();
+  const slots = state.compareSlots;
+  const setSlots = (next: [string | null, string | null]) =>
+    dispatch({ type: 'setCompareSlots', slots: next });
 
   const resolved = useMemo(
     () => slots.map((id) => variants.data?.find((variant) => variant.id === id)),
@@ -52,7 +58,7 @@ export function CompareBoard() {
             slot="A"
             value={resolved[0]}
             exclude={slots[1] ?? undefined}
-            onSelect={(id) => setSlots(([, b]) => [id, b])}
+            onSelect={(id) => setSlots([id, slots[1]])}
           />
           <div className="flex flex-shrink-0 items-center font-data text-[10px] tracking-[0.08em] text-zinc-600">
             {t('compare.vs')}
@@ -62,9 +68,37 @@ export function CompareBoard() {
             value={resolved[1]}
             exclude={slots[0] ?? undefined}
             lead
-            onSelect={(id) => setSlots(([a]) => [a, id])}
+            onSelect={(id) => setSlots([slots[0], id])}
           />
         </div>
+
+        {/* A comparison answers "which one", and the next thing the engineer
+            wants is that one loaded back into the simulation. */}
+        {resolved.some(Boolean) && (
+          <div className="flex gap-3 sm:gap-4">
+            {resolved.map((variant, index) => (
+              <div key={variant?.id ?? index} className="min-w-0 flex-1">
+                {variant?.scenario_id && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      dispatch({
+                        type: 'openVariant',
+                        scenarioId: variant.scenario_id as string,
+                        config: variant.config,
+                        strategy: variant.strategy,
+                      })
+                    }
+                    className="w-full border border-rule-strong py-1.5 font-label text-[11px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none"
+                  >
+                    {t('compare.open')}
+                  </button>
+                )}
+              </div>
+            ))}
+            <div className="w-[2.5rem] flex-shrink-0 sm:w-[2.75rem]" aria-hidden="true" />
+          </div>
+        )}
 
         {variants.data?.length === 0 && (
           <div className="border border-rule-strong">

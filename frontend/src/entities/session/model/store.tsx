@@ -27,6 +27,8 @@ export interface SessionState {
   focusRequest: { id: string; nonce: number } | null;
   /** Bumped when a control is released, so a run can start without waiting. */
   commitNonce: number;
+  /** Which saved variants the Compare tab holds, so a tab switch does not clear them. */
+  compareSlots: [string | null, string | null];
 }
 
 type Action =
@@ -51,6 +53,8 @@ type Action =
   | { type: 'selectClient'; clientId: string | null }
   | { type: 'setViewMode'; viewMode: ViewMode }
   | { type: 'setTab'; tab: StudioTab }
+  | { type: 'setCompareSlots'; slots: [string | null, string | null] }
+  | { type: 'openVariant'; scenarioId: string; config: SimulationConfig; strategy: RoutingStrategy }
   | { type: 'resetConfig' }
   | { type: 'restore'; state: Partial<SessionState> };
 
@@ -67,6 +71,7 @@ const initialState: SessionState = {
   tab: 'simulation',
   focusRequest: null,
   commitNonce: 0,
+  compareSlots: [null, null],
 };
 
 function reducer(state: SessionState, action: Action): SessionState {
@@ -213,6 +218,23 @@ function reducer(state: SessionState, action: Action): SessionState {
     case 'setTab':
       return { ...state, tab: action.tab };
 
+    case 'setCompareSlots':
+      return { ...state, compareSlots: action.slots };
+
+    // A saved variant is a scenario plus a configuration, so opening one
+    // restores both and lands on the simulation tab where they can be seen.
+    case 'openVariant':
+      return {
+        ...state,
+        scenarioId: action.scenarioId,
+        config: action.config,
+        strategy: action.strategy,
+        tab: 'simulation',
+        tS: 0,
+        playing: false,
+        selectedSatelliteId: null,
+      };
+
     case 'resetConfig':
       return { ...state, config: {}, tS: 0, playing: false };
 
@@ -246,6 +268,7 @@ type PersistedSession = Pick<
   | 'selectedClientId'
   | 'viewMode'
   | 'tab'
+  | 'compareSlots'
 >;
 
 const TABS: StudioTab[] = ['simulation', 'resilience', 'compare'];
@@ -253,7 +276,17 @@ const VIEW_MODES: ViewMode[] = ['3d', '2d'];
 
 const isSession = (value: unknown): value is Partial<PersistedSession> => {
   if (!isRecord(value)) return false;
-  const { scenarioId, config, tS, selectedSatelliteId, selectedClientId, viewMode, tab } = value;
+  const { scenarioId, config, tS, selectedSatelliteId, selectedClientId, viewMode, tab, compareSlots } = value;
+  if (
+    compareSlots !== undefined
+    && !(
+      Array.isArray(compareSlots)
+      && compareSlots.length === 2
+      && compareSlots.every((slot) => slot === null || typeof slot === 'string')
+    )
+  ) {
+    return false;
+  }
   if (scenarioId !== undefined && scenarioId !== null && typeof scenarioId !== 'string') return false;
   if (config !== undefined && !isRecord(config)) return false;
   if (tS !== undefined && !isFiniteNumber(tS)) return false;
@@ -273,6 +306,7 @@ const persisted = (state: SessionState): PersistedSession => ({
   selectedClientId: state.selectedClientId,
   viewMode: state.viewMode,
   tab: state.tab,
+  compareSlots: state.compareSlots,
 });
 
 interface SessionContextValue {
