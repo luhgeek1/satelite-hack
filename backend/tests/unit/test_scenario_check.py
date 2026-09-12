@@ -15,7 +15,7 @@ import pytest
 
 from engine import geometry
 from engine.errors import ScenarioError
-from engine.scenario import scenario_warnings, validate_scenario
+from engine.scenario import scenario_warnings, unwrap_result, validate_scenario
 from engine.scenario_check import MAX_ISSUES, collect_issues
 
 pytestmark = pytest.mark.unit
@@ -225,6 +225,16 @@ def test_a_stage_with_nothing_launched_is_a_warning_not_an_error(scenario):
 
 def test_official_files_carry_no_warnings(official):
     assert all(not scenario_warnings(official[name]) for name in OFFICIAL)
+
+
+def test_a_result_file_yields_its_effective_scenario(scenario):
+    result = {"schema_version": "cosmo-A-result-1.0", "effective_scenario": scenario, "routes": []}
+    assert unwrap_result(result) == (scenario, True)
+    assert unwrap_result(scenario) == (scenario, False)
+
+    with pytest.raises(ScenarioError) as excinfo:
+        unwrap_result({"schema_version": "cosmo-A-result-1.0", "routes": []})
+    assert excinfo.value.field == "effective_scenario"
 
 
 # --- parity with the organisers' validator -------------------------------------

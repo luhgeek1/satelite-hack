@@ -20,12 +20,35 @@ class ScenarioRenameRequest(WireModel):
     title: str = Field(..., min_length=1, max_length=256)
 
 
+class ScenarioIssue(WireModel):
+    """One problem, or one warning, about a scenario document.
+
+    `field` is the JSON path to the value (`design.satellites[12].plane_id`).
+    `code` and `params` are stable so the interface can phrase it in the user's
+    language; `message` is the same in English.
+    """
+
+    code: str
+    field: str | None = None
+    message: str
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
 class ValidationReport(WireModel):
-    """Result of a dry-run check, so the UI can report before it commits."""
+    """Result of a dry-run check, so the UI can report before it commits.
+
+    `error` and `field` describe the first problem; `issues` holds all of them
+    (capped, with `issue_count` the true total). `warnings` are only reported
+    for a valid scenario.
+    """
 
     valid: bool
     error: str | None = None
     field: str | None = None
+    issues: list[ScenarioIssue] = Field(default_factory=list)
+    issue_count: int = 0
+    warnings: list[ScenarioIssue] = Field(default_factory=list)
+    from_result_file: bool = False
 
 
 class ScenarioSummary(WireModel):
@@ -44,6 +67,17 @@ class ScenarioSummary(WireModel):
     steps: int
     target_availability: float
     created_at: str | None = None
+
+
+class ScenarioImported(ScenarioSummary):
+    """The picker row for a scenario just imported, and what to tell its author.
+
+    `from_result_file` is set when the upload was an exported result and its
+    `effective_scenario` is what got imported.
+    """
+
+    warnings: list[ScenarioIssue] = Field(default_factory=list)
+    from_result_file: bool = False
 
 
 class ScenarioDetail(WireModel):

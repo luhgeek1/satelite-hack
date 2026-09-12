@@ -130,6 +130,26 @@ def scenario_warnings(scenario: dict[str, Any]) -> list[Issue]:
     return collect_warnings(scenario)
 
 
+def unwrap_result(document: Any) -> tuple[Any, bool]:
+    """Take the scenario out of an exported result file, if that is what this is.
+
+    The service writes `cosmo-A-result-1.0` files, and the one thing someone
+    is likely to try with a file the service gave them is to load it back.
+    Its `effective_scenario` is the full scenario that produced it, so that is
+    what gets imported. Returns the scenario and whether it was unwrapped.
+    """
+    if isinstance(document, dict) and document.get("schema_version") == RESULT_SCHEMA_VERSION:
+        inner = document.get("effective_scenario")
+        if not isinstance(inner, dict):
+            raise ScenarioError(
+                "This is a result file, but its effective_scenario is missing or not an object",
+                field="effective_scenario",
+                code="required",
+            )
+        return inner, True
+    return document, False
+
+
 def apply_override(scenario: dict[str, Any], override: ConfigOverride) -> dict[str, Any]:
     """Return a new scenario with the UI's changes applied.
 
