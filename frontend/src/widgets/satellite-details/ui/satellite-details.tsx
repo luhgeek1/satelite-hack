@@ -1,7 +1,15 @@
 'use client';
 
+import { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { motion } from 'motion/react';
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+} from 'motion/react';
 import { useSession } from '@/entities/session';
 import { neighboursOf, type LinkView, type SatelliteView } from '@/entities/satellite';
 import { RouteChain, tracesThrough, type RouteTrace } from '@/entities/simulation';
@@ -19,6 +27,9 @@ interface SatelliteDetailsProps {
   placement?: 'overlay' | 'sidebar';
 }
 
+/** One curve for the whole panel, so nothing moves on a timing of its own. */
+const EASE = [0.22, 0.61, 0.36, 1] as const;
+
 export function SatelliteDetails({
   satellite,
   links,
@@ -30,8 +41,34 @@ export function SatelliteDetails({
   placement = 'overlay',
 }: SatelliteDetailsProps) {
   const { dispatch } = useSession();
+  const reduce = useReducedMotion();
+
+  // The score counts up to its reading rather than appearing at it, which is
+  // what makes the meter read as a measurement being taken.
+  const score = useMotionValue(0);
+  const settledScore = useSpring(score, { stiffness: 170, damping: 24, mass: 0.7 });
+  const scoreLabel = useTransform(settledScore, (value) => Math.round(value));
+
+  useEffect(() => {
+    if (satellite) score.set(satellite.criticality);
+  }, [satellite, score]);
 
   if (!satellite) return null;
+
+  // One orchestrated entrance: the sections arrive in reading order, and
+  // switching to another node replays it rather than cutting the content.
+  const body = {
+    hidden: {},
+    shown: {
+      transition: reduce ? {} : { staggerChildren: 0.04, delayChildren: 0.1 },
+    },
+    out: { opacity: 0, transition: { duration: reduce ? 0 : 0.1 } },
+  };
+
+  const section = {
+    hidden: reduce ? { opacity: 1 } : { opacity: 0, y: 6 },
+    shown: { opacity: 1, y: 0, transition: { duration: reduce ? 0 : 0.24, ease: EASE } },
+  };
 
   const level = criticalityLevel(satellite.criticality);
   const neighbours = neighboursOf(links, satellite.id);
@@ -70,12 +107,28 @@ export function SatelliteDetails({
       )}
     >
       <div className="flex items-center gap-3">
-        <span className="h-9 w-[3px] flex-shrink-0" style={{ background: accent }} />
+        <motion.span
+          className="h-9 w-[3px] flex-shrink-0 origin-center"
+          style={{ background: accent }}
+          initial={reduce ? false : { scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: reduce ? 0 : 0.3, ease: EASE }}
+        />
         <div className="min-w-0 flex-1">
-          <div className="font-data text-xl leading-none text-zinc-50">{satellite.id}</div>
-          <div className={cn('mt-1.5 font-label text-[11px]', satellite.failed ? 'text-alarm' : 'text-zinc-400')}>
-            {satellite.failed ? 'Failed' : satellite.deployed ? 'Active' : 'Not deployed'}
-          </div>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={satellite.id}
+              initial={reduce ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: reduce ? 0 : 0.16, ease: EASE }}
+            >
+              <div className="font-data text-xl leading-none text-zinc-50">{satellite.id}</div>
+              <div className={cn('mt-1.5 font-label text-[11px]', satellite.failed ? 'text-alarm' : 'text-zinc-400')}>
+                {satellite.failed ? 'Failed' : satellite.deployed ? 'Active' : 'Not deployed'}
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
         <button
           type="button"
@@ -87,17 +140,20 @@ export function SatelliteDetails({
         </button>
       </div>
 
-      <div className="mt-5">
+      <AnimatePresence mode="wait">
+      <motion.div key={satellite.id} variants={body} initial="hidden" animate="shown" exit="out">
+
+      <motion.div className="mt-5" variants={section}>
         {hasResilience ? (
           <>
             <div className="flex items-end justify-between gap-3">
               <div className="flex items-baseline gap-1">
-                <span
+                <motion.span
                   className="font-data text-[40px] leading-none tracking-tight tabular-nums"
                   style={{ color: level.color }}
                 >
-                  {Math.round(satellite.criticality)}
-                </span>
+                  {reduce ? Math.round(satellite.criticality) : scoreLabel}
+                </motion.span>
                 <span className="font-data text-sm text-zinc-600">/100</span>
               </div>
               <div className="text-right leading-tight">
@@ -110,12 +166,19 @@ export function SatelliteDetails({
 
             <div className="mt-3 flex gap-[2px]" aria-hidden="true">
               {Array.from({ length: 24 }).map((_, index) => (
-                <span
+                <motion.span
                   key={index}
-                  className="h-3 flex-1"
+                  className="h-3 flex-1 origin-bottom"
                   style={{
                     background:
                       ((index + 1) / 24) * 100 <= satellite.criticality ? level.color : '#27272a',
+                  }}
+                  initial={reduce ? false : { scaleY: 0.12, opacity: 0.35 }}
+                  animate={{ scaleY: 1, opacity: 1 }}
+                  transition={{
+                    duration: reduce ? 0 : 0.3,
+                    delay: reduce ? 0 : index * 0.012,
+                    ease: EASE,
                   }}
                 />
               ))}
@@ -132,19 +195,19 @@ export function SatelliteDetails({
             Open the Resilience tab to score how much this node carries.
           </p>
         )}
-      </div>
+      </motion.div>
 
-      <dl className="mt-5 border-t border-rule">
+      <motion.dl className="mt-5 border-t border-rule" variants={section}>
         {telemetry.map((row) => (
           <div key={row.label} className="flex items-baseline justify-between gap-4 border-b border-rule py-2">
             <dt className="font-label text-xs text-zinc-500">{row.label}</dt>
             <dd className="font-data text-[13px] tabular-nums text-zinc-200">{row.value}</dd>
           </div>
         ))}
-      </dl>
+      </motion.dl>
 
       {carried.length > 0 && (
-        <div className="mt-4">
+        <motion.div className="mt-4" variants={section}>
           <div className="font-label text-xs text-zinc-500">Carrying right now</div>
           <div className="mt-2 space-y-2.5">
             {carried.map((trace) => (
@@ -162,43 +225,60 @@ export function SatelliteDetails({
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {neighbours.length > 0 && (
-        <div className="mt-4">
+        <motion.div className="mt-4" variants={section}>
           <div className="font-label text-xs text-zinc-500">Connects to</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {neighbours.map((id) => (
-              <button
+              <motion.button
                 key={id}
                 type="button"
                 onClick={() => dispatch({ type: 'selectSatellite', satelliteId: id })}
                 className="border border-rule-strong px-1.5 py-0.5 font-data text-[11px] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
+                whileTap={reduce ? undefined : { scale: 0.94 }}
+                transition={{ duration: 0.12, ease: EASE }}
               >
                 {id}
-              </button>
+              </motion.button>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
-      <div className="mt-6">
-        {satellite.failed ? (
-          <Button variant="outline" className="w-full" onClick={() => onRestore(satellite.id)}>
-            Restore node
-          </Button>
-        ) : (
-          <Button
-            variant="danger"
-            className="w-full"
-            disabled={pending || !satellite.deployed}
-            onClick={() => onInjectFailure(satellite.id)}
-          >
-            {pending ? 'Recomputing…' : 'Simulate failure'}
-          </Button>
-        )}
-      </div>
+      <motion.div className="mt-6" variants={section}>
+        <motion.div whileTap={reduce || pending ? undefined : { scale: 0.99 }}>
+          {satellite.failed ? (
+            <Button variant="outline" className="w-full" onClick={() => onRestore(satellite.id)}>
+              Restore node
+            </Button>
+          ) : (
+            <Button
+              variant="danger"
+              className="w-full"
+              disabled={pending || !satellite.deployed}
+              onClick={() => onInjectFailure(satellite.id)}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={pending ? 'pending' : 'idle'}
+                  initial={reduce ? false : { opacity: 0, y: 3 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -3 }}
+                  transition={{ duration: reduce ? 0 : 0.14, ease: EASE }}
+                >
+                  {pending ? 'Recomputing…' : 'Simulate failure'}
+                </motion.span>
+              </AnimatePresence>
+            </Button>
+          )}
+        </motion.div>
+      </motion.div>
+
+      </motion.div>
+      </AnimatePresence>
     </motion.div>
   );
 

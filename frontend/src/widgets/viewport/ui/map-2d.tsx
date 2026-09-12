@@ -9,7 +9,7 @@ import countries110m from 'world-atlas/countries-110m.json';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import { routeEdgeIndex, edgeKey, type RouteTrace } from '@/entities/simulation';
-import { criticalityLevel } from '@/shared/lib';
+import { criticalityLevel, isFiniteNumber, isRecord, readStored, writeStored } from '@/shared/lib';
 import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
 import {
   useFailurePings,
@@ -19,6 +19,20 @@ import {
 } from '../model/use-failure-pings';
 
 const EARTH_RADIUS_KM_EXPORT = 6371;
+
+/** Where the map was left, so a reload does not throw the view away. */
+const MAP_VIEW_KEY = 'orbitguard-map-view-v1';
+type MapView = { coordinates: [number, number]; zoom: number };
+const DEFAULT_MAP_VIEW: MapView = { coordinates: [0, 0], zoom: 1 };
+
+const isMapView = (value: unknown): value is MapView =>
+  isRecord(value)
+  && Array.isArray(value.coordinates)
+  && value.coordinates.length === 2
+  && value.coordinates.every(isFiniteNumber)
+  && isFiniteNumber(value.zoom)
+  && value.zoom >= 1
+  && value.zoom <= 8;
 
 interface Map2DProps {
   satellites: SatelliteView[];
@@ -81,7 +95,15 @@ export const Map2D: React.FC<Map2DProps> = ({
   const failureRingWidth = (lat: number) =>
     failureRingUnits / Math.max(0.28, Math.cos(lat * (Math.PI / 180)));
   const [tooltip, setTooltip] = useState<{ content: React.ReactNode; x: number; y: number } | null>(null);
-  const [position, setPosition] = useState({ coordinates: [0, 0] as [number, number], zoom: 1 });
+  // Read straight in the initialiser: this component is client-only, so there
+  // is no server markup for a restored view to disagree with.
+  const [position, setPosition] = useState<MapView>(
+    () => readStored(MAP_VIEW_KEY, isMapView) ?? DEFAULT_MAP_VIEW
+  );
+
+  useEffect(() => {
+    writeStored(MAP_VIEW_KEY, position);
+  }, [position]);
 
   // Tweened so the footprint grows out of the satellite rather than popping in.
   const [coverage, setCoverage] = useState<{ id: string | null; scale: number }>({

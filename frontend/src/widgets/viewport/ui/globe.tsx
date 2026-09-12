@@ -878,6 +878,7 @@ export const Globe: React.FC<GlobeProps> = ({
       const applyEmphasis = (emphasized: boolean, accent: string) => {
         idleBorder = emphasized ? accent : 'rgba(63,63,70,0.9)';
         idleColor = emphasized ? accent : '#a1a1aa';
+        chip.style.fontWeight = emphasized ? '700' : '500';
         chip.style.boxShadow = emphasized
           ? `0 0 10px ${accent}55`
           : '0 2px 6px rgba(0,0,0,0.5)';
