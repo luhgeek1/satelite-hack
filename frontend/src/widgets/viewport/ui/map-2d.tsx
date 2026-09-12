@@ -56,17 +56,31 @@ const geography = countries110m as any;
 const ALARM = '#e4483a';
 
 /**
- * Two grounds for the same chart. The dark one belongs to the console around
- * it; the bright one is for actually reading coastlines and where a terminal
- * sits, which the near-black basemap made hard. Land is lighter than water in
- * the bright palette, the way a paper chart prints it.
+ * Two grounds for the same chart. The schematic one belongs to the console
+ * around it. The relief one is the globe's own imagery laid flat: the same
+ * texture, and an equirectangular projection is exactly the frame it was drawn
+ * in, so it lands on the graticule without a seam. Land reads as land there —
+ * the near-black basemap made it hard to tell where a terminal actually sits.
  */
 interface MapPalette {
+  /** Behind the world rectangle, and the whole ground when there is no imagery. */
   surface: string;
-  land: string;
+  /** Drawn instead of the imagery; null when the imagery carries the ground. */
+  land: string | null;
   rule: string;
+  /** Links that carry no client route; dimmer than a route, brighter than a border. */
+  linkIdle: string;
   graticule: string;
   label: string;
+  /** Dark outline behind labels, so they survive ice and desert alike. */
+  labelHalo: string | null;
+  /**
+   * Dark casing drawn under lines and around dots. Imagery is busy in a way a
+   * flat ground is not: a thin coloured run crosses ocean, desert and ice in
+   * one span, and nothing but its own outline keeps it readable across all
+   * three. Null where the ground is quiet enough to need none.
+   */
+  casing: string | null;
   site: string;
   selection: string;
   routeHalo: string;
@@ -74,12 +88,15 @@ interface MapPalette {
   coverageStroke: number;
 }
 
-const DARK_MAP: MapPalette = {
+const SCHEMATIC_MAP: MapPalette = {
   surface: '#000000',
   land: '#131316',
   rule: '#2e2e34',
+  linkIdle: '#2e2e34',
   graticule: 'rgba(255,255,255,0.05)',
   label: '#a1a1aa',
+  labelHalo: null,
+  casing: null,
   site: '#a1a1aa',
   selection: '#fafafa',
   routeHalo: '#d4d4d8',
@@ -87,20 +104,23 @@ const DARK_MAP: MapPalette = {
   coverageStroke: 0.45
 };
 
-const BRIGHT_MAP: MapPalette = {
-  surface: '#cdd8e1',
-  land: '#f2f4f6',
-  rule: '#7b8794',
-  graticule: 'rgba(15,23,42,0.10)',
-  label: '#3f3f46',
-  site: '#3f3f46',
-  selection: '#18181b',
-  routeHalo: '#3f3f46',
-  coverageFill: 0.18,
-  coverageStroke: 0.7
+const RELIEF_MAP: MapPalette = {
+  surface: '#040a12',
+  land: null,
+  rule: 'rgba(255,255,255,0.22)',
+  linkIdle: 'rgba(255,255,255,0.5)',
+  graticule: 'rgba(255,255,255,0.13)',
+  label: '#ffffff',
+  labelHalo: 'rgba(0,0,0,0.75)',
+  casing: 'rgba(0,0,0,0.7)',
+  site: '#ffffff',
+  selection: '#ffffff',
+  routeHalo: '#ffffff',
+  coverageFill: 0.14,
+  coverageStroke: 0.65
 };
 
-const MAP_BRIGHT_KEY = 'orbitguard-map-bright-v1';
+const MAP_RELIEF_KEY = 'orbitguard-map-relief-v1';
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
 /** Matches the globe's coverage reveal, so the two views feel like one tool. */
@@ -112,6 +132,16 @@ const COVERAGE_TWEEN_MS = 220;
  * drawn in map units has to agree with it.
  */
 const MAP_UNITS_PER_DEGREE = geoEquirectangular().scale() * (Math.PI / 180);
+
+/**
+ * The world rectangle in map units. ComposableMap builds an unscaled
+ * geoEquirectangular on an 800x600 frame, so the imagery spans 360 degrees
+ * across and 180 down from that centre.
+ */
+const WORLD_WIDTH = 360 * MAP_UNITS_PER_DEGREE;
+const WORLD_HEIGHT = 180 * MAP_UNITS_PER_DEGREE;
+const WORLD_LEFT = 400 - WORLD_WIDTH / 2;
+const WORLD_TOP = 300 - WORLD_HEIGHT / 2;
 
 /**
  * Equirectangular view of the same constellation the globe shows: ground track
@@ -148,12 +178,12 @@ export const Map2D: React.FC<Map2DProps> = ({
   const [position, setPosition] = useState<MapView>(
     () => readStored(MAP_VIEW_KEY, isMapView) ?? DEFAULT_MAP_VIEW
   );
-  const [bright, setBright] = useState(() => readStored(MAP_BRIGHT_KEY, isBoolean) ?? false);
-  const palette = bright ? BRIGHT_MAP : DARK_MAP;
+  const [relief, setRelief] = useState(() => readStored(MAP_RELIEF_KEY, isBoolean) ?? false);
+  const palette = relief ? RELIEF_MAP : SCHEMATIC_MAP;
 
   useEffect(() => {
-    writeStored(MAP_BRIGHT_KEY, bright);
-  }, [bright]);
+    writeStored(MAP_RELIEF_KEY, relief);
+  }, [relief]);
 
   useEffect(() => {
     writeStored(MAP_VIEW_KEY, position);
@@ -243,33 +273,65 @@ export const Map2D: React.FC<Map2DProps> = ({
     route: { color: string; focused: boolean } | undefined,
     key: string,
   ) => {
-    const stroke = route ? route.color : palette.rule;
-    const strokeWidth = (route ? (route.focused ? 1.4 : 1) : 0.5) * k;
-    const strokeOpacity = route ? (route.focused ? 1 : 0.7) : 0.55;
+    const stroke = route ? route.color : palette.linkIdle;
+    const overImagery = Boolean(palette.casing);
+    const strokeWidth = (route ? (route.focused ? 1.4 : 1) : overImagery ? 0.55 : 0.5) * k;
+    const strokeOpacity = route
+      ? route.focused
+        ? 1
+        : overImagery
+          ? 0.8
+          : 0.7
+      : overImagery
+        ? 0.7
+        : 0.55;
     const diffLon = target.lon - source.lon;
 
     // A link that crosses the antimeridian has to be drawn as two runs, or it
     // sweeps back across the whole map.
-    if (Math.abs(diffLon) > 180) {
-      const sign = Math.sign(source.lon);
-      const latMid = (source.lat + target.lat) / 2;
-      return (
-        <g key={key}>
-          <Line from={[source.lon, source.lat]} to={[sign * 180, latMid]} stroke={stroke} strokeWidth={strokeWidth} strokeOpacity={strokeOpacity} />
-          <Line from={[-sign * 180, latMid]} to={[target.lon, target.lat]} stroke={stroke} strokeWidth={strokeWidth} strokeOpacity={strokeOpacity} />
-        </g>
-      );
-    }
+    const runs: Array<[[number, number], [number, number]]> =
+      Math.abs(diffLon) > 180
+        ? [
+            [
+              [source.lon, source.lat],
+              [Math.sign(source.lon) * 180, (source.lat + target.lat) / 2],
+            ],
+            [
+              [-Math.sign(source.lon) * 180, (source.lat + target.lat) / 2],
+              [target.lon, target.lat],
+            ],
+          ]
+        : [
+            [
+              [source.lon, source.lat],
+              [target.lon, target.lat],
+            ],
+          ];
 
     return (
-      <Line
-        key={key}
-        from={[source.lon, source.lat]}
-        to={[target.lon, target.lat]}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-        strokeOpacity={strokeOpacity}
-      />
+      <g key={key}>
+        {palette.casing
+          && runs.map((run, index) => (
+            <Line
+              key={`casing-${index}`}
+              from={run[0]}
+              to={run[1]}
+              stroke={palette.casing as string}
+              strokeWidth={strokeWidth + 1.3 * k}
+              strokeOpacity={route ? 0.75 : 0.5}
+            />
+          ))}
+        {runs.map((run, index) => (
+          <Line
+            key={index}
+            from={run[0]}
+            to={run[1]}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
+          />
+        ))}
+      </g>
     );
   };
 
@@ -280,6 +342,9 @@ export const Map2D: React.FC<Map2DProps> = ({
       fontSize={5 * k}
       fill={palette.label}
       fontFamily="'IBM Plex Mono', monospace"
+      stroke={palette.labelHalo ?? undefined}
+      strokeWidth={palette.labelHalo ? 1.4 * k : undefined}
+      paintOrder="stroke"
       style={{ pointerEvents: 'none' }}
     >
       {id}
@@ -312,6 +377,32 @@ export const Map2D: React.FC<Map2DProps> = ({
           minZoom={1}
           maxZoom={8}
         >
+          {relief && (
+            <g style={{ pointerEvents: 'none' }}>
+              <image
+                href="/textures/earth-blue-marble.jpg"
+                x={WORLD_LEFT}
+                y={WORLD_TOP}
+                width={WORLD_WIDTH}
+                height={WORLD_HEIGHT}
+                preserveAspectRatio="none"
+              />
+              {/* The globe's bump map, laid over its own colours: the same
+                  height data that shades the sphere, so the flat chart reads
+                  with the same relief rather than as a flat print. */}
+              <image
+                href="/textures/earth-topology.png"
+                x={WORLD_LEFT}
+                y={WORLD_TOP}
+                width={WORLD_WIDTH}
+                height={WORLD_HEIGHT}
+                preserveAspectRatio="none"
+                opacity={0.32}
+                style={{ mixBlendMode: 'overlay' }}
+              />
+            </g>
+          )}
+
           <Graticule stroke={palette.graticule} strokeWidth={0.4 * k} />
 
           <Geographies geography={geography}>
@@ -320,7 +411,7 @@ export const Map2D: React.FC<Map2DProps> = ({
                 <Geography
                   key={geo.rsmKey}
                   geography={geo}
-                  fill={palette.land}
+                  fill={palette.land ?? 'transparent'}
                   stroke={palette.rule}
                   strokeWidth={0.4 * k}
                   tabIndex={-1}
@@ -379,7 +470,12 @@ export const Map2D: React.FC<Map2DProps> = ({
 
           {gateways.map(gateway => (
             <Marker key={gateway.id} coordinates={[gateway.lon, gateway.lat]}>
-              <polygon points={`0,${-4 * k} ${4 * k},0 0,${4 * k} ${-4 * k},0`} fill={palette.site} />
+              <polygon
+                points={`0,${-4 * k} ${4 * k},0 0,${4 * k} ${-4 * k},0`}
+                fill={palette.site}
+                stroke={palette.casing ?? undefined}
+                strokeWidth={palette.casing ? 1 * k : undefined}
+              />
               {siteLabel(gateway.id)}
             </Marker>
           ))}
@@ -400,11 +496,34 @@ export const Map2D: React.FC<Map2DProps> = ({
                 onClick={onSiteClick ? () => onSiteClick(station.id) : undefined}
                 style={onSiteClick ? { cursor: 'pointer' } : undefined}
               >
+                {palette.casing && (
+                  <polygon
+                    points={`0,${-size * k} ${size * k},${size * 0.78 * k} ${-size * k},${size * 0.78 * k}`}
+                    fill="none"
+                    stroke={palette.casing}
+                    strokeWidth={2.6 * k}
+                    strokeOpacity={0.75}
+                  />
+                )}
                 <polygon
                   points={`0,${-size * k} ${size * k},${size * 0.78 * k} ${-size * k},${size * 0.78 * k}`}
-                  fill={station.id === focusClientId || stranded ? `${tint}33` : 'transparent'}
+                  fill={
+                    station.id === focusClientId || stranded
+                      ? `${tint}33`
+                      : palette.casing
+                        ? 'rgba(0,0,0,0.35)'
+                        : 'transparent'
+                  }
                   stroke={tint}
-                  strokeWidth={(station.id === focusClientId || stranded ? 1.6 : 1) * k}
+                  strokeWidth={
+                    (station.id === focusClientId || stranded
+                      ? palette.casing
+                        ? 1.8
+                        : 1.6
+                      : palette.casing
+                        ? 1.2
+                        : 1) * k
+                  }
                 />
                 {stranded && (
                   <g style={{ pointerEvents: 'none' }}>
@@ -509,15 +628,24 @@ export const Map2D: React.FC<Map2DProps> = ({
 
                 {isFailed ? (
                   <g style={{ pointerEvents: 'none' }}>
+                    {palette.casing && (
+                      <g stroke={palette.casing} strokeWidth={2.6 * k} fill="none" strokeOpacity={0.75}>
+                        <circle r={4 * k} />
+                        <line x1={-2.6 * k} y1={-2.6 * k} x2={2.6 * k} y2={2.6 * k} />
+                        <line x1={-2.6 * k} y1={2.6 * k} x2={2.6 * k} y2={-2.6 * k} />
+                      </g>
+                    )}
                     <circle r={4 * k} fill="transparent" stroke={ALARM} strokeWidth={1.2 * k} />
                     <line x1={-2.6 * k} y1={-2.6 * k} x2={2.6 * k} y2={2.6 * k} stroke={ALARM} strokeWidth={1.2 * k} />
                     <line x1={-2.6 * k} y1={2.6 * k} x2={2.6 * k} y2={-2.6 * k} stroke={ALARM} strokeWidth={1.2 * k} />
                   </g>
                 ) : (
                   <circle
-                    r={(isSelected || isActiveRoute ? 3.4 : 2.3) * k}
+                    r={(isSelected || isActiveRoute ? 3.4 : palette.casing ? 2.4 : 2.3) * k}
                     fill={satelliteColor(sat)}
-                    opacity={0.9}
+                    opacity={palette.casing ? 1 : 0.9}
+                    stroke={palette.casing ?? undefined}
+                    strokeWidth={palette.casing ? 1 * k : undefined}
                     style={{ pointerEvents: 'none' }}
                   />
                 )}
@@ -563,20 +691,15 @@ export const Map2D: React.FC<Map2DProps> = ({
 
       {/* The chrome follows the chart it sits on, or a dark block would float
           over the bright map. */}
-      <div
-        className={cn(
-          'absolute bottom-16 right-3 z-20 flex flex-col border backdrop-blur lg:bottom-[4.5rem] lg:right-6',
-          bright ? 'border-zinc-400 bg-white/85' : 'border-rule-strong bg-black/85',
-        )}
-      >
+      <div className="absolute bottom-16 right-3 z-20 flex flex-col border border-rule-strong bg-black/85 backdrop-blur lg:bottom-[4.5rem] lg:right-6">
         {[
           { label: t('map.zoomIn'), icon: <Plus size={14} />, onClick: handleZoomIn },
           { label: t('map.zoomOut'), icon: <Minus size={14} />, onClick: handleZoomOut },
           { label: t('map.reset'), icon: <RotateCcw size={13} />, onClick: handleReset },
           {
-            label: bright ? t('map.dark') : t('map.bright'),
-            icon: bright ? <Moon size={13} /> : <Sun size={13} />,
-            onClick: () => setBright(value => !value),
+            label: relief ? t('map.schematic') : t('map.relief'),
+            icon: relief ? <Moon size={13} /> : <Sun size={13} />,
+            onClick: () => setRelief(value => !value),
           },
         ].map(control => (
           <button
@@ -585,12 +708,7 @@ export const Map2D: React.FC<Map2DProps> = ({
             onClick={control.onClick}
             title={control.label}
             aria-label={control.label}
-            className={cn(
-              'flex h-7 w-7 items-center justify-center border-t transition-colors first:border-t-0 focus-visible:outline-none',
-              bright
-                ? 'border-zinc-400 text-zinc-500 hover:bg-black/[0.06] hover:text-zinc-900 focus-visible:bg-black/15 focus-visible:text-zinc-900'
-                : 'border-rule-strong text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100 focus-visible:bg-white/15 focus-visible:text-zinc-100',
-            )}
+            className="flex h-7 w-7 items-center justify-center border-t border-rule-strong text-zinc-500 transition-colors first:border-t-0 hover:bg-white/[0.06] hover:text-zinc-100 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none"
           >
             {control.icon}
           </button>
