@@ -28,7 +28,7 @@ export function NetworkHealth({
   onOptimize,
 }: NetworkHealthProps) {
   const { t, formatDuration } = useI18n();
-  const [expanded, setExpanded] = useState(true);
+  const [routesOpen, setRoutesOpen] = useState(true);
 
   const longestOutage = clients.reduce((longest, client) => Math.max(longest, client.max_outage_s), 0);
   const stranded = traces.filter((trace) => !trace.available);
@@ -36,24 +36,29 @@ export function NetworkHealth({
 
   return (
     <div className="pointer-events-none absolute left-3 top-3 z-10 w-[232px] border border-rule-strong bg-black/70 p-3.5 backdrop-blur sm:w-[268px] lg:left-6 lg:top-6 lg:p-5">
-      <button
-        type="button"
-        onClick={() => setExpanded((value) => !value)}
-        className="pointer-events-auto flex w-full items-center gap-2 text-left transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
-        aria-expanded={expanded}
-        title={expanded ? t('health.collapse') : t('health.expand')}
-      >
+      <div className="flex items-center gap-2">
         <span className={cn('h-2 w-2 shrink-0', degraded ? 'bg-alarm' : 'bg-zinc-500')} />
         <span className="font-label text-[13px] text-zinc-300">{t('health.title')}</span>
         {stale && <span className="font-data text-[9px] tracking-[0.08em] text-zinc-600">SYNC</span>}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setRoutesOpen((value) => !value)}
+        aria-expanded={routesOpen}
+        title={routesOpen ? t('health.collapseRoutes') : t('health.expandRoutes')}
+        className="pointer-events-auto mt-3 flex w-full items-center gap-2 border-t border-rule pt-2.5 text-left transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
+      >
+        <span className="font-label text-[12px] text-zinc-400">{t('health.routes')}</span>
+        <span className="font-data text-[10px] tabular-nums text-zinc-600">{clients.length}</span>
         <ChevronDown
-          size={14}
-          className={cn('ml-auto shrink-0 text-zinc-600 transition-transform duration-200', !expanded && '-rotate-90')}
+          size={13}
+          className={cn('ml-auto shrink-0 text-zinc-600 transition-transform duration-200', !routesOpen && '-rotate-90')}
         />
       </button>
 
       <AnimatePresence initial={false}>
-        {expanded && (
+        {routesOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -61,7 +66,7 @@ export function NetworkHealth({
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="min-h-0 overflow-hidden"
           >
-            <div className="pointer-events-auto mt-3 space-y-px">
+            <div className="pointer-events-auto mt-2 space-y-px">
               {clients.map((client) => {
                 const trace = traces.find((item) => item.clientId === client.client_id);
                 const focused = client.client_id === selectedClientId;
@@ -116,28 +121,24 @@ export function NetworkHealth({
                 );
               })}
             </div>
-
-            <div className="my-3 border-t border-rule" />
-
-            <div className="flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
-              <span className="font-label text-[13px] text-zinc-400">{t('health.maxOutage')}</span>
-              <span className="text-zinc-100">{formatDuration(longestOutage)}</span>
-            </div>
-
-            <div className="mt-2 flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
-              <span className="font-label text-[13px] text-zinc-400">{t('health.offline')}</span>
-              <span className={stranded.length ? 'text-alarm' : 'text-zinc-100'}>
-                {stranded.length
-                  ? stranded.map((trace) => trace.clientId).join(' ')
-                  : t('health.none')}
-              </span>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Outside the collapse on purpose: folding the readings away should not
-          take the action with them. */}
+      <div className="my-3 border-t border-rule" />
+
+      <div className="flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
+        <span className="font-label text-[13px] text-zinc-400">{t('health.maxOutage')}</span>
+        <span className="text-zinc-100">{formatDuration(longestOutage)}</span>
+      </div>
+
+      <div className="mt-2 flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
+        <span className="font-label text-[13px] text-zinc-400">{t('health.offline')}</span>
+        <span className={stranded.length ? 'text-alarm' : 'text-zinc-100'}>
+          {stranded.length ? stranded.map((trace) => trace.clientId).join(' ') : t('health.none')}
+        </span>
+      </div>
+
       <div className="mt-3 border-t border-rule pt-3">
         <button
           type="button"

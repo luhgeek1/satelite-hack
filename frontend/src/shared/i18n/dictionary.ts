@@ -55,8 +55,9 @@ export const en = {
   'panel.configuration': 'Configuration',
 
   'health.title': 'Network health',
-  'health.expand': 'Expand network health',
-  'health.collapse': 'Collapse network health',
+  'health.routes': 'Routes',
+  'health.expandRoutes': 'Show the routes',
+  'health.collapseRoutes': 'Hide the routes',
   'health.target': 'Target',
   'health.maxOutage': 'Max outage',
   'health.offline': 'Offline now',
@@ -314,8 +315,9 @@ export const ru: Record<TranslationKey, string> = {
   'panel.configuration': 'Конфигурация',
 
   'health.title': 'Состояние сети',
-  'health.expand': 'Развернуть состояние сети',
-  'health.collapse': 'Свернуть состояние сети',
+  'health.routes': 'Маршруты',
+  'health.expandRoutes': 'Показать маршруты',
+  'health.collapseRoutes': 'Скрыть маршруты',
   'health.target': 'Цель',
   'health.maxOutage': 'Макс. простой',
   'health.offline': 'Сейчас не в строю',
