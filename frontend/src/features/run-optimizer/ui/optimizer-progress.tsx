@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { formatDuration } from '@/shared/lib';
+import { formatWait } from '@/shared/lib';
 import { IndeterminateBar } from '@/shared/ui';
 import type { JobStatus } from '@/shared/api';
 
@@ -29,7 +29,7 @@ export function OptimizerProgress({
         <span className="flex items-baseline gap-2">
           {remainingS !== null && (
             <span className="font-data text-[10px] tabular-nums text-zinc-500">
-              ~{formatDuration(remainingS)} left
+              ~{formatWait(remainingS)} left
             </span>
           )}
           <span className="font-data text-[11px] tabular-nums text-zinc-100">

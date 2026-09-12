@@ -12,7 +12,7 @@ import {
 } from '@/features/run-optimizer';
 import { useSession } from '@/entities/session';
 import type { RunInput } from '@/entities/simulation';
-import { cn, criticalityLevel, formatDuration, formatPercent } from '@/shared/lib';
+import { cn, criticalityLevel, formatPercent, formatWait } from '@/shared/lib';
 import { EmptyState, ErrorNote, IndeterminateBar } from '@/shared/ui';
 import type { GatewayDependency, ResilienceResponse } from '@/shared/api';
 
@@ -197,7 +197,7 @@ export function CriticalNodes({
           <span>Optimize configuration</span>
           <span className="font-data text-[10px] tabular-nums text-zinc-500 transition-colors group-hover:text-black/55">
             {gridSize(locks, depth).toLocaleString('en-US')} runs ·{' '}
-            {formatDuration(estimateSeconds(gridSize(locks, depth)))}
+            {formatWait(estimateSeconds(gridSize(locks, depth)))}
           </span>
         </button>
 
