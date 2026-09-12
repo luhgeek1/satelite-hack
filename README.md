@@ -260,19 +260,6 @@ docker compose down --remove-orphans
 
 ---
 
-### Альтернативный вариант: Локальная разработка
-
-Если необходимо вносить изменения с hot reload:
-
-1. **Запустить бэкенд и инфраструктуру:**
-   ```bash
-   docker compose up -d --build backend db redis
-   ```
-2. **Запустить фронтенд локально:**
-   ```bash
-   cd frontend && npm ci && npm run dev
-   ```
-
 *Для работы без Docker совсем (чисто локальный Python):*
 ```bash
 make install                 # создать backend/.venv и установить зависимости
@@ -280,7 +267,6 @@ make test-up                 # PostgreSQL :55432 и Redis :56379 для разр
 make migrate                 # применить Alembic-миграции
 make dev                     # API с hot reload на :8080
 ```
-
 
 ## API
 
