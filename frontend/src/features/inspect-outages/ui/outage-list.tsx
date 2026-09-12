@@ -21,14 +21,6 @@ export function OutageList({ clients, focusClientId, currentTS, stepS }: OutageL
 
   const windows = [...client.outage_windows].sort((a, b) => b.duration_s - a.duration_s);
 
-  if (windows.length === 0) {
-    return (
-      <p className="font-label text-[11px] leading-relaxed text-zinc-500">
-        {t('outage.clear', { client: client.client_id })}
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -50,56 +42,64 @@ export function OutageList({ clients, focusClientId, currentTS, stepS }: OutageL
         ))}
       </div>
 
-      <div className="max-h-[clamp(8rem,22vh,15rem)] space-y-px overflow-y-auto overscroll-contain">
-        {windows.map((window) => {
-          const active = currentTS >= window.start_s && currentTS < window.end_s;
+      {windows.length === 0 ? (
+        <p className="font-label text-[11px] leading-relaxed text-zinc-500">
+          {t('outage.clear', { client: client.client_id })}
+        </p>
+      ) : (
+        <>
+          <div className="max-h-[clamp(8rem,22vh,15rem)] space-y-px overflow-y-auto overscroll-contain">
+            {windows.map((window) => {
+              const active = currentTS >= window.start_s && currentTS < window.end_s;
 
-          return (
-            <button
-              key={`${window.start_s}-${window.end_s}`}
-              type="button"
-              onClick={() => {
-                dispatch({ type: 'selectClient', clientId: client.client_id });
-                dispatch({ type: 'seek', tS: Math.floor(window.start_s / stepS) * stepS });
-                dispatch({ type: 'setPlaying', playing: false });
-              }}
-              className={cn(
-                'flex w-full items-baseline gap-2 border-l-2 py-1.5 pl-2 pr-1 text-left transition-colors focus-visible:bg-white/[0.08] focus-visible:outline-none',
-                active
-                  ? 'border-zinc-200 bg-white/[0.06]'
-                  : 'border-transparent hover:bg-white/[0.03]',
-              )}
-            >
-              <span className="font-data text-[11px] tabular-nums text-zinc-200">
-                {formatClock(window.start_s)}
-              </span>
-              <span className="font-data text-[10px] tabular-nums text-zinc-500">
-                {formatDuration(window.duration_s)}
-              </span>
-              {(window.leading || window.trailing) && (
-                <span
-                  className="font-data text-[9px] tracking-[0.08em] text-zinc-600"
-                  title={t('outage.edgeHint')}
+              return (
+                <button
+                  key={`${window.start_s}-${window.end_s}`}
+                  type="button"
+                  onClick={() => {
+                    dispatch({ type: 'selectClient', clientId: client.client_id });
+                    dispatch({ type: 'seek', tS: Math.floor(window.start_s / stepS) * stepS });
+                    dispatch({ type: 'setPlaying', playing: false });
+                  }}
+                  className={cn(
+                    'flex w-full items-baseline gap-2 border-l-2 py-1.5 pl-2 pr-1 text-left transition-colors focus-visible:bg-white/[0.08] focus-visible:outline-none',
+                    active
+                      ? 'border-zinc-200 bg-white/[0.06]'
+                      : 'border-transparent hover:bg-white/[0.03]',
+                  )}
                 >
-                  {t('outage.edge')}
-                </span>
-              )}
-              <span
-                className={cn(
-                  'ml-auto truncate font-label text-[10px]',
-                  window.reason === 'no_visible_satellite' ? 'text-alarm' : 'text-zinc-500',
-                )}
-              >
-                {window.reason ? t(`route.${window.reason}` as 'route.none') : '—'}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                  <span className="font-data text-[11px] tabular-nums text-zinc-200">
+                    {formatClock(window.start_s)}
+                  </span>
+                  <span className="font-data text-[10px] tabular-nums text-zinc-500">
+                    {formatDuration(window.duration_s)}
+                  </span>
+                  {(window.leading || window.trailing) && (
+                    <span
+                      className="font-data text-[9px] tracking-[0.08em] text-zinc-600"
+                      title={t('outage.edgeHint')}
+                    >
+                      {t('outage.edge')}
+                    </span>
+                  )}
+                  <span
+                    className={cn(
+                      'ml-auto truncate font-label text-[10px]',
+                      window.reason === 'no_visible_satellite' ? 'text-alarm' : 'text-zinc-500',
+                    )}
+                  >
+                    {window.reason ? t(`route.${window.reason}` as 'route.none') : '—'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-      <p className="font-label text-[11px] leading-relaxed text-zinc-500">
-        {t('outage.longest', { duration: formatDuration(client.max_outage_s) })}
-      </p>
+          <p className="font-label text-[11px] leading-relaxed text-zinc-500">
+            {t('outage.longest', { duration: formatDuration(client.max_outage_s) })}
+          </p>
+        </>
+      )}
     </div>
   );
 }
