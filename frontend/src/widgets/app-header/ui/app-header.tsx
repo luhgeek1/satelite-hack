@@ -26,7 +26,7 @@ export function AppHeader() {
     <header className="relative z-40 grid h-14 flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-rule bg-black px-3 sm:gap-4 sm:px-6 lg:h-16">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center border border-rule-strong">
-          <BrandMark className="h-5 w-5 text-zinc-300" />
+          <BrandMark size={20} className="text-zinc-300" />
         </div>
         <div className="hidden min-w-0 sm:block">
           <h1 className="truncate font-label text-[14px] font-semibold leading-tight text-zinc-100">
