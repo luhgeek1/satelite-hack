@@ -27,6 +27,10 @@ class SatelliteImpactModel(WireModel):
     per_client_drop: dict[str, float]
     breaks_target: bool
     criticality: float = Field(..., ge=0, le=100)
+    per_client_outage_growth_s: dict[str, int] = Field(
+        default_factory=dict,
+        description="How much longer each client's longest outage gets without this satellite",
+    )
 
 
 class GatewayDependencyModel(WireModel):
@@ -129,7 +133,7 @@ class OptimizeResult(WireModel):
 class JobStatusModel(WireModel):
     id: str
     kind: Literal["optimize"]
-    status: Literal["queued", "running", "done", "failed"]
+    status: Literal["queued", "running", "done", "failed", "cancelled"]
     progress: float = Field(..., ge=0, le=1)
     explored: int = 0
     total: int = 0

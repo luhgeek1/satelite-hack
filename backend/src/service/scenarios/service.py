@@ -6,12 +6,29 @@ from pathlib import Path
 from typing import Any
 
 from core.config import get_settings
-from core.errors import ConflictError, NotFoundError, PayloadTooLargeError, ScenarioValidationError
+from core.errors import (
+    ConflictError,
+    NotFoundError,
+    ScenarioTooLargeError,
+    ScenarioValidationError,
+)
 from database.redis import CacheRepo
 from database.relational_db import ScenarioInterface, ScenarioRow, UoW
-from domain.scenario import ScenarioDetail, ScenarioSummary, ValidationReport
+from domain.scenario import (
+    ScenarioDetail,
+    ScenarioImported,
+    ScenarioIssue,
+    ScenarioSummary,
+    ValidationReport,
+)
 from engine import validate_scenario
-from engine.scenario import ScenarioError, clients, gateways
+from engine.scenario import (
+    ScenarioError,
+    clients,
+    gateways,
+    scenario_warnings,
+    unwrap_result,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,17 +59,27 @@ class ScenarioService:
 
     def validate(self, payload: Any) -> ValidationReport:
         try:
-            check_scenario(payload)
-        except ScenarioValidationError as exc:
-            return ValidationReport(valid=False, error=exc.detail, field=exc.field)
-        return ValidationReport(valid=True)
+            scenario, from_result = open_scenario(payload)
+        except (ScenarioValidationError, ScenarioTooLargeError) as exc:
+            return ValidationReport(
+                valid=False,
+                error=exc.detail,
+                field=exc.field,
+                issues=[ScenarioIssue.model_validate(issue) for issue in exc.issues],
+                issue_count=exc.issue_count,
+            )
+        return ValidationReport(
+            valid=True,
+            warnings=_warnings(scenario),
+            from_result_file=from_result,
+        )
 
     async def import_scenario(
         self, payload: Any, *, scenario_id: str | None = None, overwrite: bool = False
-    ) -> ScenarioSummary:
-        check_scenario(payload)
+    ) -> ScenarioImported:
+        scenario, from_result = open_scenario(payload)
 
-        requested = scenario_id or str(payload["meta"]["id"])
+        requested = scenario_id or str(scenario["meta"]["id"])
         candidate = _ID_SAFE.sub("-", requested).strip("-")[:128] or "scenario"
 
         if await self.scenarios.exists(candidate):
@@ -63,11 +90,15 @@ class ScenarioService:
 
         row = await self.scenarios.create(
             scenario_id=candidate,
-            title=str(payload["meta"]["title"]),
-            payload=payload,
+            title=str(scenario["meta"]["title"]),
+            payload=scenario,
         )
         await self.uow.commit()
-        return summarise(row)
+        return ScenarioImported(
+            **summarise(row).model_dump(),
+            warnings=_warnings(scenario),
+            from_result_file=from_result,
+        )
 
     async def _unique_id(self, base: str) -> str:
         for suffix in range(2, 100):
@@ -125,37 +156,61 @@ class ScenarioService:
         return seeded
 
 
+def open_scenario(payload: Any) -> tuple[dict[str, Any], bool]:
+    try:
+        scenario, from_result = unwrap_result(payload)
+    except ScenarioError as exc:
+        raise _as_api_error(exc) from exc
+    return check_scenario(scenario), from_result
+
+
 def check_scenario(payload: Any) -> dict[str, Any]:
     settings = get_settings()
-
-    if not isinstance(payload, dict):
-        raise ScenarioValidationError("Scenario must be a JSON object", field="<root>")
-
-    design = payload.get("design")
-    if isinstance(design, dict):
-        satellites = design.get("satellites")
-        if isinstance(satellites, list) and len(satellites) > settings.MAX_SATELLITES:
-            raise PayloadTooLargeError(
-                f"Scenario has {len(satellites)} satellites, limit is {settings.MAX_SATELLITES}"
-            )
-
-    environment = payload.get("environment")
-    if isinstance(environment, dict):
-        horizon, step = environment.get("horizon_s"), environment.get("step_s")
-        if isinstance(horizon, int) and isinstance(step, int) and step > 0:
-            steps = horizon // step
-            if steps > settings.MAX_SIMULATION_STEPS:
-                raise PayloadTooLargeError(
-                    f"Scenario asks for {steps} calculation steps, "
-                    f"limit is {settings.MAX_SIMULATION_STEPS}"
-                )
 
     try:
         validate_scenario(payload)
     except ScenarioError as exc:
-        raise ScenarioValidationError(exc.message, field=exc.field) from exc
+        raise _as_api_error(exc) from exc
+
+    satellites = len(payload["design"]["satellites"])
+    if satellites > settings.MAX_SATELLITES:
+        raise ScenarioTooLargeError(
+            f"Scenario has {satellites} satellites, limit is {settings.MAX_SATELLITES}",
+            field="design.satellites",
+            code="too_many_satellites",
+            params={"count": satellites, "limit": settings.MAX_SATELLITES},
+        )
+
+    environment = payload["environment"]
+    steps = environment["horizon_s"] // environment["step_s"]
+    if steps > settings.MAX_SIMULATION_STEPS:
+        raise ScenarioTooLargeError(
+            f"Scenario asks for {steps} calculation steps, "
+            f"limit is {settings.MAX_SIMULATION_STEPS}; a longer step_s brings it within",
+            field="environment.step_s",
+            code="too_many_steps",
+            params={
+                "steps": steps,
+                "limit": settings.MAX_SIMULATION_STEPS,
+                "horizon_s": environment["horizon_s"],
+                "step_s": environment["step_s"],
+            },
+        )
 
     return payload
+
+
+def _as_api_error(exc: ScenarioError) -> ScenarioValidationError:
+    return ScenarioValidationError(
+        exc.message,
+        field=exc.field,
+        issues=[issue.to_dict() for issue in exc.issues],
+        issue_count=exc.issue_count,
+    )
+
+
+def _warnings(scenario: dict[str, Any]) -> list[ScenarioIssue]:
+    return [ScenarioIssue.model_validate(w.to_dict()) for w in scenario_warnings(scenario)]
 
 
 def summarise(row: ScenarioRow) -> ScenarioSummary:

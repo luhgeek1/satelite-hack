@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from . import geometry
-from .errors import ScenarioError
-from .site_conditions import SITE_CONDITIONS_KEY, SiteConditions, validate_site_conditions
+from .errors import Issue, ScenarioError
+from .scenario_check import SCHEMA_VERSION as SCHEMA_VERSION
+from .scenario_check import collect_issues, collect_warnings
+from .site_conditions import SITE_CONDITIONS_KEY, SiteConditions
 
-SCHEMA_VERSION = "cosmo-A-1.0"
 RESULT_SCHEMA_VERSION = "cosmo-A-result-1.0"
 
 
@@ -79,62 +80,33 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
 
 
 def validate_scenario(scenario: Any) -> None:
-    if not isinstance(scenario, dict):
-        raise ScenarioError("Scenario must be a JSON object", field="<root>")
-
-    version = scenario.get("schema_version")
-    if version != SCHEMA_VERSION:
-        raise ScenarioError(
-            f"Unsupported schema_version {version!r}, expected {SCHEMA_VERSION!r}",
-            field="schema_version",
-        )
-
-    for section in ("environment", "design", "ground_sites", "failures", "gateway_outages"):
-        if section not in scenario:
-            raise ScenarioError(f"Missing required section {section!r}", field=section)
+    issues, total = collect_issues(scenario)
+    if issues:
+        raise ScenarioError.from_issues(issues, total)
 
     try:
         geometry.validate(scenario)
-    except KeyError as exc:
+    except (KeyError, TypeError, ValueError) as exc:
         raise ScenarioError(
-            f"Missing required field {exc.args[0]!r}", field=str(exc.args[0])
+            f"The reference validator rejected the scenario: {exc}", code="rejected"
         ) from exc
-    except (TypeError, ValueError) as exc:
-        raise ScenarioError(str(exc), field=_guess_field(str(exc))) from exc
-
-    validate_site_conditions(scenario)
-
-    design = scenario["design"]
-    staged = [s for s in design["satellites"] if s["launch_batch"] <= design["launch_stage"]]
-    if not staged:
-        raise ScenarioError(
-            f"No satellites are active at launch_stage {design['launch_stage']}",
-            field="design.launch_stage",
-        )
 
 
-_FIELD_HINTS: tuple[tuple[str, str], ...] = (
-    ("schema", "schema_version"),
-    ("orbit", "environment.altitude_km"),
-    ("time grid", "environment.step_s"),
-    ("link/target", "environment.isl_range_km"),
-    ("planes", "design.planes"),
-    ("plane angle", "design.planes[].raan_deg"),
-    ("satellite", "design.satellites"),
-    ("launch_stage", "design.launch_stage"),
-    ("node id", "ground_sites[].id"),
-    ("client and gateway", "ground_sites[].role"),
-    ("ground site", "ground_sites"),
-    ("outage", "failures"),
-)
+def scenario_warnings(scenario: dict[str, Any]) -> list[Issue]:
+    return collect_warnings(scenario)
 
 
-def _guess_field(message: str) -> str | None:
-    lowered = message.lower()
-    for needle, field_path in _FIELD_HINTS:
-        if needle in lowered:
-            return field_path
-    return None
+def unwrap_result(document: Any) -> tuple[Any, bool]:
+    if isinstance(document, dict) and document.get("schema_version") == RESULT_SCHEMA_VERSION:
+        inner = document.get("effective_scenario")
+        if not isinstance(inner, dict):
+            raise ScenarioError(
+                "This is a result file, but its effective_scenario is missing or not an object",
+                field="effective_scenario",
+                code="required",
+            )
+        return inner, True
+    return document, False
 
 
 def apply_override(scenario: dict[str, Any], override: ConfigOverride) -> dict[str, Any]:

@@ -52,5 +52,10 @@ def effective_scenario(base: dict[str, Any], config: ConfigModel) -> dict[str, A
         return apply_override(base, to_override(config))
     except ScenarioError as exc:
         raise BadRequestError(
-            exc.message, details={"field": exc.field} if exc.field else None
+            exc.message,
+            details={
+                "field": exc.field,
+                "issues": [issue.to_dict() for issue in exc.issues],
+                "issue_count": exc.issue_count,
+            },
         ) from exc

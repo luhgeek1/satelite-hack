@@ -6,4 +6,4 @@ export {
   resolveLanguage,
   type Language,
 } from './language';
-export { type TranslationKey } from './dictionary';
+export { isTranslationKey, type TranslationKey } from './dictionary';

@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     SCENARIO_SEED_ENABLED: bool = True
 
     MAX_SCENARIO_BYTES: int = 8 * 1024 * 1024
-    MAX_SIMULATION_STEPS: int = 5_000
+    MAX_SIMULATION_STEPS: int = 8_640
     MAX_SATELLITES: int = 500
 
     MAX_CONCURRENT_ANALYSES: int = 2
@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # Worker counts for the fan-out analyses. `None` lets the pool decide.
     ANALYSIS_MAX_WORKERS: int | None = None
     OPTIMIZER_MAX_WORKERS: int | None = None
+
+    # The most configurations one search may evaluate. Each is a full day of
+    # simulation, about 0.45 s on the production machine's two cores, so this is
+    # a ceiling of roughly seven and a half minutes: the thorough preset (a
+    # standard six-axis search is 676 runs) fits, the exhaustive grid (4 109)
+    # does not, and neither does a hand-written request that asks for more.
+    OPTIMIZER_MAX_RUNS: int = 1_000
 
     @property
     def cors_origins(self) -> list[str]:

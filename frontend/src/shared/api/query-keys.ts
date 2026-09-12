@@ -20,8 +20,8 @@ export const queryKeys = {
     ['simulation', runId, 'routes', clientId] as const,
 
   resilience: (key: RunKey) => ['resilience', key] as const,
-  sensitivity: (scenarioId: string, parameter: string, values: number[]) =>
-    ['sensitivity', scenarioId, parameter, values] as const,
+  sensitivity: (key: RunKey, parameter: string, values: number[]) =>
+    ['sensitivity', key, parameter, values] as const,
 
   job: (jobId: string) => ['jobs', jobId] as const,
   jobResult: (jobId: string) => ['jobs', jobId, 'result'] as const,

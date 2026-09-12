@@ -4,7 +4,7 @@ from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
 
 from core.config import get_settings
 from core.errors import PayloadTooLargeError, ScenarioValidationError
-from domain.scenario import ScenarioSummary, ValidationReport
+from domain.scenario import ScenarioImported, ValidationReport
 from service.scenarios import ScenarioService, get_scenario_service
 
 router = APIRouter()
@@ -17,29 +17,29 @@ router = APIRouter()
 )
 async def validate_scenario(
     svc: Annotated[ScenarioService, Depends(get_scenario_service)],
-    payload: Annotated[dict[str, Any], Body(...)],
+    payload: Annotated[Any, Body(...)],
 ) -> ValidationReport:
     return svc.validate(payload)
 
 
 @router.post(
     path="/scenarios",
-    response_model=ScenarioSummary,
+    response_model=ScenarioImported,
     status_code=status.HTTP_201_CREATED,
     summary="Import a scenario from a JSON body",
 )
 async def import_scenario(
     svc: Annotated[ScenarioService, Depends(get_scenario_service)],
-    payload: Annotated[dict[str, Any], Body(...)],
+    payload: Annotated[Any, Body(...)],
     scenario_id: Annotated[str | None, Query(max_length=128)] = None,
     overwrite: Annotated[bool, Query()] = False,
-) -> ScenarioSummary:
+) -> ScenarioImported:
     return await svc.import_scenario(payload, scenario_id=scenario_id, overwrite=overwrite)
 
 
 @router.post(
     path="/scenarios/upload",
-    response_model=ScenarioSummary,
+    response_model=ScenarioImported,
     status_code=status.HTTP_201_CREATED,
     summary="Import a scenario from an uploaded file",
 )
@@ -48,7 +48,7 @@ async def upload_scenario(
     file: Annotated[UploadFile, File(...)],
     scenario_id: Annotated[str | None, Query(max_length=128)] = None,
     overwrite: Annotated[bool, Query()] = False,
-) -> ScenarioSummary:
+) -> ScenarioImported:
     settings = get_settings()
     raw = await file.read()
 
@@ -62,6 +62,16 @@ async def upload_scenario(
     try:
         payload = orjson.loads(raw)
     except orjson.JSONDecodeError as exc:
-        raise ScenarioValidationError(f"File is not valid JSON: {exc}", field="<file>") from exc
+        raise ScenarioValidationError(
+            f"File is not valid JSON: {exc}",
+            issues=[
+                {
+                    "code": "invalid_json",
+                    "field": None,
+                    "message": f"File is not valid JSON: {exc}",
+                    "params": {"reason": str(exc)},
+                }
+            ],
+        ) from exc
 
     return await svc.import_scenario(payload, scenario_id=scenario_id, overwrite=overwrite)

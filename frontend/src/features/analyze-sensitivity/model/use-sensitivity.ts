@@ -1,7 +1,7 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
-import { analysisApi, type SensitivityResponse } from '@/shared/api';
+import { useQueries } from '@tanstack/react-query';
+import { analysisApi, queryKeys } from '@/shared/api';
 import { normalizeConfig, type RunInput } from '@/entities/simulation';
 
 export type SweepParameter = 'isl_range_km' | 'min_elevation_deg' | 'altitude_km';
@@ -49,15 +49,33 @@ export const SWEEPS: SweepSpec[] = [
   },
 ];
 
-export function useSensitivitySweep(input: RunInput) {
-  return useMutation<SensitivityResponse, Error, SweepSpec>({
-    mutationFn: (spec) =>
-      analysisApi.sensitivity({
-        scenario_id: input.scenarioId as string,
-        config: normalizeConfig(input.config),
-        strategy: input.strategy,
-        parameter: spec.parameter,
-        values: spec.values,
-      }),
+/**
+ * All three sweeps, each cached on its own.
+ *
+ * One mutation used to serve every parameter, so switching from link range to
+ * altitude kept drawing the link-range points under the altitude label until
+ * somebody pressed the button again. Each sweep is now a query of its own, keyed
+ * by the configuration, and they start by themselves: three seconds apiece on
+ * the production machine is cheap enough to have the answer waiting.
+ */
+export function useSensitivitySweeps(input: RunInput, enabled: boolean) {
+  const config = normalizeConfig(input.config);
+  const key = { scenarioId: input.scenarioId, config, strategy: input.strategy };
+
+  return useQueries({
+    queries: SWEEPS.map((spec) => ({
+      queryKey: queryKeys.sensitivity(key, spec.parameter, spec.values),
+      queryFn: () =>
+        analysisApi.sensitivity({
+          scenario_id: input.scenarioId as string,
+          config,
+          strategy: input.strategy,
+          parameter: spec.parameter,
+          values: spec.values,
+        }),
+      enabled: enabled && Boolean(input.scenarioId),
+      staleTime: Infinity,
+      gcTime: 15 * 60_000,
+    })),
   });
 }

@@ -46,20 +46,49 @@ Any non-2xx returns an RFC 9457 problem document:
   "type": "about:blank",
   "title": "Unprocessable Entity",
   "status": 422,
-  "detail": "Missing required section 'environment'",
+  "detail": "design.satellites[12].plane_id is 'P9', which is not an id in design.planes (and 1 more problem)",
   "error_code": "SCENARIO_INVALID",
   "instance": "/api/v1/scenarios",
   "timestamp": "2026-09-12T04:41:07.021Z",
   "request_id": "9f1c…",
-  "details": { "field": "environment" }       // present when we can point at one
+  "details": {
+    "field": "design.satellites[12].plane_id",     // the first problem's path
+    "issue_count": 2,                              // the true total
+    "issues": [                                    // every problem, capped at 50
+      {
+        "code": "unknown_reference",
+        "field": "design.satellites[12].plane_id",
+        "message": "design.satellites[12].plane_id is 'P9', which is not an id in design.planes",
+        "params": { "value": "P9", "target": "design.planes", "known": ["P1", "P2", "P3"] }
+      },
+      {
+        "code": "empty_interval",
+        "field": "gateway_outages[0].end_s",
+        "message": "gateway_outages[0] runs from 100 to 50 s; end_s must be after start_s",
+        "params": { "start_s": 100, "end_s": 50 }
+      }
+    ]
+  }
 }
 ```
 
-Show `detail` to the user. `details.field` is the JSON path to highlight in the
-import dialog — the case requires the service to say what to fix.
+`details.field` is the JSON path to highlight. Scenario errors carry
+`details.issues`: every problem found in one pass, each with a stable `code` and
+the `params` involved, so the interface phrases it in the user's language; the
+English `message` is for everyone else. The case requires the service to say
+what to fix.
 
-Codes you will meet: `SCENARIO_INVALID`, `NOT_FOUND`, `BAD_REQUEST`,
-`PAYLOAD_TOO_LARGE`, `CONFLICT`, `REQUEST_VALIDATION_ERROR`.
+Issue codes: `required`, `wrong_type`, `empty_list`, `empty_string`,
+`not_finite`, `out_of_range`, `too_small`, `not_allowed`, `unsupported_schema`,
+`horizon_not_multiple`, `step_exceeds_horizon`, `duplicate_id`,
+`unknown_reference`, `id_collision`, `missing_role`, `not_a_gateway`,
+`empty_interval`, `interval_outside_horizon`, `invalid_site_conditions`,
+`invalid_json`, `too_many_satellites`, `too_many_steps`, and `rejected` if the
+organisers' validator refuses something our checks let through (it should not).
+Warnings use the same shape; the one so far is `no_active_satellites`.
+
+Codes you will meet: `SCENARIO_INVALID`, `SCENARIO_TOO_LARGE`, `NOT_FOUND`,
+`BAD_REQUEST`, `PAYLOAD_TOO_LARGE`, `CONFLICT`, `REQUEST_VALIDATION_ERROR`.
 
 ---
 
@@ -119,8 +148,26 @@ The four official scenarios are seeded at startup and cannot be deleted
 file before committing to an import:
 
 ```jsonc
-{ "valid": false, "error": "Unsupported schema_version 'nope'", "field": "schema_version" }
+{
+  "valid": false,
+  "error": "Unsupported schema_version 'nope', expected 'cosmo-A-1.0'",
+  "field": "schema_version",
+  "issues": [ /* as in §2 */ ],
+  "issue_count": 1,
+  "warnings": [],              // only for a valid file
+  "from_result_file": false
+}
 ```
+
+Import and validate also accept an exported `cosmo-A-result-1.0` file: its
+`effective_scenario` is what gets checked and stored, and the response says
+`from_result_file: true`. The import response is the picker row plus
+`warnings` and `from_result_file`.
+
+Beyond the official rules, a scenario needs `meta.id`, `meta.title` and a
+`name` on every ground site (the case describes them; `geometry.validate` never
+reads them), string identifiers, and real numbers rather than booleans. It may
+ask for at most 500 satellites and 8640 steps (`SCENARIO_TOO_LARGE`, 413).
 
 ---
 
@@ -407,6 +454,7 @@ POST /analysis/sensitivity    inline, ~0.4 s for 8 points
 POST /analysis/optimize       job → 202
 GET  /jobs/{job_id}           progress
 GET  /jobs/{job_id}/result
+DELETE /jobs/{job_id}         stop a running search
 ```
 
 ### Resilience
@@ -484,7 +532,7 @@ The only background operation. A `null` range means the parameter is **locked**:
 {
   "scenario_id": "01_full_constellation",
   "objective": "worst_first",        // | "mean_first"
-  "method": "coordinate_descent",    // | "grid"
+  "method": "coordinate_descent",    // "grid" is refused with 400, see below
   "axis_steps": 12,                  // descent: samples per axis sweep
   "passes": 3,                       // descent: sweeps over every axis
   "starts": 3,                       // descent: independent starting points
@@ -523,10 +571,21 @@ well as cheaper — see [DECISIONS.md](DECISIONS.md) C7. An early-stopping desce
 spends less than its quote, never more, so `total` in the job status is an upper
 bound and `explored` may finish below it.
 
+**Limits.** `method: "grid"` is refused with `400`: at six free angles it is
+four thousand full days, about half an hour of both production cores, and it
+scores worse than the descent. Any search whose quote exceeds
+`OPTIMIZER_MAX_RUNS` (default 1000, roughly 7.5 min on production) is refused
+the same way. On the production machine one run costs about 0.45 s.
+
+**Stopping.** `DELETE /jobs/{id}` asks the search to stop and answers with the
+job as it stands. The worker notices after its current configuration, drops the
+rest of its queue and the job settles on `status: "cancelled"`; its result is
+then a `400`. Cancelling a job that already finished changes nothing.
+
 `202` returns a job; poll `GET /jobs/{id}`:
 
 ```jsonc
-{ "id": "opt_3f8a…", "kind": "optimize", "status": "running",
+{ "id": "opt_3f8a…", "kind": "optimize", "status": "running",   // queued | running | done | failed | cancelled
   "progress": 0.42, "explored": 306, "total": 730, "error": null,
   "created_at": "…", "finished_at": null }
 ```

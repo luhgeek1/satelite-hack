@@ -17,6 +17,7 @@ import { CompareBoard } from '@/widgets/compare-board';
 import { ConfigPanel } from '@/widgets/config-panel';
 import { CriticalNodes } from '@/widgets/critical-nodes';
 import { NetworkHealth } from '@/widgets/network-health';
+import { ResilienceSummary } from '@/widgets/resilience-summary';
 import { PlaybackBar } from '@/widgets/playback-bar';
 import { SatelliteDetails } from '@/widgets/satellite-details';
 import { DeploymentPlan } from '@/widgets/deployment-plan';
@@ -24,21 +25,22 @@ import { Viewport, type OrbitTrack } from '@/widgets/viewport';
 import { ViewToggle } from '@/features/toggle-view';
 import { TourOverlay, useTour } from '@/features/guided-tour';
 import {
+  estimateSeconds,
+  gridSize,
   toPlaneOverrides,
   useOptimizer,
   OptimizerProgress,
   OptimizerResult,
-  type PlaneLock,
   type SearchDepth,
 } from '@/features/run-optimizer';
 import { useInjectFailure, useRestoreSatellite } from '@/features/inject-failure';
 import type { OutageNode, OutageTarget, OutageWindow } from '@/features/schedule-outage';
 import { impactIndex, useResilience } from '@/features/analyze-resilience';
+import { useSensitivitySweeps } from '@/features/analyze-sensitivity';
 import { snapToGrid, usePlayback } from '@/features/timeline-playback';
 import {
   launchStages,
   locksForPlanning,
-  locksFromCommitted,
   planeColorMap,
   planeCommitStage,
   readGeometry,
@@ -67,7 +69,6 @@ import { clientsOf, gatewaysOf, groundSitesOf } from '@/entities/ground-site';
 import {
   cn,
   contactRadiusKm,
-  criticalityLevel,
   earthRotationDeg,
   orbitTrack,
   useDisableBrowserZoom,
@@ -88,7 +89,7 @@ export function StudioPage() {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
   const scenarios = useScenarios();
-  const { autoStart } = useTour();
+  const { autoStart, tour } = useTour();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const renameScenario = useRenameScenario();
   const [renameDraft, setRenameDraft] = useState<string | null>(null);
@@ -189,7 +190,21 @@ export function StudioPage() {
     if (state.playing) prefetch(tS, 4);
   }, [state.playing, tS, prefetch]);
 
-  const resilience = useResilience(runInput, state.tab === 'resilience');
+  // Also while the studio tour runs: it visits this tab, and twenty seconds of
+  // spinner is not something to point a newcomer at.
+  const resilience = useResilience(runInput, state.tab === 'resilience' || tour === 'studio');
+
+  // The sweeps for whatever is on screen when the page first settles, so the
+  // resilience tab opens onto answers rather than spinners. Once only: a sweep
+  // per slider move would queue three analyses behind every drag on a machine
+  // with two cores. Later configurations are swept when the tab is opened.
+  const [firstSettled, setFirstSettled] = useState<typeof runInput | null>(null);
+
+  useEffect(() => {
+    if (summary && !settling && firstSettled === null) setFirstSettled(runInput);
+  }, [summary, settling, firstSettled, runInput]);
+
+  useSensitivitySweeps(firstSettled ?? runInput, firstSettled !== null);
   const impacts = useMemo(() => impactIndex(resilience.data?.impacts), [resilience.data]);
 
   const injectFailure = useInjectFailure(summary?.id, tS, horizonS);
@@ -235,7 +250,6 @@ export function StudioPage() {
   // health card as well as from the resilience column, and it reports from a
   // fixed corner so the answer survives a tab change.
   const optimizer = useOptimizer(runInput, scenario);
-  const [locks, setLocks] = useState<PlaneLock[]>([]);
   const [planOpen, setPlanOpen] = useState(false);
   const [planScoredAt, setPlanScoredAt] = useState<number | null>(null);
   const [depth, setDepth] = useState<SearchDepth>('quick');
@@ -244,12 +258,6 @@ export function StudioPage() {
   const [optimizerApplied, setOptimizerApplied] = useState(false);
   const variants = useVariants();
   const saveVariant = useSaveVariant();
-
-  const startOptimizer = useCallback(() => {
-    setOptimizerApplied(false);
-    setPlanScoredAt(null);
-    optimizer.start.mutate({ locks, depth });
-  }, [optimizer.start, locks, depth]);
 
   /**
    * Plan the campaign from one launch onwards.
@@ -269,7 +277,6 @@ export function StudioPage() {
       setOptimizerApplied(false);
       setPlanOpen(false);
       setPlanScoredAt(lastStage);
-      setLocks(staged);
       optimizer.start.mutate({
         depth,
         locks: staged,
@@ -277,6 +284,22 @@ export function StudioPage() {
       });
     },
     [scenario, depth, optimizer.start, state.config, state.committedStages],
+  );
+
+  /** From the resilience ranking into the simulation: the loss, watched. */
+  const failForDay = useCallback(
+    (satelliteId: string) => {
+      dispatch({
+        type: 'addFailure',
+        failure: { satellite_id: satelliteId, start_s: 0, end_s: horizonS },
+      });
+      dispatch({ type: 'setTab', tab: 'simulation' });
+      // Selecting toggles, and the row that offered this has usually selected it.
+      if (state.selectedSatelliteId !== satelliteId) {
+        dispatch({ type: 'selectSatellite', satelliteId, focus: true });
+      }
+    },
+    [dispatch, horizonS, state.selectedSatelliteId],
   );
 
   const dismissOptimizer = useCallback(() => {
@@ -373,17 +396,6 @@ export function StudioPage() {
       t,
     ],
   );
-  // What the campaign holds. The resilience tab may then hold more by hand —
-  // an agreed slot, a plane nobody wants touched — so the search reads the
-  // local copy, and settling a launch resets it to what the campaign says.
-  const campaignLocks = useMemo(
-    () => (scenario ? locksFromCommitted(scenario, state.committedStages) : []),
-    [scenario, state.committedStages],
-  );
-
-  useEffect(() => {
-    setLocks(campaignLocks);
-  }, [campaignLocks]);
 
   const launchStage = state.config.launch_stage ?? scenario?.design.launch_stage ?? 3;
   const failedIds = useMemo(() => allFailedIds(state.config), [state.config]);
@@ -630,6 +642,17 @@ export function StudioPage() {
     );
   }
 
+  // What planning the launch on screen would cost at each depth. Quoted before
+  // the button is pressed, in full days simulated and in minutes on the server.
+  const planningLocks = locksForPlanning(scenario, state.committedStages, launchStage);
+  const findCosts = {
+    quick: { runs: gridSize(planningLocks, 'quick'), seconds: estimateSeconds(gridSize(planningLocks, 'quick')) },
+    standard: {
+      runs: gridSize(planningLocks, 'standard'),
+      seconds: estimateSeconds(gridSize(planningLocks, 'standard')),
+    },
+  };
+
   const configBody = (
     <ConfigPanel
       scenario={scenario}
@@ -650,7 +673,10 @@ export function StudioPage() {
       runInput={runInput}
       planning={optimizer.running || optimizer.start.isPending}
       onPlanFrom={planFromStage}
-      onOpenDeploymentPlan={() => setPlanOpen(true)}
+      onOpenDeploymentPlan={() => setPlanOpen((open) => !open)}
+      depth={depth}
+      onDepthChange={setDepth}
+      findCosts={findCosts}
     />
   );
 
@@ -661,12 +687,12 @@ export function StudioPage() {
       error={resilience.error}
       colors={colors}
       runInput={runInput}
-      optimizer={optimizer}
-      onOptimize={startOptimizer}
-      depth={depth}
-      onDepthChange={setDepth}
-      locks={locks}
-      onLocksChange={setLocks}
+      scenario={scenario}
+      onFailForDay={failForDay}
+      onOpenSearch={() => {
+        dispatch({ type: 'setTab', tab: 'simulation' });
+        setPlanOpen(true);
+      }}
     />
   );
 
@@ -720,8 +746,6 @@ export function StudioPage() {
                           selectedClientId={focusClientId}
                           onSelectClient={selectClient}
                           stale={settling || simulation.isFetching || snapshot.isFetching}
-                          optimizing={optimizer.running || optimizer.start.isPending}
-                          onOptimize={startOptimizer}
                           onHide={panels.hideHealth}
                         />
                       </motion.div>
@@ -748,25 +772,11 @@ export function StudioPage() {
               )}
 
               {state.tab === 'resilience' && (
-                <div className="absolute bottom-3 left-3 border border-rule-strong bg-black/80 p-3 backdrop-blur lg:bottom-auto lg:left-6 lg:top-6 lg:p-4">
-                  <div className="mb-2 font-label text-[12px] text-zinc-300 lg:mb-3">{t('criticality.legend')}</div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 lg:block lg:space-y-1.5">
-                    {[0, 50, 75, 90].map((sample) => {
-                      const level = criticalityLevel(sample);
-                      return (
-                        <div key={level.tier} className="flex items-center gap-2">
-                          <span className="h-1.5 w-1.5 shrink-0" style={{ background: level.color }} />
-                          <span className="font-label text-[12px] text-zinc-400">
-                            {t(`criticality.${level.tier}` as 'criticality.low')}
-                          </span>
-                          <span className="ml-auto font-data text-[9px] tracking-[0.08em] text-zinc-600">
-                            {t(`criticality.token.${level.tier}` as 'criticality.token.low')}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <ResilienceSummary
+                  scenario={scenario}
+                  resilience={resilience.data}
+                  loading={resilience.isLoading || resilience.isFetching}
+                />
               )}
 
               {mobileToggle(
@@ -921,7 +931,11 @@ export function StudioPage() {
                 onDismiss={dismissOptimizer}
               />
             ) : (
-              <OptimizerProgress status={optimizer.status} remainingS={optimizer.remainingS} />
+              <OptimizerProgress
+                status={optimizer.status}
+                remainingS={optimizer.remainingS}
+                onStop={optimizer.stop}
+              />
             )}
           </motion.div>
         )}

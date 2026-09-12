@@ -4,13 +4,22 @@ import { ArrowRight, ChevronRight, Lock, LockOpen, Sparkles } from 'lucide-react
 import { useSession } from '@/entities/session';
 import { launchStages, planesAtStage, satellitesAtStage } from '@/entities/scenario';
 import { useStageRuns, type RunInput } from '@/entities/simulation';
-import { cn, formatDegrees, formatPercent } from '@/shared/lib';
+import { cn, formatDegrees, formatPercent, formatWait } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import type { ReactNode } from 'react';
 import type { ScenarioDocument, SimulationSummary } from '@/shared/api';
 
 /** Three months between launches, which is what turns a stage into a date. */
 const MONTHS_BETWEEN_LAUNCHES = 3;
+
+/** Named here rather than imported: the search belongs to another feature, and
+ *  this one only needs to offer the choice and quote its price. */
+export type SearchDepth = 'quick' | 'standard';
+
+export interface FindCost {
+  runs: number;
+  seconds: number;
+}
 
 interface DeploymentControlProps {
   scenario: ScenarioDocument;
@@ -19,6 +28,10 @@ interface DeploymentControlProps {
   planning: boolean;
   onPlanFrom: (stage: number) => void;
   onOpenPlan: () => void;
+  depth: SearchDepth;
+  onDepthChange: (depth: SearchDepth) => void;
+  /** What a search from the launch on screen costs at each depth. */
+  findCosts: Record<SearchDepth, FindCost>;
   /** Whatever offers the longer explanation — handed in, so this feature does
    *  not have to know that a guided tour exists. */
   guide?: ReactNode;
@@ -46,6 +59,9 @@ export function DeploymentControl({
   planning,
   onPlanFrom,
   onOpenPlan,
+  depth,
+  onDepthChange,
+  findCosts,
   guide,
 }: DeploymentControlProps) {
   const { state, dispatch } = useSession();
@@ -94,6 +110,9 @@ export function DeploymentControl({
         allFixed={stages.every(({ stage }) => committed.includes(stage))}
         planning={planning}
         colors={colors}
+        depth={depth}
+        onDepthChange={onDepthChange}
+        findCosts={findCosts}
         onPlan={() => onPlanFrom(current)}
         onFix={() => dispatch({ type: 'commitStage', stage: current })}
         onRelease={() => dispatch({ type: 'releaseStage', stage: current })}
@@ -209,6 +228,9 @@ interface StepCardProps {
   allFixed: boolean;
   planning: boolean;
   colors: Record<string, string>;
+  depth: SearchDepth;
+  onDepthChange: (depth: SearchDepth) => void;
+  findCosts: Record<SearchDepth, FindCost>;
   onPlan: () => void;
   onFix: () => void;
   onRelease: () => void;
@@ -231,6 +253,9 @@ function StepCard({
   allFixed,
   planning,
   colors,
+  depth,
+  onDepthChange,
+  findCosts,
   onPlan,
   onFix,
   onRelease,
@@ -331,7 +356,9 @@ function StepCard({
               disabled={planning}
               title={t('deploy.findHint')}
               data-tour="deploy-find"
-              className="flex flex-1 items-center justify-center gap-1.5 border border-zinc-600 py-1.5 font-label text-[11px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:outline-none disabled:opacity-40"
+              // The one filled button in the panel: the search is the thing this
+              // studio does that a spreadsheet cannot, and it should read so.
+              className="flex flex-1 items-center justify-center gap-1.5 border border-zinc-100 bg-zinc-100 py-1.5 font-label text-[11px] font-semibold text-black transition-colors hover:bg-white focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-zinc-300 disabled:opacity-40"
             >
               <Sparkles size={11} />
               {t(planning ? 'deploy.finding' : 'deploy.find')}
@@ -349,6 +376,35 @@ function StepCard({
           </>
         )}
       </div>
+
+      {!fixed && (
+        <div className="mt-1.5 flex items-center gap-2">
+          <div className="flex border border-rule" role="group" aria-label={t('deploy.depthLabel')}>
+            {(['quick', 'standard'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => onDepthChange(option)}
+                disabled={planning}
+                aria-pressed={depth === option}
+                title={t(option === 'quick' ? 'deploy.depthQuickHint' : 'deploy.depthStandardHint')}
+                className={cn(
+                  'border-l border-rule px-1.5 py-0.5 font-label text-[10px] transition-colors first:border-l-0 focus-visible:outline-none disabled:opacity-50',
+                  depth === option ? 'bg-white/[0.1] text-zinc-100' : 'text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                {t(option === 'quick' ? 'deploy.depthQuick' : 'deploy.depthStandard')}
+              </button>
+            ))}
+          </div>
+          <span className="truncate font-data text-[9px] tabular-nums text-zinc-600">
+            {t('deploy.findCost', {
+              runs: findCosts[depth].runs,
+              wait: formatWait(findCosts[depth].seconds),
+            })}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

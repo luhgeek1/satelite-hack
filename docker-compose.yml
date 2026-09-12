@@ -22,6 +22,20 @@ services:
       redis: {condition: service_healthy}
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: orbitguard-frontend
+    environment:
+      API_ORIGIN: http://backend:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+
   db:
     image: postgres:17-alpine
     container_name: orbitguard-db

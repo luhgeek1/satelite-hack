@@ -75,12 +75,24 @@ export function TourOverlay() {
   const step = steps[index];
   const target = step?.target;
   const stepTab = step?.tab;
+  const wandered = useRef(false);
 
   // A step may name something on another tab, and the panel it lives in may
   // still be mounting when the step arrives.
   useEffect(() => {
-    if (stepTab) dispatch({ type: 'setTab', tab: stepTab });
+    if (!stepTab) return;
+    if (stepTab !== 'simulation') wandered.current = true;
+    dispatch({ type: 'setTab', tab: stepTab });
   }, [stepTab, dispatch]);
+
+  // However the tour ends — finished, skipped, Escape — it ends where the work
+  // is done. Left on the resilience tab, a newcomer's first real screen would
+  // be the one they were only shown in passing.
+  useEffect(() => {
+    if (tour !== null || !wandered.current) return;
+    wandered.current = false;
+    dispatch({ type: 'setTab', tab: 'simulation' });
+  }, [tour, dispatch]);
 
   useEffect(() => {
     if (!target) return;

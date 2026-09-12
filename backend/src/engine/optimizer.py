@@ -64,6 +64,10 @@ class OptimizationResult:
     changed_planes: dict[str, PlaneOverride] = field(default_factory=dict)
 
 
+class SearchCancelled(Exception):
+    """The caller withdrew the search before it finished."""
+
+
 def optimize(
     scenario: dict[str, Any],
     *,
@@ -78,6 +82,7 @@ def optimize(
     starts: int = 3,
     max_workers: int | None = None,
     progress: Callable[[int, int], None] | None = None,
+    cancelled: Callable[[], bool] | None = None,
 ) -> OptimizationResult:
     _install_scenario(scenario)
     baseline = _evaluate(({}, strategy))
@@ -98,6 +103,7 @@ def optimize(
             len(_axes(free)), method, coarse_steps, axis_steps, passes, starts, refine_rounds
         ),
         progress=progress,
+        cancelled=cancelled,
     )
 
     with _Fanout(scenario, max_workers) as fanout:
@@ -144,12 +150,17 @@ def optimize(
 class _Budget:
     planned: int
     progress: Callable[[int, int], None] | None = None
+    cancelled: Callable[[], bool] | None = None
     done: int = 0
 
     def advance(self, count: int = 1) -> None:
         self.done += count
         if self.progress:
             self.progress(min(self.done, self.planned), self.planned)
+        # Checked here because this is the one place every method passes through
+        # after each configuration, so no search can run on past a withdrawal.
+        if self.cancelled is not None and self.cancelled():
+            raise SearchCancelled
 
 
 def _axes(free: Sequence[PlaneBounds]) -> list[tuple[str, str, tuple[float, float]]]:
@@ -280,9 +291,15 @@ class _Fanout:
             )
         return self
 
-    def __exit__(self, *_exc: object) -> None:
+    def __exit__(self, exc_type: type[BaseException] | None, *_exc: object) -> None:
         if self._pool is not None:
-            self._pool.shutdown()
+            # Leaving on an exception — a cancellation above all — must not sit
+            # through the rest of the queue: pending chunks are dropped and only
+            # the ones already on a core finish.
+            if exc_type is None:
+                self._pool.shutdown()
+            else:
+                self._pool.shutdown(wait=False, cancel_futures=True)
             self._pool = None
 
     def map(self, payloads: list[tuple[dict[str, PlaneOverride], RoutingStrategy]]):

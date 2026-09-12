@@ -90,3 +90,22 @@ def test_the_objective_can_lead_on_the_mean(full_constellation, free_planes):
     )
 
     assert result.best.mean_availability >= result.baseline.mean_availability
+
+
+def test_a_withdrawn_search_stops_where_it_is(full_constellation, free_planes):
+    """The stop request is honoured within one configuration, not at the end."""
+    from engine.optimizer import SearchCancelled
+
+    seen: list[int] = []
+
+    with pytest.raises(SearchCancelled):
+        optimize(
+            full_constellation,
+            bounds=free_planes,
+            max_workers=1,
+            progress=lambda explored, _total: seen.append(explored),
+            cancelled=lambda: len(seen) >= 3,
+            **DESCENT,
+        )
+
+    assert seen[-1] == 3

@@ -1,1 +1,5 @@
-export { DeploymentControl } from './ui/deployment-control';
+export {
+  DeploymentControl,
+  type FindCost,
+  type SearchDepth,
+} from './ui/deployment-control';

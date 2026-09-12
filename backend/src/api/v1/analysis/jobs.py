@@ -49,3 +49,18 @@ async def get_job_result(
     svc: Annotated[AnalysisService, Depends(get_analysis_service)],
 ) -> OptimizeResult | Response:
     return _replay_to_owner(request, job_id) or svc.job_result(job_id)
+
+
+@router.delete(
+    path="/jobs/{job_id}",
+    response_model=JobStatusModel,
+    summary="Stop a running job",
+)
+async def cancel_job(
+    request: Request,
+    job_id: str,
+    svc: Annotated[AnalysisService, Depends(get_analysis_service)],
+) -> JobStatusModel | Response:
+    """Asks the search to stop. It notices after its current configuration and
+    reports `cancelled` once its cores are free; poll the job to see that land."""
+    return _replay_to_owner(request, job_id) or svc.cancel_job(job_id)

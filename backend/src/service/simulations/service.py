@@ -44,7 +44,7 @@ from domain.simulation import (
 from engine import RoutingStrategy, active_site_conditions
 from engine.export import build_result
 from engine.simulate import SimulationResult, ephemeris, simulate, snapshot_at
-from service.scenarios.service import check_scenario
+from service.scenarios.service import open_scenario
 from service.simulations.overrides import effective_scenario
 
 logger = logging.getLogger(__name__)
@@ -268,7 +268,7 @@ class SimulationService:
             if row is None:
                 raise NotFoundError(f"Scenario {scenario_id!r} not found")
             return row.payload
-        return check_scenario(inline)
+        return open_scenario(inline)[0]
 
     async def _require_run(self, run_id: str) -> SimulationRunRow:
         row = await self.runs.get(run_id)

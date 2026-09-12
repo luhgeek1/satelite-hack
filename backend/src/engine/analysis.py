@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .metrics import mean_availability, worst_availability
@@ -21,6 +21,7 @@ class SatelliteImpact:
     per_client_drop: dict[str, float]
     breaks_target: bool
     criticality: float  # 0…100, for the globe's colour scale
+    per_client_outage_growth_s: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +47,7 @@ def analyse_resilience(
     base_worst = worst_availability(baseline.metrics)
     base_mean = mean_availability(baseline.metrics)
     base_per_client = {cid: m.availability for cid, m in baseline.metrics.items()}
+    base_outage = {cid: m.max_outage_s for cid, m in baseline.metrics.items()}
     target = scenario["environment"]["target_availability"]
 
     candidates = list(satellites) if satellites is not None else _live_satellites(scenario)
@@ -61,7 +63,7 @@ def analyse_resilience(
             outcomes = list(pool.map(_knockout, payloads, chunksize=4))
 
     impacts = []
-    for sat_id, worst, mean, per_client in outcomes:
+    for sat_id, worst, mean, per_client, outages in outcomes:
         drop = base_worst - worst
         impacts.append(
             SatelliteImpact(
@@ -73,6 +75,9 @@ def analyse_resilience(
                 },
                 breaks_target=worst < target <= base_worst,
                 criticality=0.0,  # filled in below, once the range is known
+                per_client_outage_growth_s={
+                    cid: max(0, outages.get(cid, 0) - base_outage[cid]) for cid in base_outage
+                },
             )
         )
 
@@ -95,7 +100,7 @@ def _live_satellites(scenario: dict[str, Any]) -> list[str]:
 
 def _knockout(
     payload: tuple[dict[str, Any], str, RoutingStrategy],
-) -> tuple[str, float, float, dict[str, float]]:
+) -> tuple[str, float, float, dict[str, float], dict[str, int]]:
     scenario, satellite_id, strategy = payload
     probe = copy.deepcopy(scenario)
     probe["failures"] = list(probe["failures"]) + [
@@ -111,6 +116,7 @@ def _knockout(
         worst_availability(result.metrics),
         mean_availability(result.metrics),
         {cid: m.availability for cid, m in result.metrics.items()},
+        {cid: m.max_outage_s for cid, m in result.metrics.items()},
     )
 
 
@@ -137,6 +143,7 @@ def _as_dict(impact: SatelliteImpact) -> dict[str, Any]:
         "per_client_drop": impact.per_client_drop,
         "breaks_target": impact.breaks_target,
         "criticality": impact.criticality,
+        "per_client_outage_growth_s": impact.per_client_outage_growth_s,
     }
 
 

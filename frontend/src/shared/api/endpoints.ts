@@ -9,7 +9,7 @@ import type {
   ResilienceResponse,
   RunRequest,
   ScenarioDetail,
-  ScenarioDocument,
+  ScenarioImported,
   ScenarioSummary,
   SensitivityResponse,
   SiteProfile,
@@ -25,8 +25,9 @@ export const scenariosApi = {
   detail: (id: string) => request<ScenarioDetail>(`/scenarios/${id}`),
   validate: (document: unknown) =>
     request<ValidationReport>('/scenarios/validate', { method: 'POST', body: document }),
-  import: (document: ScenarioDocument) =>
-    request<ScenarioSummary>('/scenarios', { method: 'POST', body: document }),
+  /** Takes whatever the file held: the server names what is wrong with it. */
+  import: (document: unknown) =>
+    request<ScenarioImported>('/scenarios', { method: 'POST', body: document }),
   remove: (id: string) => request<void>(`/scenarios/${id}`, { method: 'DELETE' }),
   rename: (id: string, title: string) =>
     request<ScenarioSummary>(`/scenarios/${id}`, { method: 'PATCH', body: { title } }),
@@ -63,6 +64,7 @@ export const analysisApi = {
   optimize: (payload: OptimizeRequest) =>
     request<JobStatus>('/analysis/optimize', { method: 'POST', body: payload }),
   job: (jobId: string) => request<JobStatus>(`/jobs/${jobId}`),
+  cancelJob: (jobId: string) => request<JobStatus>(`/jobs/${jobId}`, { method: 'DELETE' }),
   jobResult: (jobId: string) => request<OptimizeResult>(`/jobs/${jobId}/result`),
 };
 

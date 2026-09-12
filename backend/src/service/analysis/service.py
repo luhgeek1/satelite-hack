@@ -30,11 +30,13 @@ from engine.optimizer import (
     Candidate,
     Objective,
     PlaneBounds,
+    SearchCancelled,
     SearchMethod,
     optimize,
+    planned_runs,
     sweep_environment,
 )
-from service.analysis.jobs import Job, JobRegistry
+from service.analysis.jobs import Job, JobCancelled, JobRegistry
 from service.scenarios.service import check_scenario
 from service.simulations.overrides import effective_scenario
 
@@ -106,6 +108,7 @@ class AnalysisService:
                     per_client_drop={k: round(v, 6) for k, v in i.per_client_drop.items()},
                     breaks_target=i.breaks_target,
                     criticality=i.criticality,
+                    per_client_outage_growth_s=dict(i.per_client_outage_growth_s),
                 )
                 for i in impacts
             ],
@@ -173,27 +176,67 @@ class AnalysisService:
             )
 
         settings = get_settings()
+        method = SearchMethod(request.method)
+
+        # The exhaustive grid is refused outright rather than merely capped: at
+        # six free angles it is four thousand full simulations, half an hour of
+        # both production cores, and it measured worse than the descent anyway.
+        if method is SearchMethod.GRID:
+            raise BadRequestError(
+                "The exhaustive grid search is disabled on this service: it takes "
+                "about half an hour and scores worse than coordinate descent. "
+                "Use method 'coordinate_descent'."
+            )
+
+        free_axes = sum((b.raan_deg is not None) + (b.phase_deg is not None) for b in bounds)
+        runs = planned_runs(
+            free_axes,
+            method,
+            request.coarse_steps,
+            request.axis_steps,
+            request.passes,
+            request.starts,
+            request.refine_rounds,
+        )
+        if runs > settings.OPTIMIZER_MAX_RUNS:
+            raise BadRequestError(
+                f"This search would evaluate {runs} configurations; the limit is "
+                f"{settings.OPTIMIZER_MAX_RUNS}. Lock some angles or use fewer passes or starts."
+            )
 
         async def work(job: Job) -> OptimizeResult:
             async with analysis_gate():
-                result = await asyncio.to_thread(
-                    optimize,
+                # Stopped while it was still waiting for a slot.
+                if job.stop.is_set():
+                    raise JobCancelled
+                try:
+                    result = await asyncio.to_thread(
+                        optimize,
                     scenario,
                     bounds=bounds,
                     strategy=strategy,
                     objective=objective,
-                    method=SearchMethod(request.method),
-                    coarse_steps=request.coarse_steps,
-                    refine_rounds=request.refine_rounds,
-                    axis_steps=request.axis_steps,
-                    passes=request.passes,
-                    starts=request.starts,
-                    max_workers=settings.OPTIMIZER_MAX_WORKERS,
-                    progress=job.note_progress,
-                )
+                        method=method,
+                        coarse_steps=request.coarse_steps,
+                        refine_rounds=request.refine_rounds,
+                        axis_steps=request.axis_steps,
+                        passes=request.passes,
+                        starts=request.starts,
+                        max_workers=settings.OPTIMIZER_MAX_WORKERS,
+                        progress=job.note_progress,
+                        cancelled=job.stop.is_set,
+                    )
+                except SearchCancelled as exc:
+                    raise JobCancelled from exc
             return _optimize_result(result, scenario)
 
         return _job_model(self.jobs.submit("optimize", work))
+
+    def cancel_job(self, job_id: str) -> JobStatusModel:
+        job = self.jobs.cancel(job_id)
+        if job is None:
+            raise NotFoundError(f"Job {job_id!r} not found")
+        return _job_model(job)
 
     def job(self, job_id: str) -> JobStatusModel:
         job = self.jobs.get(job_id)
@@ -207,6 +250,8 @@ class AnalysisService:
             raise NotFoundError(f"Job {job_id!r} not found")
         if job.status == "failed":
             raise BadRequestError(job.error or "Job failed")
+        if job.status == "cancelled":
+            raise BadRequestError(f"Job {job_id!r} was cancelled")
         if job.status != "done":
             raise BadRequestError(f"Job {job_id!r} is still {job.status}")
         return job.result
