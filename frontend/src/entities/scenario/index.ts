@@ -1,4 +1,10 @@
-export { useScenarios, useScenario, useImportScenario } from './api/queries';
+export {
+  useScenarios,
+  useScenario,
+  useImportScenario,
+  useDeleteScenario,
+  useRenameScenario,
+} from './api/queries';
 export { planeColorMap } from './model/plane-colors';
 export {
   readGeometry,

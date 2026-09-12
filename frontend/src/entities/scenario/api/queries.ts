@@ -1,7 +1,13 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { queryKeys, scenariosApi, type ScenarioDocument, type ScenarioSummary } from '@/shared/api';
+import {
+  queryKeys,
+  scenariosApi,
+  type ScenarioDetail,
+  type ScenarioDocument,
+  type ScenarioSummary,
+} from '@/shared/api';
 
 export function useScenarios() {
   return useQuery({
@@ -60,6 +66,51 @@ export function useImportScenario() {
 
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.scenarios });
+    },
+  });
+}
+
+export function useDeleteScenario() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (scenarioId: string) => scenariosApi.remove(scenarioId),
+
+    onMutate: async (scenarioId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.scenarios });
+      const previous = queryClient.getQueryData<ScenarioSummary[]>(queryKeys.scenarios);
+
+      queryClient.setQueryData<ScenarioSummary[]>(queryKeys.scenarios, (current = []) =>
+        current.filter((scenario) => scenario.id !== scenarioId),
+      );
+
+      return { previous };
+    },
+
+    onError: (_error, _scenarioId, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKeys.scenarios, context.previous);
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.scenarios });
+    },
+  });
+}
+
+export function useRenameScenario() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ scenarioId, title }: { scenarioId: string; title: string }) =>
+      scenariosApi.rename(scenarioId, title),
+
+    onSuccess: (summary) => {
+      queryClient.setQueryData<ScenarioSummary[]>(queryKeys.scenarios, (current = []) =>
+        current.map((scenario) => (scenario.id === summary.id ? summary : scenario)),
+      );
+      queryClient.setQueryData<ScenarioDetail>(queryKeys.scenario(summary.id), (current) =>
+        current ? { ...current, summary } : current,
+      );
     },
   });
 }

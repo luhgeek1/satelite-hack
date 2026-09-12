@@ -28,6 +28,8 @@ export const scenariosApi = {
   import: (document: ScenarioDocument) =>
     request<ScenarioSummary>('/scenarios', { method: 'POST', body: document }),
   remove: (id: string) => request<void>(`/scenarios/${id}`, { method: 'DELETE' }),
+  rename: (id: string, title: string) =>
+    request<ScenarioSummary>(`/scenarios/${id}`, { method: 'PATCH', body: { title } }),
   downloadUrl: (id: string) => downloadUrl(`/scenarios/${id}/download`),
   siteProfiles: () => request<SiteProfile[]>('/scenarios/site-profiles'),
 };

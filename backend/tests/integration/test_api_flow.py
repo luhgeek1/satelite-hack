@@ -135,9 +135,47 @@ async def test_effective_scenario_round_trips(client):
 
     scenario = (await client.get(f"/api/v1/simulations/{run_id}/scenario")).json()
     assert scenario["design"]["planes"][1]["raan_deg"] == pytest.approx(45.0)
+    # The download re-stamps meta.id to the run id, so re-importing it never
+    # collides with (and gets silently suffixed away from) the base scenario.
+    assert scenario["meta"]["id"] == run_id
 
     reimport = await client.post("/api/v1/scenarios", json=scenario)
     assert reimport.status_code == 201
+    assert reimport.json()["id"] == run_id
+    await client.delete(f"/api/v1/scenarios/{run_id}")
+
+
+async def test_delete_scenario_blocks_official_but_allows_imports(client):
+    blocked = await client.delete(f"/api/v1/scenarios/{FULL}")
+    assert blocked.status_code == 409
+
+    imported = (await client.get(f"/api/v1/scenarios/{FULL}")).json()["scenario"]
+    imported["meta"] = {**imported["meta"], "id": "delete_me"}
+    created = await client.post("/api/v1/scenarios", json=imported)
+    assert created.status_code == 201
+
+    allowed = await client.delete("/api/v1/scenarios/delete_me")
+    assert allowed.status_code == 204
+    assert (await client.get("/api/v1/scenarios/delete_me")).status_code == 404
+
+
+async def test_rename_scenario_blocks_official_but_allows_imports(client):
+    blocked = await client.patch(f"/api/v1/scenarios/{FULL}", json={"title": "Renamed"})
+    assert blocked.status_code == 409
+
+    imported = (await client.get(f"/api/v1/scenarios/{FULL}")).json()["scenario"]
+    imported["meta"] = {**imported["meta"], "id": "rename_me"}
+    await client.post("/api/v1/scenarios", json=imported)
+
+    renamed = await client.patch("/api/v1/scenarios/rename_me", json={"title": "My variant"})
+    assert renamed.status_code == 200
+    assert renamed.json()["title"] == "My variant"
+
+    detail = (await client.get("/api/v1/scenarios/rename_me")).json()
+    assert detail["summary"]["title"] == "My variant"
+    assert detail["scenario"]["meta"]["title"] == "My variant"
+
+    await client.delete("/api/v1/scenarios/rename_me")
 
 
 async def test_variants_and_comparison(client):
@@ -171,9 +209,7 @@ async def test_variants_and_comparison(client):
 async def test_variant_flags_environment_modified(client):
     """Tuning `isl_range_km` is a sensitivity study, not a design variant — the
     flag has to survive onto the saved variant so a comparison can say so."""
-    baseline = await client.post(
-        "/api/v1/variants", json={"name": "Baseline", "scenario_id": FULL}
-    )
+    baseline = await client.post("/api/v1/variants", json={"name": "Baseline", "scenario_id": FULL})
     tuned = await client.post(
         "/api/v1/variants",
         json={"name": "Shorter ISL", "scenario_id": FULL, "config": {"isl_range_km": 2500.0}},

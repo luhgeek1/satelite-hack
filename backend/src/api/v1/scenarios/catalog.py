@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
 
-from domain.scenario import ScenarioDetail, ScenarioSummary, SiteProfileModel
+from domain.scenario import ScenarioDetail, ScenarioRenameRequest, ScenarioSummary, SiteProfileModel
 from engine import PROFILES
 from service.scenarios import ScenarioService, get_scenario_service
 
@@ -80,3 +80,16 @@ async def delete_scenario(
     svc: Annotated[ScenarioService, Depends(get_scenario_service)],
 ) -> None:
     await svc.delete(scenario_id)
+
+
+@router.patch(
+    path="/scenarios/{scenario_id}",
+    response_model=ScenarioSummary,
+    summary="Rename an imported scenario",
+)
+async def rename_scenario(
+    scenario_id: str,
+    request: ScenarioRenameRequest,
+    svc: Annotated[ScenarioService, Depends(get_scenario_service)],
+) -> ScenarioSummary:
+    return await svc.rename(scenario_id, request.title)

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, PanelRightClose, PanelRightOpen, ShieldAlert } from 'lucide-react';
+import { Activity, Check, Pencil, PanelRightClose, PanelRightOpen, ShieldAlert, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AppHeader } from '@/widgets/app-header';
 import { CompareBoard } from '@/widgets/compare-board';
@@ -33,6 +33,7 @@ import {
   planeColorMap,
   planeCommitStage,
   readGeometry,
+  useRenameScenario,
   useScenario,
   useScenarios,
 } from '@/entities/scenario';
@@ -79,6 +80,8 @@ export function StudioPage() {
   const { t } = useI18n();
   const scenarios = useScenarios();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const renameScenario = useRenameScenario();
+  const [renameDraft, setRenameDraft] = useState<string | null>(null);
 
   useDisableBrowserZoom();
   const panels = useLocalPanels();
@@ -121,6 +124,15 @@ export function StudioPage() {
   const scenario = scenarioQuery.data?.scenario;
   const geometry = scenario ? readGeometry(scenario) : null;
   const colors = useMemo(() => planeColorMap(scenario), [scenario]);
+  const activeSummary = scenarios.data?.find((item) => item.id === state.scenarioId);
+
+  const submitRename = () => {
+    const title = renameDraft?.trim();
+    if (title && activeSummary && title !== activeSummary.title) {
+      renameScenario.mutate({ scenarioId: activeSummary.id, title });
+    }
+    setRenameDraft(null);
+  };
 
   const liveInput = {
     scenarioId: state.scenarioId,
@@ -474,6 +486,57 @@ export function StudioPage() {
                   <div className="truncate font-data text-[13px] text-zinc-100">
                     {scenario?.meta.id ?? '—'}
                   </div>
+                  {activeSummary &&
+                    (renameDraft !== null ? (
+                      <div className="mt-1 flex items-center gap-1">
+                        <input
+                          autoFocus
+                          value={renameDraft}
+                          onChange={(event) => setRenameDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') submitRename();
+                            if (event.key === 'Escape') setRenameDraft(null);
+                          }}
+                          onBlur={submitRename}
+                          maxLength={256}
+                          className="min-w-0 flex-1 border border-rule-strong bg-black px-1.5 py-0.5 font-label text-[11px] text-zinc-200 focus-visible:border-zinc-400 focus-visible:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={submitRename}
+                          aria-label={t('scenario.renameSave')}
+                          className="flex-shrink-0 text-zinc-500 transition-colors hover:text-zinc-200"
+                        >
+                          <Check size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => setRenameDraft(null)}
+                          aria-label={t('scenario.renameCancel')}
+                          className="flex-shrink-0 text-zinc-600 transition-colors hover:text-zinc-200"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        <span className="truncate font-label text-[11px] text-zinc-500">
+                          {activeSummary.title}
+                        </span>
+                        {activeSummary.source !== 'official' && (
+                          <button
+                            type="button"
+                            onClick={() => setRenameDraft(activeSummary.title)}
+                            aria-label={t('scenario.rename')}
+                            className="flex-shrink-0 text-zinc-600 transition-colors hover:text-zinc-200"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                 </div>
                 <button
                   type="button"

@@ -51,6 +51,10 @@ export const en = {
   'scenario.noVariants': 'Nothing saved yet. Configure the network and save a variant.',
   'scenario.loading': 'Loading scenario catalog',
   'scenario.connecting': 'Connecting to the simulation service.',
+  'scenario.rename': 'Rename scenario',
+  'scenario.renameSave': 'Save name',
+  'scenario.renameCancel': 'Cancel',
+  'scenario.delete': 'Delete {name}',
 
   'panel.collapse': 'Collapse panel',
   'panel.open': 'Open panel',
@@ -449,6 +453,10 @@ export const ru: Record<TranslationKey, string> = {
   'scenario.noVariants': 'Пока ничего не сохранено. Настройте сеть и сохраните вариант.',
   'scenario.loading': 'Загрузка каталога сценариев',
   'scenario.connecting': 'Соединение со службой моделирования.',
+  'scenario.rename': 'Переименовать сценарий',
+  'scenario.renameSave': 'Сохранить название',
+  'scenario.renameCancel': 'Отмена',
+  'scenario.delete': 'Удалить {name}',
 
   'panel.collapse': 'Свернуть панель',
   'panel.open': 'Открыть панель',

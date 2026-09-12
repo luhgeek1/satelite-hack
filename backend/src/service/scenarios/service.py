@@ -92,6 +92,15 @@ class ScenarioService:
         await self.scenarios.delete(scenario_id)
         await self.uow.commit()
 
+    async def rename(self, scenario_id: str, title: str) -> ScenarioSummary:
+        row = await self._require(scenario_id)
+        if row.source == "official":
+            raise ConflictError("Official case scenarios cannot be renamed")
+        renamed = await self.scenarios.rename(scenario_id, title)
+        assert renamed is not None  # the official check above already ruled this out
+        await self.uow.commit()
+        return summarise(renamed)
+
     async def seed_official(self) -> int:
         """Load the bundled case scenarios on startup.
 

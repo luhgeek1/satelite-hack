@@ -16,6 +16,7 @@ from .schemas import (
     ScenarioDetail,
     ScenarioMetaModel,
     ScenarioModel,
+    ScenarioRenameRequest,
     ScenarioSummary,
     ValidationReport,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "ScenarioDesignModel",
     "ScenarioMetaModel",
     "ScenarioModel",
+    "ScenarioRenameRequest",
     "ScenarioSummary",
     "ScenarioDetail",
     "ValidationReport",

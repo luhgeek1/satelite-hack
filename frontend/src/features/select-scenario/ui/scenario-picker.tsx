@@ -1,9 +1,9 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ChevronDown, Upload } from 'lucide-react';
-import { useImportScenario, useScenarios } from '@/entities/scenario';
-import { useVariants } from '@/entities/variant';
+import { ChevronDown, Trash2, Upload } from 'lucide-react';
+import { useDeleteScenario, useImportScenario, useScenarios } from '@/entities/scenario';
+import { useDeleteVariant, useVariants } from '@/entities/variant';
 import { hasConfigChanges } from '@/entities/simulation';
 import { useSession } from '@/entities/session';
 import { cn, formatPercent } from '@/shared/lib';
@@ -17,6 +17,8 @@ export function ScenarioPicker() {
   const scenarios = useScenarios();
   const variants = useVariants();
   const importScenario = useImportScenario();
+  const deleteScenario = useDeleteScenario();
+  const deleteVariant = useDeleteVariant();
   const fileInput = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
@@ -63,29 +65,43 @@ export function ScenarioPicker() {
                 {t('scenario.files')}
               </div>
               {scenarios.data?.map((scenario) => (
-                <button
+                <div
                   key={scenario.id}
-                  type="button"
-                  onClick={() => {
-                    dispatch({ type: 'selectScenario', scenarioId: scenario.id });
-                    setOpen(false);
-                  }}
                   className={cn(
-                    'flex w-full flex-col gap-0.5 border-b border-rule px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-white/[0.04]',
+                    'flex items-stretch border-b border-rule transition-colors last:border-b-0 hover:bg-white/[0.04]',
                     scenario.id === state.scenarioId && 'bg-white/[0.06]',
                   )}
                 >
-                  <span className="flex items-baseline gap-2">
-                    <span className="font-data text-[12px] text-zinc-100">{scenario.id}</span>
-                    <span className="ml-auto font-data text-[9px] tracking-[0.08em] text-zinc-600">
-                      {scenario.source === 'official' ? t('scenario.case') : t('scenario.import')}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dispatch({ type: 'selectScenario', scenarioId: scenario.id });
+                      setOpen(false);
+                    }}
+                    className="flex min-w-0 flex-1 flex-col gap-0.5 px-3 py-2 text-left"
+                  >
+                    <span className="flex items-baseline gap-2">
+                      <span className="font-data text-[12px] text-zinc-100">{scenario.id}</span>
+                      <span className="ml-auto font-data text-[9px] tracking-[0.08em] text-zinc-600">
+                        {scenario.source === 'official' ? t('scenario.case') : t('scenario.import')}
+                      </span>
                     </span>
-                  </span>
-                  <span className="truncate font-label text-[11px] text-zinc-500">{scenario.title}</span>
-                  <span className="font-data text-[10px] tabular-nums text-zinc-600">
-                    {scenario.satellite_count} SV · {scenario.client_count} CL · {scenario.steps} steps
-                  </span>
-                </button>
+                    <span className="truncate font-label text-[11px] text-zinc-500">{scenario.title}</span>
+                    <span className="font-data text-[10px] tabular-nums text-zinc-600">
+                      {scenario.satellite_count} SV · {scenario.client_count} CL · {scenario.steps} steps
+                    </span>
+                  </button>
+                  {scenario.source !== 'official' && (
+                    <button
+                      type="button"
+                      onClick={() => deleteScenario.mutate(scenario.id)}
+                      aria-label={t('scenario.delete', { name: scenario.id })}
+                      className="flex-shrink-0 px-3 text-zinc-600 transition-colors hover:text-alarm"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
               ))}
 
               {/* A saved variant is a scenario plus a configuration. Opening one
@@ -96,32 +112,44 @@ export function ScenarioPicker() {
               </div>
               {variants.data?.length ? (
                 variants.data.map((variant) => (
-                  <button
+                  <div
                     key={variant.id}
-                    type="button"
-                    onClick={() => {
-                      if (!variant.scenario_id) return;
-                      dispatch({
-                        type: 'openVariant',
-                        scenarioId: variant.scenario_id,
-                        config: variant.config,
-                        strategy: variant.strategy,
-                      });
-                      setOpen(false);
-                    }}
-                    disabled={!variant.scenario_id}
-                    className="flex w-full flex-col gap-0.5 border-b border-rule px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-white/[0.04] disabled:opacity-40"
+                    className="flex items-stretch border-b border-rule transition-colors last:border-b-0 hover:bg-white/[0.04]"
                   >
-                    <span className="flex items-baseline gap-2">
-                      <span className="truncate font-data text-[12px] text-zinc-100">{variant.name}</span>
-                      <span className="ml-auto shrink-0 font-data text-[9px] tracking-[0.08em] text-zinc-600">
-                        {t('scenario.variant')}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!variant.scenario_id) return;
+                        dispatch({
+                          type: 'openVariant',
+                          scenarioId: variant.scenario_id,
+                          config: variant.config,
+                          strategy: variant.strategy,
+                        });
+                        setOpen(false);
+                      }}
+                      disabled={!variant.scenario_id}
+                      className="flex min-w-0 flex-1 flex-col gap-0.5 px-3 py-2 text-left disabled:opacity-40"
+                    >
+                      <span className="flex items-baseline gap-2">
+                        <span className="truncate font-data text-[12px] text-zinc-100">{variant.name}</span>
+                        <span className="ml-auto shrink-0 font-data text-[9px] tracking-[0.08em] text-zinc-600">
+                          {t('scenario.variant')}
+                        </span>
                       </span>
-                    </span>
-                    <span className="font-data text-[10px] tabular-nums text-zinc-500">
-                      {formatPercent(variant.worst_availability)} · {variant.scenario_id}
-                    </span>
-                  </button>
+                      <span className="font-data text-[10px] tabular-nums text-zinc-500">
+                        {formatPercent(variant.worst_availability)} · {variant.scenario_id}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteVariant.mutate(variant.id)}
+                      aria-label={t('scenario.delete', { name: variant.name })}
+                      className="flex-shrink-0 px-3 text-zinc-600 transition-colors hover:text-alarm"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 ))
               ) : (
                 <p className="px-3 py-2 font-label text-[11px] text-zinc-600">

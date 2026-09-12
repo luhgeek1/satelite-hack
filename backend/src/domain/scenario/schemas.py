@@ -96,6 +96,12 @@ class ScenarioModel(WireModel):
         return self.model_dump(mode="json")
 
 
+class ScenarioRenameRequest(WireModel):
+    """Body of `PATCH /scenarios/{scenario_id}` — the only field a rename touches."""
+
+    title: str = Field(..., min_length=1, max_length=256)
+
+
 class ValidationReport(WireModel):
     """Result of a dry-run check, so the UI can report before it commits."""
 
