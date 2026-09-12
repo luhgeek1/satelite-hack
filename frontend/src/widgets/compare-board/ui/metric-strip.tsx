@@ -21,8 +21,21 @@ export function MetricStrip({ metrics, clientCount }: MetricStripProps) {
   );
 }
 
+/**
+ * Metric labels arrive worded by the compare endpoint, which speaks one
+ * language. The keys are stable, so the five it returns get the interface
+ * language and anything new falls back to what the service called it.
+ */
+const TRANSLATED = [
+  'worst_availability',
+  'mean_availability',
+  'max_bounded_outage_s',
+  'clients_meeting_target',
+  'avg_hops',
+];
+
 function MetricTile({ metric, clientCount }: { metric: ComparedMetric; clientCount: number }) {
-  const { formatDuration } = useI18n();
+  const { t, formatDuration } = useI18n();
   const [before, after] = metric.values;
 
   const format = (value: number | null) => {
@@ -57,7 +70,9 @@ function MetricTile({ metric, clientCount }: { metric: ComparedMetric; clientCou
       )}
     >
       <div className="flex-1 px-3 pb-3 pt-2.5">
-        <div className="font-label text-[11px] leading-tight text-zinc-500">{metric.label}</div>
+        <div className="font-label text-[11px] leading-tight text-zinc-500">
+          {TRANSLATED.includes(metric.key) ? t(`metric.${metric.key}` as 'metric.avg_hops') : metric.label}
+        </div>
         <div className="mt-1.5 font-data text-[22px] leading-none tabular-nums text-zinc-100">
           {format(after)}
         </div>

@@ -326,6 +326,12 @@ export const en = {
   'compare.colWorst': 'worst',
   'compare.colMean': 'mean',
   'compare.colOutage': 'outage',
+
+  'metric.worst_availability': 'Worst-client availability',
+  'metric.mean_availability': 'Mean availability',
+  'metric.max_bounded_outage_s': 'Longest outage',
+  'metric.clients_meeting_target': 'Sites meeting target',
+  'metric.avg_hops': 'Mean route length',
   'compare.open': 'Open in simulation',
   'compare.worst': 'worst {value}',
 
@@ -655,6 +661,12 @@ export const ru: Record<TranslationKey, string> = {
   'compare.colWorst': 'худший',
   'compare.colMean': 'средний',
   'compare.colOutage': 'перерыв',
+
+  'metric.worst_availability': 'Худшая доступность',
+  'metric.mean_availability': 'Средняя доступность',
+  'metric.max_bounded_outage_s': 'Самый долгий перерыв',
+  'metric.clients_meeting_target': 'Пунктов в норме',
+  'metric.avg_hops': 'Средняя длина маршрута',
   'compare.open': 'Открыть в симуляции',
   'compare.worst': 'худший {value}',
 
