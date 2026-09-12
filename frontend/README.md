@@ -19,6 +19,15 @@ npm run lint    # tsc --noEmit
 npm run build
 ```
 
+If the page renders as unstyled HTML and the stylesheet 404s, the Next build
+cache is stale — usually because the dev server compiled a file while a merge
+was half-resolved, and webpack kept serving the broken graph afterwards. The
+cache does not recover on its own:
+
+```bash
+npm run dev:clean    # discards .next, then starts
+```
+
 ## Layer map
 
 Imports point downward only: `app → views → widgets → features → entities → shared`.

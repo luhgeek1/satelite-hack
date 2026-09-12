@@ -1,6 +1,7 @@
-.PHONY: help install dev up down logs test test-unit test-integration test-up test-down lint format migrate seed api-spec
+.PHONY: help install dev front front-clean up down logs test test-unit test-integration test-up test-down lint format migrate seed api-spec
 
 BACKEND := backend
+FRONTEND := frontend
 PY      := $(BACKEND)/.venv/bin/python
 TEST_DB := postgresql+asyncpg://postgres:secret@localhost:55432/orbitguard_test
 TEST_REDIS := redis://localhost:56379/0
@@ -23,6 +24,12 @@ down:  ## Stop the stack
 
 logs:  ## Tail backend logs
 	docker compose logs -f --tail=200 backend
+
+front:  ## Run the frontend dev server against the API
+	cd $(FRONTEND) && npm run dev
+
+front-clean:  ## Same, after discarding the Next build cache
+	cd $(FRONTEND) && npm run dev:clean
 
 dev:  ## Run the API locally against the test infrastructure
 	cd $(BACKEND)/src && $(TEST_ENV) SCENARIO_SEED_DIR=../../data PYTHONPATH=. \
