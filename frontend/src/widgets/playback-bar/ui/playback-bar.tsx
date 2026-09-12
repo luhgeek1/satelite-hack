@@ -1,7 +1,15 @@
 'use client';
 
-import { memo, useMemo, useRef } from 'react';
-import { Pause, Play } from 'lucide-react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { Pause, Play, SquareDashedMousePointer, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import {
+  OutagePicker,
+  windowClock,
+  type OutageNode,
+  type OutageTarget,
+  type OutageWindow,
+} from '@/features/schedule-outage';
 import { cn, formatClock, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import type { OutageBand } from '@/entities/simulation';
@@ -17,15 +25,23 @@ interface PlaybackBarProps {
   clients: ClientMetrics[];
   target: number;
   focusClientId: string | null;
+  satelliteNodes: OutageNode[];
+  gatewayNodes: OutageNode[];
   onToggle: () => void;
   onSpeed: (speed: number) => void;
   onSeek: (tS: number) => void;
   onSelectClient: (clientId: string) => void;
+  onScheduleOutage: (target: OutageTarget, window: OutageWindow | null) => void;
 }
 
 const SPEEDS = [1, 4, 16];
 /** Every sixth hour gets a label; the ruler is read, not measured. */
 const HOUR_MARKS = [0, 6, 12, 18, 24];
+/** Half the picker's width, so it can be centred and still clamped inside. */
+const PICKER_HALF = '9.75rem';
+
+type DragKind = { kind: 'new' } | { kind: 'edge'; edge: 'start' | 'end' } | { kind: 'move' };
+type Drag = DragKind & { anchorS: number; base: OutageWindow | null; originX: number };
 
 function PlaybackBarView({
   tS,
@@ -37,13 +53,27 @@ function PlaybackBarView({
   clients,
   target,
   focusClientId,
+  satelliteNodes,
+  gatewayNodes,
   onToggle,
   onSpeed,
   onSeek,
   onSelectClient,
+  onScheduleOutage,
 }: PlaybackBarProps) {
-  const { t } = useI18n();
+  const { t, formatDuration } = useI18n();
+  const reduce = useReducedMotion();
   const tracks = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+
+  // Drawing an outage window over the strip. The mode is the discoverable way
+  // in — a drag then works like trimming a clip — and a right-drag does the
+  // same thing without it, for the operator who already knows.
+  const [selectMode, setSelectMode] = useState(false);
+  const [window_, setWindow] = useState<OutageWindow | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const moved = useRef(false);
 
   // Grouped once rather than scanned per row: the strip redraws on every
   // playback tick, and a filter per site over the whole day is work the
@@ -58,6 +88,13 @@ function PlaybackBarView({
     return grouped;
   }, [bands]);
 
+  const timeFromClientX = (clientX: number) => {
+    const rect = tracks.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return null;
+    const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    return Math.max(0, Math.min(horizonS, Math.round((fraction * horizonS) / stepS) * stepS));
+  };
+
   const seekFromClientX = (clientX: number) => {
     const rect = tracks.current?.getBoundingClientRect();
     if (!rect || rect.width === 0) return;
@@ -65,7 +102,106 @@ function PlaybackBarView({
     onSeek(Math.floor((fraction * horizonS) / stepS) * stepS);
   };
 
+  const startDrag = (event: React.PointerEvent, kind: DragKind) => {
+    const at = timeFromClientX(event.clientX);
+    if (at === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    moved.current = false;
+    setPicking(false);
+    if (kind.kind === 'new') setWindow({ startS: at, endS: at });
+    setDrag({ ...kind, anchorS: at, base: window_, originX: event.clientX });
+  };
+
+  // The pointer leaves the strip constantly while a window is drawn, so the
+  // move and the release are watched on the window rather than on the element
+  // the gesture started in.
+  useEffect(() => {
+    if (!drag) return;
+
+    const onMove = (event: PointerEvent) => {
+      const at = timeFromClientX(event.clientX);
+      if (at === null) return;
+      if (Math.abs(event.clientX - drag.originX) > 3) moved.current = true;
+
+      if (drag.kind === 'new') {
+        setWindow({ startS: Math.min(drag.anchorS, at), endS: Math.max(drag.anchorS, at) });
+        return;
+      }
+
+      const base = drag.base;
+      if (!base) return;
+
+      if (drag.kind === 'edge') {
+        const other = drag.edge === 'start' ? base.endS : base.startS;
+        setWindow({ startS: Math.min(other, at), endS: Math.max(other, at) });
+        return;
+      }
+
+      const span = base.endS - base.startS;
+      const shift = Math.max(-base.startS, Math.min(horizonS - base.endS, at - drag.anchorS));
+      setWindow({ startS: base.startS + shift, endS: base.endS + shift });
+    };
+
+    const onUp = () => {
+      setDrag(null);
+      // A press that never travelled is a click: on the band it asks for the
+      // picker back, on the strip it was a stray press and leaves no window.
+      if (!moved.current && drag.kind === 'new') {
+        setWindow(drag.base);
+        setPicking(Boolean(drag.base));
+        return;
+      }
+      // The mode is a one-shot tool: it hands the strip back as a scrubber the
+      // moment a window exists, and the drawn window is edited by its handles.
+      setSelectMode(false);
+      setPicking(true);
+    };
+
+    globalThis.addEventListener('pointermove', onMove);
+    globalThis.addEventListener('pointerup', onUp);
+    return () => {
+      globalThis.removeEventListener('pointermove', onMove);
+      globalThis.removeEventListener('pointerup', onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag, horizonS, stepS]);
+
+  // A click anywhere outside the bar puts the picker away; the window stays,
+  // because scrubbing into it to watch what the outage did is the whole point.
+  useEffect(() => {
+    if (!picking) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (root.current?.contains(event.target as Node)) return;
+      setPicking(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [picking]);
+
+  // Escape is the way out wherever the focus happens to be: the picker first,
+  // then the window itself.
+  useEffect(() => {
+    if (!window_) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (picking) setPicking(false);
+      else setWindow(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [window_, picking]);
+
+  const clearWindow = () => {
+    setWindow(null);
+    setPicking(false);
+  };
+
   const cursor = horizonS ? (tS / horizonS) * 100 : 0;
+  const span = window_ && horizonS ? {
+    left: (window_.startS / horizonS) * 100,
+    width: ((window_.endS - window_.startS) / horizonS) * 100,
+  } : null;
 
   /**
    * A day that holds a route is the quiet state; what the eye should catch is
@@ -78,7 +214,10 @@ function PlaybackBarView({
   ];
 
   return (
-    <div className="flex-shrink-0 border-t border-rule bg-black/90 px-3 py-2 backdrop-blur sm:px-4">
+    <div
+      ref={root}
+      className="relative z-20 flex-shrink-0 select-none border-t border-rule bg-black/90 px-3 py-2 backdrop-blur sm:px-4"
+    >
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
         <button
           type="button"
@@ -115,6 +254,38 @@ function PlaybackBarView({
 
         <div className="hidden h-5 w-px flex-shrink-0 bg-rule-strong sm:block" />
 
+        <button
+          type="button"
+          onClick={() => setSelectMode((current) => !current)}
+          aria-pressed={selectMode}
+          title={t('window.hint')}
+          className={cn(
+            'flex h-6 flex-shrink-0 items-center gap-1.5 border px-2 font-label text-[11px] transition-colors focus-visible:outline-none',
+            selectMode
+              ? 'border-alarm/60 bg-alarm/10 text-alarm'
+              : 'border-rule-strong text-zinc-500 hover:border-zinc-600 hover:text-zinc-200',
+          )}
+        >
+          <SquareDashedMousePointer size={12} />
+          <span className="hidden sm:inline">{t('window.label')}</span>
+        </button>
+
+        {window_ && (
+          <span className="flex h-6 flex-shrink-0 items-center gap-1.5 border border-alarm/40 bg-alarm/[0.07] pl-2 font-data text-[10px] tabular-nums text-alarm">
+            {windowClock(window_.startS, horizonS, formatClock)}
+            <span className="text-alarm/60">&rarr;</span>
+            {windowClock(window_.endS, horizonS, formatClock)}
+            <button
+              type="button"
+              onClick={clearWindow}
+              aria-label={t('window.clear')}
+              className="flex h-full w-5 items-center justify-center text-alarm/70 transition-colors hover:text-alarm focus-visible:text-alarm focus-visible:outline-none"
+            >
+              <X size={11} />
+            </button>
+          </span>
+        )}
+
         <span className="hidden items-baseline gap-2 sm:flex">
           <span className="font-label text-[12px] text-zinc-500">{t('playback.day')}</span>
           <span className="font-data text-[10px] tabular-nums text-zinc-600">
@@ -148,6 +319,7 @@ function PlaybackBarView({
           if (event.key === 'ArrowLeft') onSeek(Math.max(0, tS - nudge));
           if (event.key === 'Home') onSeek(0);
           if (event.key === 'End') onSeek(horizonS - stepS);
+          if (event.key === 'Escape') clearWindow();
         }}
         className="mt-2 grid grid-cols-[2.6rem_1fr_2.9rem] items-center gap-x-2 gap-y-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
       >
@@ -173,16 +345,52 @@ function PlaybackBarView({
         <span aria-hidden="true" />
 
         {/* The cursor spans the rows rather than repeating in each one, so the
-            same instant is one line down the whole stack. */}
+            same instant is one line down the whole stack. The drawn window
+            rides the same overlay, under the cursor line. */}
         <div
-          aria-hidden="true"
           // Stretched on purpose: the grid centres its items, and a centred
           // overlay collapses to nothing instead of covering the rows.
           className="pointer-events-none relative z-10 self-stretch"
           style={{ gridColumn: 2, gridRow: `2 / span ${Math.max(1, clients.length)}` }}
         >
+          {span && (
+            <div
+              onPointerDown={(event) => {
+                if (event.button === 0 || event.button === 2) startDrag(event, { kind: 'move' });
+              }}
+              className="pointer-events-auto absolute -top-1 bottom-0 cursor-grab border-x border-alarm/70 bg-alarm/[0.18] active:cursor-grabbing"
+              style={{ left: `${span.left}%`, width: `${span.width}%` }}
+            >
+              <span className="absolute inset-x-0 top-0 h-px bg-alarm/50" />
+              <span className="absolute inset-x-0 bottom-0 h-px bg-alarm/50" />
+
+              {(['start', 'end'] as const).map((edge) => (
+                <span
+                  key={edge}
+                  role="presentation"
+                  onPointerDown={(event) => {
+                    if (event.button === 0 || event.button === 2) startDrag(event, { kind: 'edge', edge });
+                  }}
+                  className={cn(
+                    'absolute inset-y-0 flex w-3 cursor-ew-resize items-center justify-center',
+                    edge === 'start' ? '-left-1.5' : '-right-1.5',
+                  )}
+                >
+                  <span className="h-full w-[3px] bg-alarm" />
+                </span>
+              ))}
+
+              {drag && (
+                <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap border border-alarm/40 bg-black px-1 font-data text-[9px] tabular-nums text-alarm">
+                  {formatDuration(window_!.endS - window_!.startS)}
+                </span>
+              )}
+            </div>
+          )}
+
           <div
-            className="absolute -top-1 bottom-0 w-[9px] -translate-x-1/2 transition-[left] duration-75"
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-1 bottom-0 w-[9px] -translate-x-1/2 transition-[left] duration-75"
             style={{ left: `${cursor}%` }}
           >
             {(['left-0', 'right-0'] as const).map((edge) => (
@@ -193,6 +401,31 @@ function PlaybackBarView({
               />
             ))}
           </div>
+
+          <AnimatePresence>
+            {picking && window_ && (
+              <motion.div
+                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, y: 4, scale: 0.99 }}
+                transition={{ duration: reduce ? 0 : 0.16, ease: 'easeOut' }}
+                style={{
+                  left: `clamp(${PICKER_HALF}, ${span!.left + span!.width / 2}%, calc(100% - ${PICKER_HALF}))`,
+                  transformOrigin: 'bottom center',
+                }}
+                className="pointer-events-auto absolute bottom-full z-30 mb-2 w-[19.5rem] -translate-x-1/2"
+              >
+                <OutagePicker
+                  window={window_}
+                  horizonS={horizonS}
+                  satellites={satelliteNodes}
+                  gateways={gatewayNodes}
+                  onToggle={(target, off) => onScheduleOutage(target, off ? window_ : null)}
+                  onClose={() => setPicking(false)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {clients.map((client, index) => {
@@ -216,17 +449,29 @@ function PlaybackBarView({
 
               <div
                 ref={index === 0 ? tracks : undefined}
+                onContextMenu={(event) => event.preventDefault()}
                 onPointerDown={(event) => {
+                  // The secondary button draws a window wherever it is pressed;
+                  // the primary one only does while the mode is on, so the
+                  // strip stays a scrubber by default.
+                  if (event.button === 2 || (event.button === 0 && selectMode)) {
+                    startDrag(event, { kind: 'new' });
+                    return;
+                  }
+                  if (event.button !== 0) return;
                   event.currentTarget.setPointerCapture(event.pointerId);
                   onSelectClient(client.client_id);
                   seekFromClientX(event.clientX);
                 }}
                 onPointerMove={(event) => {
-                  if (event.buttons === 1) seekFromClientX(event.clientX);
+                  if (!drag && event.buttons === 1) seekFromClientX(event.clientX);
                 }}
                 // All three rows are readings, so none of them is dimmed to
                 // mark focus — the id beside the bar does that.
-                className="relative h-2.5 cursor-pointer touch-none overflow-hidden"
+                className={cn(
+                  'relative h-2.5 touch-none overflow-hidden',
+                  selectMode ? 'cursor-crosshair' : 'cursor-pointer',
+                )}
                 style={{ gridColumn: 2, gridRow: index + 2 }}
               >
                 <div className="absolute inset-0 bg-zinc-700" />

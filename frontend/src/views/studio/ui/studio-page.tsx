@@ -22,6 +22,7 @@ import {
   type SearchDepth,
 } from '@/features/run-optimizer';
 import { useInjectFailure, useRestoreSatellite } from '@/features/inject-failure';
+import type { OutageNode, OutageTarget, OutageWindow } from '@/features/schedule-outage';
 import { impactIndex, useResilience } from '@/features/analyze-resilience';
 import { snapToGrid, usePlayback } from '@/features/timeline-playback';
 import { planeColorMap, readGeometry, useScenario, useScenarios } from '@/entities/scenario';
@@ -147,6 +148,35 @@ export function StudioPage() {
   const injectFailure = useInjectFailure(summary?.id, tS, horizonS);
   const restore = useRestoreSatellite();
 
+  /**
+   * What a window drawn on the strip does. Both kinds of node take the same
+   * window, and passing `null` puts the node back — the picker is a list of
+   * switches, not a one-way action. Held on the mutation's own `mutate` and on
+   * `dispatch`, both stable, so the strip stays memoised.
+   */
+  const scheduleOutage = useCallback(
+    (target: OutageTarget, window: OutageWindow | null) => {
+      if (target.kind === 'satellite') {
+        if (window) {
+          injectFailure.mutate({ satelliteId: target.id, startS: window.startS, endS: window.endS });
+        } else {
+          dispatch({ type: 'removeFailure', satelliteId: target.id });
+        }
+        return;
+      }
+
+      if (window) {
+        dispatch({
+          type: 'addGatewayOutage',
+          outage: { gateway_id: target.id, start_s: window.startS, end_s: window.endS },
+        });
+      } else {
+        dispatch({ type: 'removeGatewayOutage', gatewayId: target.id });
+      }
+    },
+    [injectFailure.mutate, dispatch],
+  );
+
   // The search is owned here, not by a panel: it is started from the network
   // health card as well as from the resilience column, and it reports from a
   // fixed corner so the answer survives a tab change.
@@ -266,9 +296,24 @@ export function StudioPage() {
     () => buildLinkViews(snapshot.data?.edges, snapshot.data?.masked_satellites),
     [snapshot.data],
   );
+  // The picker's two lists. Read off the scenario rather than the snapshot:
+  // the strip is memoised, and a list rebuilt on every tick would re-render it
+  // sixteen times a second for nothing.
+  const satelliteNodes = useMemo<OutageNode[]>(
+    () =>
+      (scenario?.design.satellites ?? [])
+        .filter((satellite) => satellite.launch_batch <= launchStage)
+        .map((satellite) => ({ id: satellite.id, detail: satellite.plane_id })),
+    [scenario, launchStage],
+  );
+
   const sites = useMemo(() => groundSitesOf(scenario), [scenario]);
   const clients = useMemo(() => clientsOf(scenario), [scenario]);
   const gateways = useMemo(() => gatewaysOf(scenario), [scenario]);
+  const gatewayNodes = useMemo<OutageNode[]>(
+    () => gateways.map((gateway) => ({ id: gateway.id, detail: gateway.name })),
+    [gateways],
+  );
 
   const focusClientId = state.selectedClientId ?? summary?.clients[0]?.client_id ?? null;
   const routeTraces = useMemo<RouteTrace[]>(
@@ -542,10 +587,13 @@ export function StudioPage() {
                 clients={summary?.clients ?? NO_CLIENTS}
                 target={summary?.target_availability ?? geometry.targetAvailability}
                 focusClientId={focusClientId}
+                satelliteNodes={satelliteNodes}
+                gatewayNodes={gatewayNodes}
                 onToggle={playback.toggle}
                 onSpeed={playback.setSpeed}
                 onSeek={playback.seek}
                 onSelectClient={selectClient}
+                onScheduleOutage={scheduleOutage}
               />
               </div>
             )}

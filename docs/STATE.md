@@ -50,6 +50,7 @@ where the work stands.
 | Site surroundings UI | ✅ picker on every site card, effective horizon, share of the day hidden, dashed masked links on globe and map |
 | Gateway outages UI | ✅ whole day / from now / window, same as satellite failures |
 | Quick failure | ✅ the card's one-click failure starts at the timeline position |
+| Outage windows | ✅ drawn on the timeline strip — right-drag or the window button — with a gateway/satellite picker over the span (DECISIONS D13) |
 | Change tracking | ✅ the panel lists what differs from the file and what it bought, against a baseline run; MOD badge in the header |
 | Optimizer flow | ✅ the result survives being applied; Save and compare names the variant, creates the baseline one and opens the pair |
 | Saved variants | ✅ openable from the scenario picker and from the comparison; the compared pair lives in the session |
