@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Upload, ShieldAlert, BarChart3, ChevronDown, AlertTriangle, Plus, X, Activity, PanelRightClose, PanelRightOpen, Globe as GlobeIcon, Map as MapIcon } from 'lucide-react';
+import { Play, Pause, Upload, ShieldAlert, BarChart3, ChevronDown, AlertTriangle, Plus, X, Activity, PanelRightClose, PanelRightOpen, Globe as GlobeIcon, Map as MapIcon, Zap } from 'lucide-react';
 import { Globe, planeColors, type GlobeCameraPosition, type OrbitTrack } from './components/Globe';
 import { Map2D } from './components/Map2D';
+import { OptimizerProgress } from './components/OptimizerProgress';
 import { criticalityLevel } from './lib/criticality';
 import { Button } from './components/ui/button';
 import { cn } from './lib/utils';
@@ -487,17 +488,6 @@ export default function App() {
     viewMode,
   ]);
 
-  useEffect(() => {
-    if (optimizationState !== 'running') return;
-
-    // TODO(BACKEND): Poll or subscribe to an optimizer job instead of timing it locally.
-    const timeout = setTimeout(() => {
-      setOptimizationState('done');
-    }, 2000);
-
-    return () => clearTimeout(timeout);
-  }, [optimizationState]);
-
   // The sidebars are always visible on desktop, so the drawers must not linger.
   useEffect(() => {
     if (isDesktop) setMobilePanel(null);
@@ -945,9 +935,29 @@ export default function App() {
                   </div>
                 )}
               </div>
+
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Outside the collapse on purpose: folding the readings away should
+            not take the action with them. */}
+        <div className="mt-3 border-t border-rule pt-3">
+          <button
+            type="button"
+            onClick={handleOptimize}
+            disabled={optimizationState === 'running'}
+            className={cn(
+              "pointer-events-auto flex h-8 w-full items-center justify-center gap-1.5 border font-label text-[12px] transition-colors focus-visible:outline-none",
+              optimizationState === 'running'
+                ? "cursor-wait border-rule-strong text-zinc-500"
+                : "border-zinc-600 text-zinc-100 hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10"
+            )}
+          >
+            <Zap size={13} />
+            {optimizationState === 'running' ? 'Optimizing' : 'Optimize deployment'}
+          </button>
+        </div>
       </div>
     );
   };
@@ -1267,121 +1277,93 @@ export default function App() {
           </button>
         </div>
 
-        {/* TODO(BACKEND): Replace fixture progress, recommendations and result metrics with optimizer-job data. */}
-        <AnimatePresence>
-          {optimizationState !== 'none' && (
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              className="absolute inset-0 z-30 flex flex-col bg-[black]"
-            >
-              {optimizationState === 'running' ? (
-                <div className="flex flex-1 flex-col items-center justify-center px-6">
-                  <div className="w-full max-w-[220px]">
-                    <div className="font-label text-[13px] text-zinc-200">Searching configurations</div>
-                    <div className="mt-1 font-data text-[11px] tabular-nums text-zinc-500">124 / 500 explored</div>
-                    {/* Same sweep as the run button, so "working" reads the
-                        same way everywhere in the app. */}
-                    <div className="relative mt-3 h-px w-full overflow-hidden bg-rule-strong">
-                      <motion.span
-                        className="absolute inset-y-0 left-0 w-1/3 bg-zinc-300"
-                        animate={{ x: ['-110%', '330%'] }}
-                        transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex h-full min-h-0 flex-col">
-                  <div className="flex flex-shrink-0 items-start justify-between border-b border-rule px-3 pb-2.5 pt-3">
-                    <div>
-                      <div className="font-label text-[11px] text-zinc-500">Optimizer</div>
-                      <div className="font-data text-[13px] text-zinc-100">Recommended</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setOptimizationState('none')}
-                      aria-label="Dismiss recommendation"
-                      className="text-zinc-500 transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-
-                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                    {/* Before and after on one baseline, so the gain is read by
-                        comparing two numbers rather than two cards. */}
-                    {[
-                      { label: 'Availability', from: '96.7', to: '98.1', unit: '%' },
-                      { label: 'Max outage', from: '26', to: '14', unit: 'min' }
-                    ].map(row => (
-                      <div
-                        key={row.label}
-                        className="flex items-baseline gap-2 border-b border-rule px-3 py-2.5"
-                      >
-                        <span className="font-label text-[12px] text-zinc-400">{row.label}</span>
-                        <span className="ml-auto font-data text-[11px] tabular-nums text-zinc-600">{row.from}</span>
-                        <span className="font-data text-[11px] text-zinc-700">&rarr;</span>
-                        <span className="font-data text-[12px] tabular-nums text-zinc-100">{row.to}</span>
-                        <span className="w-7 font-data text-[10px] text-zinc-500">{row.unit}</span>
-                      </div>
-                    ))}
-
-                    <div className="border-b border-rule px-3 py-2.5">
-                      <div className="font-label text-[12px] text-zinc-400">Orbit changes</div>
-                      <div className="mt-2 space-y-1.5">
-                        {[
-                          { plane: 'P2', param: 'RAAN', from: 60, to: 56 },
-                          { plane: 'P2', param: 'PHASE', from: 7.5, to: 13 },
-                          { plane: 'P3', param: 'RAAN', from: 120, to: 124 }
-                        ].map(change => (
-                          <div
-                            key={`${change.plane}-${change.param}`}
-                            className="flex items-baseline gap-2 font-data text-[11px] tabular-nums"
-                          >
-                            <span className="h-2.5 w-0.5 self-center" style={{ background: planeColors[change.plane as Plane] }} />
-                            <span className="text-zinc-300">{change.plane}</span>
-                            <span className="text-[10px] text-zinc-500">{change.param}</span>
-                            <span className="ml-auto text-zinc-600">{formatDegrees(change.from)}</span>
-                            <span className="text-zinc-700">&rarr;</span>
-                            <span className="text-zinc-100">{formatDegrees(change.to)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex-shrink-0 space-y-2 border-t border-rule p-3">
-                    <button
-                      type="button"
-                      className="flex h-10 w-full items-center justify-center border border-zinc-600 font-label text-[13px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10 focus-visible:outline-none"
-                      onClick={() => {
-                        setMetrics(optimizedMetrics);
-                        setOptimizationState('none');
-                      }}
-                    >
-                      Apply configuration
-                    </button>
-                    <button
-                      type="button"
-                      className="flex h-9 w-full items-center justify-center border border-rule-strong font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:border-zinc-400 focus-visible:text-zinc-100 focus-visible:outline-none"
-                      onClick={() => {
-                        setOptimizationState('none');
-                        setActiveTab('compare');
-                      }}
-                    >
-                      Compare with baseline
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </>
     );
   };
+
+  /**
+   * The finished run reports where it ran: one widget owns the whole optimizer
+   * lifecycle, so the result is reachable from any tab rather than only from
+   * the panel that happened to start it.
+   */
+  // TODO(BACKEND): Replace fixture metrics and orbit changes with optimizer-job data.
+  const renderOptimizerResult = () => (
+    <div className="flex w-[19rem] max-w-[calc(100vw-1.5rem)] flex-col border border-rule-strong bg-black/90 backdrop-blur">
+      <div className="flex items-center justify-between gap-3 border-b border-rule px-3 py-2">
+        <span className="font-label text-[12px] text-zinc-300">Optimizer</span>
+        <div className="flex items-center gap-2.5">
+          <span className="font-data text-[10px] tracking-[0.08em] text-zinc-500">DONE</span>
+          <button
+            type="button"
+            onClick={() => setOptimizationState('none')}
+            aria-label="Dismiss recommendation"
+            className="text-zinc-500 transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      {[
+        { label: 'Availability', from: '96.7', to: '98.1', unit: '%' },
+        { label: 'Max outage', from: '26', to: '14', unit: 'min' }
+      ].map(row => (
+        <div key={row.label} className="flex items-baseline gap-2 border-b border-rule px-3 py-2">
+          <span className="font-label text-[12px] text-zinc-400">{row.label}</span>
+          <span className="ml-auto font-data text-[11px] tabular-nums text-zinc-600">{row.from}</span>
+          <span className="font-data text-[11px] text-zinc-700">&rarr;</span>
+          <span className="font-data text-[12px] tabular-nums text-zinc-100">{row.to}</span>
+          <span className="w-7 font-data text-[10px] text-zinc-500">{row.unit}</span>
+        </div>
+      ))}
+
+      <div className="border-b border-rule px-3 py-2">
+        <div className="font-label text-[12px] text-zinc-400">Orbit changes</div>
+        <div className="mt-1.5 space-y-1">
+          {[
+            { plane: 'P2' as Plane, param: 'RAAN', from: 60, to: 56 },
+            { plane: 'P2' as Plane, param: 'PHASE', from: 7.5, to: 13 },
+            { plane: 'P3' as Plane, param: 'RAAN', from: 120, to: 124 }
+          ].map(change => (
+            <div
+              key={`${change.plane}-${change.param}`}
+              className="flex items-baseline gap-2 font-data text-[11px] tabular-nums"
+            >
+              <span className="h-2.5 w-0.5 self-center" style={{ background: planeColors[change.plane] }} />
+              <span className="text-zinc-300">{change.plane}</span>
+              <span className="text-[10px] text-zinc-500">{change.param}</span>
+              <span className="ml-auto text-zinc-600">{formatDegrees(change.from)}</span>
+              <span className="text-zinc-700">&rarr;</span>
+              <span className="text-zinc-100">{formatDegrees(change.to)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2 p-3">
+        <button
+          type="button"
+          className="flex h-9 w-full items-center justify-center border border-zinc-600 font-label text-[12px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10 focus-visible:outline-none"
+          onClick={() => {
+            setMetrics(optimizedMetrics);
+            setOptimizationState('none');
+          }}
+        >
+          Apply configuration
+        </button>
+        <button
+          type="button"
+          className="flex h-8 w-full items-center justify-center border border-rule-strong font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:border-zinc-400 focus-visible:text-zinc-100 focus-visible:outline-none"
+          onClick={() => {
+            setOptimizationState('none');
+            setActiveTab('compare');
+          }}
+        >
+          Compare with baseline
+        </button>
+      </div>
+    </div>
+  );
 
   /** Switches the viewport between the globe and the flat map. */
   const renderViewToggle = () => {
@@ -2030,6 +2012,33 @@ export default function App() {
             {activeTab === 'resilience' && renderResilienceTab()}
             {activeTab === 'compare' && renderCompareTab()}
           </motion.div>
+        </AnimatePresence>
+
+        {/* The search runs against the whole scenario, so it reports from a
+            fixed corner rather than from whichever panel started it. On the
+            simulation tab it clears the playback strip. */}
+        <AnimatePresence>
+          {optimizationState !== 'none' && (
+            <motion.div
+              className={cn(
+                "fixed left-3 z-40 lg:left-6",
+                activeTab === 'simulation' ? "bottom-[4.25rem]" : "bottom-3 lg:bottom-6"
+              )}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+            >
+              {optimizationState === 'running' ? (
+                <OptimizerProgress
+                  satelliteCount={deploymentStage * 16}
+                  onComplete={() => setOptimizationState('done')}
+                />
+              ) : (
+                renderOptimizerResult()
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
     </div>
