@@ -249,10 +249,30 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   // Writing before the restore has landed would save the defaults over the
   // session we are about to read.
+  //
+  // The write also trails the state rather than riding it: a slider drag
+  // dispatches on every pointer frame, and localStorage is synchronous, so a
+  // write per frame puts a serialise in front of each repaint. The session
+  // only has to survive a reload, and a page that goes away before the timer
+  // fires is flushed below.
+  const pending = React.useRef<SessionState>(state);
+
+  React.useEffect(() => {
+    pending.current = state;
+    if (!restored) return;
+    const timer = window.setTimeout(() => writeStored(STORAGE_KEY, persisted(state)), 400);
+    return () => window.clearTimeout(timer);
+  }, [state, restored]);
+
   React.useEffect(() => {
     if (!restored) return;
-    writeStored(STORAGE_KEY, persisted(state));
-  }, [state, restored]);
+    const flush = () => writeStored(STORAGE_KEY, persisted(pending.current));
+    window.addEventListener('pagehide', flush);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
+  }, [restored]);
 
   const value = React.useMemo(() => ({ state, dispatch }), [state]);
 
