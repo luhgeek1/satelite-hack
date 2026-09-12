@@ -6,3 +6,4 @@ export { IndeterminateBar } from './indeterminate-bar';
 export { ProgressBar } from './progress-bar';
 export { EmptyState } from './empty-state';
 export { ErrorNote } from './error-note';
+export { FeatureHint } from './feature-hint';

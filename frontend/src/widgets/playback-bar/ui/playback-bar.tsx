@@ -11,6 +11,7 @@ import {
   type OutageWindow,
 } from '@/features/schedule-outage';
 import { cn, formatClock, formatPercent } from '@/shared/lib';
+import { FeatureHint } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
 import type { OutageBand } from '@/entities/simulation';
 import type { ClientMetrics } from '@/shared/api';
@@ -44,6 +45,9 @@ const SPEEDS = [1, 4, 16];
 const HOUR_MARKS = [0, 6, 12, 18, 24];
 /** Half the picker's width, so it can be centred and still clamped inside. */
 const PICKER_HALF = '9.75rem';
+
+/** Whether the window tool has introduced itself on this browser already. */
+const HINT_SEEN_KEY = 'orbitguard-window-hint-v1';
 
 type DragKind = { kind: 'new' } | { kind: 'edge'; edge: 'start' | 'end' } | { kind: 'move' };
 type Drag = DragKind & {
@@ -98,6 +102,7 @@ function PlaybackBarView({
   const [listing, setListing] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
   const moved = useRef(false);
+
 
   const active = windows.find((item) => item.id === activeId) ?? null;
 
@@ -369,21 +374,27 @@ function PlaybackBarView({
 
         <div className="hidden h-5 w-px flex-shrink-0 bg-rule-strong sm:block" />
 
-        <button
-          type="button"
-          onClick={() => setSelectMode((current) => !current)}
-          aria-pressed={selectMode}
-          title={t('window.hint')}
-          className={cn(
-            'flex h-6 flex-shrink-0 items-center gap-1.5 border px-2 font-label text-[11px] transition-colors focus-visible:outline-none',
-            selectMode
-              ? 'border-alarm/60 bg-alarm/10 text-alarm'
-              : 'border-rule-strong text-zinc-500 hover:border-zinc-600 hover:text-zinc-200',
-          )}
+        <FeatureHint
+          storageKey={HINT_SEEN_KEY}
+          title={t('window.tipTitle')}
+          text={t('window.hint')}
+          className="flex-shrink-0"
         >
-          <SquareDashedMousePointer size={12} />
-          <span className="hidden sm:inline">{t('window.label')}</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setSelectMode((current) => !current)}
+            aria-pressed={selectMode}
+            className={cn(
+              'flex h-6 items-center gap-1.5 border px-2 font-label text-[11px] transition-colors focus-visible:outline-none',
+              selectMode
+                ? 'border-alarm/60 bg-alarm/10 text-alarm'
+                : 'border-rule-strong text-zinc-500 hover:border-zinc-600 hover:text-zinc-200',
+            )}
+          >
+            <SquareDashedMousePointer size={12} />
+            <span className="hidden sm:inline">{t('window.label')}</span>
+          </button>
+        </FeatureHint>
 
         {windows.length > 0 && (
           <span ref={chip} className="relative flex h-6 flex-shrink-0 items-center border border-alarm/40 bg-alarm/[0.07] font-data text-[10px] tabular-nums text-alarm">

@@ -84,6 +84,7 @@ export const en = {
   'playback.day': 'Connectivity over the day',
 
   'window.label': 'Window',
+  'window.tipTitle': 'Windows on the timeline',
   'window.hint': 'Drag a window over the strip — or drag it with the right button at any time — then pick what goes down over it.',
   'window.clearAll': 'Remove every window and its outages',
   'window.list': 'The windows drawn',
@@ -293,6 +294,9 @@ export const en = {
   'sensitivity.sweeping': 'Sweeping…',
 
   'optimizer.title': 'Optimizer',
+  'optimizer.tipTitle': 'Plane search',
+  'optimizer.tipText':
+    'Searches the planes for a RAAN and phase that leave the worst-served site with fewer outages. What it finds can be applied in one click, or saved as a variant to compare.',
   'optimizer.remaining': '~{wait} left',
   'optimizer.queued': 'Queued',
   'optimizer.searching': 'Searching configurations',
@@ -431,6 +435,7 @@ export const ru: Record<TranslationKey, string> = {
   'playback.day': 'Связность за сутки',
 
   'window.label': 'Интервал',
+  'window.tipTitle': 'Интервалы на таймлайне',
   'window.hint': 'Выделите интервал на полосе — или правой кнопкой в любой момент — и выберите, что на нём выключить.',
   'window.clearAll': 'Удалить все интервалы с их настройками',
   'window.list': 'Нарисованные интервалы',
@@ -640,6 +645,9 @@ export const ru: Record<TranslationKey, string> = {
   'sensitivity.sweeping': 'Прогон…',
 
   'optimizer.title': 'Оптимизатор',
+  'optimizer.tipTitle': 'Подбор плоскостей',
+  'optimizer.tipText':
+    'Ищет наклон и фазу плоскостей, при которых у самого проблемного объекта меньше простоев. Найденное можно применить одним нажатием или сохранить вариантом для сравнения.',
   'optimizer.remaining': 'ещё ~{wait}',
   'optimizer.queued': 'В очереди',
   'optimizer.searching': 'Перебор конфигураций',

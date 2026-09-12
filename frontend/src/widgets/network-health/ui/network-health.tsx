@@ -5,8 +5,12 @@ import { ChevronDown, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { RouteChain, type RouteTrace } from '@/entities/simulation';
 import { cn } from '@/shared/lib';
+import { FeatureHint } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
 import type { ClientMetrics } from '@/shared/api';
+
+/** Whether the plane search has introduced itself on this browser already. */
+const OPTIMIZER_HINT_KEY = 'orbitguard-optimizer-hint-v1';
 
 interface NetworkHealthProps {
   clients: ClientMetrics[];
@@ -138,20 +142,31 @@ export function NetworkHealth({
       </div>
 
       <div className="mt-3 border-t border-rule pt-3">
-        <button
-          type="button"
-          onClick={onOptimize}
-          disabled={optimizing}
-          className={cn(
-            'pointer-events-auto flex h-9 w-full items-center justify-center gap-2 border font-label text-[13px] transition-colors focus-visible:outline-none',
-            optimizing
-              ? 'cursor-wait border-rule-strong text-zinc-500'
-              : 'border-zinc-600 text-zinc-100 hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10',
-          )}
+        {/* The bubble hangs below: the card sits at the top of the map, and
+            above this button is the card's own content. */}
+        <FeatureHint
+          storageKey={OPTIMIZER_HINT_KEY}
+          title={t('optimizer.tipTitle')}
+          text={t('optimizer.tipText')}
+          side="bottom"
+          delayMs={1500}
+          className="block"
         >
-          <Zap size={14} />
-          {optimizing ? t('health.optimizing') : t('health.optimize')}
-        </button>
+          <button
+            type="button"
+            onClick={onOptimize}
+            disabled={optimizing}
+            className={cn(
+              'pointer-events-auto flex h-9 w-full items-center justify-center gap-2 border font-label text-[13px] transition-colors focus-visible:outline-none',
+              optimizing
+                ? 'cursor-wait border-rule-strong text-zinc-500'
+                : 'border-rule-strong text-zinc-100 hover:border-zinc-500 hover:text-white focus-visible:border-zinc-300 focus-visible:text-white',
+            )}
+          >
+            <Zap size={14} />
+            {optimizing ? t('health.optimizing') : t('health.optimize')}
+          </button>
+        </FeatureHint>
       </div>
     </div>
   );
