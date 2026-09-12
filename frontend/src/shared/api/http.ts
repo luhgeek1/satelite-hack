@@ -1,17 +1,23 @@
 import { API_BASE } from '@/shared/config';
-import type { ProblemDocument } from './types';
+import type { ProblemDocument, ScenarioIssue } from './types';
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly field?: string;
+  /** Every problem the server found, when it checked a document. */
+  readonly issues: ScenarioIssue[];
+  /** The true number of problems; `issues` may be capped. */
+  readonly issueCount: number;
 
   constructor(problem: ProblemDocument) {
     super(problem.detail || problem.title);
     this.name = 'ApiError';
     this.status = problem.status;
     this.code = problem.error_code;
-    this.field = problem.details?.field;
+    this.field = problem.details?.field ?? undefined;
+    this.issues = Array.isArray(problem.details?.issues) ? problem.details.issues : [];
+    this.issueCount = problem.details?.issue_count ?? this.issues.length;
   }
 }
 
