@@ -12,7 +12,7 @@ OrbitGuard переваривает исходные JSON-сценарии (`cos
 > **Главная мысль кейса:** Спутник над головой — это ещё не связь. Главная метрика — непрерывная цепочка доставки трафика до наземного шлюза. Разрыв между геометрической видимостью КА и сквозной достижимостью шлюза является ключом к проектированию устойчивой сети.
 
 <p align="center">
-  <video src="docs/assets/hero_demo.mp4" width="100%" controls autoplay loop muted playsinline></video>
+  <img src="docs/assets/hero_demo.gif" alt="OrbitGuard 3D Demo" width="100%" />
 </p>
 
 ---
@@ -204,8 +204,8 @@ kosmo-nizni_chupapis_96/
 ├── data/                              # 4 официальных JSON-сценария КосмоХакатона
 ├── case/                              # Исходные PDF ТЗ кейса и эталонный geometry.py
 ├── docs/                              # Документация и медиа-материалы проекта
-│   ├── assets/                        # Медиа-файлы (hero_demo.mp4 и демо-материалы)
-│   │   └── hero_demo.mp4              # Видеозапись работы веб-сервиса (Hero Demo)
+│   ├── assets/                        # Медиа-файлы (hero_demo.gif и демо-материалы)
+│   │   └── hero_demo.gif              # Анимированная демонстрация работы веб-сервиса (Hero Demo)
 │   ├── API_CONTRACT.md                # Контракт взаимодействия Frontend ↔ Backend
 │   ├── DECISIONS.md                   # Журнал всех принятых архитектурных решений (ADR)
 │   ├── STATE.md                       # Текущий статус задач и готовых фич
