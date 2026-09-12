@@ -56,8 +56,8 @@ export function PlaybackBar({
 
   const legend = [
     { key: 'playback.routed' as const, tone: 'bg-zinc-700' },
-    { key: 'playback.noRoute' as const, tone: 'bg-zinc-400' },
-    { key: 'playback.noSatellite' as const, tone: 'bg-zinc-100' },
+    { key: 'playback.noRoute' as const, tone: 'bg-zinc-500' },
+    { key: 'playback.noSatellite' as const, tone: 'bg-alarm' },
   ];
 
   return (
@@ -218,7 +218,7 @@ export function PlaybackBar({
                     }`}
                     className={cn(
                       'absolute inset-y-0',
-                      band.state === 'no_satellite' ? 'bg-zinc-100' : 'bg-zinc-400',
+                      band.state === 'no_satellite' ? 'bg-alarm' : 'bg-zinc-500',
                     )}
                     style={{
                       left: `${band.startFraction * 100}%`,

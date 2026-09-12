@@ -32,12 +32,12 @@ export function NetworkHealth({
 
   const longestOutage = clients.reduce((longest, client) => Math.max(longest, client.max_outage_s), 0);
   const stranded = traces.filter((trace) => !trace.available);
-  const degraded = clients.some((client) => !client.meets_target) || stranded.length > 0;
+  const cutOff = stranded.length > 0;
 
   return (
     <div className="pointer-events-none absolute left-3 top-3 z-10 w-[232px] border border-rule-strong bg-black/70 p-3.5 backdrop-blur sm:w-[268px] lg:left-6 lg:top-6 lg:p-5">
       <div className="flex items-center gap-2">
-        <span className={cn('h-2 w-2 shrink-0', degraded ? 'bg-alarm' : 'bg-zinc-500')} />
+        <span className={cn('h-2 w-2 shrink-0', cutOff ? 'bg-alarm' : 'bg-zinc-100')} />
         <span className="font-label text-[13px] text-zinc-300">{t('health.title')}</span>
         {stale && <span className="font-data text-[9px] tracking-[0.08em] text-zinc-600">SYNC</span>}
       </div>
