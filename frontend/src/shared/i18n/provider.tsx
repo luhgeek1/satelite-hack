@@ -3,14 +3,11 @@
 import * as React from 'react';
 import { readStored, writeStored } from '@/shared/lib/storage';
 import { dictionaries, type TranslationKey } from './dictionary';
+import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, isLanguage, type Language } from './language';
 
-export type Language = 'ru' | 'en';
-
-/** Russian is the working language of the case; English is the alternative. */
-export const DEFAULT_LANGUAGE: Language = 'ru';
+/** Kept alongside the cookie so a choice made before it survives. */
 const STORAGE_KEY = 'orbitguard-language-v1';
-
-const isLanguage = (value: unknown): value is Language => value === 'ru' || value === 'en';
+const YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 export type Translate = (
   key: TranslationKey,
@@ -34,16 +31,29 @@ const fill = (template: string, vars?: Record<string, string | number>) =>
       )
     : template;
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = React.useState<Language>(DEFAULT_LANGUAGE);
+interface LanguageProviderProps {
+  /** Read from the cookie by the server, so the first paint is already right. */
+  language?: Language;
+  children: React.ReactNode;
+}
 
-  // Read after mount: the page is prerendered in the default language, and
-  // picking the stored one during the first render would make the server's
-  // markup and the client's disagree.
-  React.useEffect(() => {
-    const saved = readStored(STORAGE_KEY, isLanguage);
-    if (saved) setLanguage(saved);
+export function LanguageProvider({ language: initial, children }: LanguageProviderProps) {
+  const [language, setLanguage] = React.useState<Language>(initial ?? DEFAULT_LANGUAGE);
+
+  const remember = React.useCallback((next: Language) => {
+    writeStored(STORAGE_KEY, next);
+    document.cookie = `${LANGUAGE_COOKIE}=${next};path=/;max-age=${YEAR_SECONDS};samesite=lax`;
   }, []);
+
+  // Carries a choice made before the cookie existed. It runs once, and only
+  // when the server had nothing to go on, so the usual load paints no flicker.
+  React.useEffect(() => {
+    if (initial) return;
+    const saved = readStored(STORAGE_KEY, isLanguage);
+    if (!saved || saved === DEFAULT_LANGUAGE) return;
+    setLanguage(saved);
+    remember(saved);
+  }, [initial, remember]);
 
   React.useEffect(() => {
     document.documentElement.lang = language;
@@ -57,7 +67,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       language,
       setLanguage: (next) => {
         setLanguage(next);
-        writeStored(STORAGE_KEY, next);
+        remember(next);
       },
       t,
       formatDuration: (seconds) => {
@@ -68,7 +78,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         return `${hours.toFixed(hours < 10 ? 1 : 0)} ${t('unit.hour')}`;
       },
     };
-  }, [language]);
+  }, [language, remember]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

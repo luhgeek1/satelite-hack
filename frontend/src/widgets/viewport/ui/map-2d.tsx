@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Minus, RotateCcw } from 'lucide-react';
+import { Plus, Minus, RotateCcw, Sun, Moon } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, Marker, Line, ZoomableGroup, Graticule } from 'react-simple-maps';
 import { geoCircle, geoEquirectangular } from 'd3-geo';
 import countries110m from 'world-atlas/countries-110m.json';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import { routeEdgeIndex, edgeKey, type RouteTrace } from '@/entities/simulation';
-import { criticalityLevel, isFiniteNumber, isRecord, readStored, writeStored } from '@/shared/lib';
+import { cn, criticalityLevel, isFiniteNumber, isRecord, readStored, writeStored } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
 import {
@@ -54,8 +54,54 @@ interface Map2DProps {
 const geography = countries110m as any;
 
 const ALARM = '#e4483a';
-const RULE = '#2e2e34';
-const LAND_FILL = '#131316';
+
+/**
+ * Two grounds for the same chart. The dark one belongs to the console around
+ * it; the bright one is for actually reading coastlines and where a terminal
+ * sits, which the near-black basemap made hard. Land is lighter than water in
+ * the bright palette, the way a paper chart prints it.
+ */
+interface MapPalette {
+  surface: string;
+  land: string;
+  rule: string;
+  graticule: string;
+  label: string;
+  site: string;
+  selection: string;
+  routeHalo: string;
+  coverageFill: number;
+  coverageStroke: number;
+}
+
+const DARK_MAP: MapPalette = {
+  surface: '#000000',
+  land: '#131316',
+  rule: '#2e2e34',
+  graticule: 'rgba(255,255,255,0.05)',
+  label: '#a1a1aa',
+  site: '#a1a1aa',
+  selection: '#fafafa',
+  routeHalo: '#d4d4d8',
+  coverageFill: 0.1,
+  coverageStroke: 0.45
+};
+
+const BRIGHT_MAP: MapPalette = {
+  surface: '#cdd8e1',
+  land: '#f2f4f6',
+  rule: '#7b8794',
+  graticule: 'rgba(15,23,42,0.10)',
+  label: '#3f3f46',
+  site: '#3f3f46',
+  selection: '#18181b',
+  routeHalo: '#3f3f46',
+  coverageFill: 0.18,
+  coverageStroke: 0.7
+};
+
+const MAP_BRIGHT_KEY = 'orbitguard-map-bright-v1';
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
 /** Matches the globe's coverage reveal, so the two views feel like one tool. */
 const COVERAGE_TWEEN_MS = 220;
@@ -102,6 +148,12 @@ export const Map2D: React.FC<Map2DProps> = ({
   const [position, setPosition] = useState<MapView>(
     () => readStored(MAP_VIEW_KEY, isMapView) ?? DEFAULT_MAP_VIEW
   );
+  const [bright, setBright] = useState(() => readStored(MAP_BRIGHT_KEY, isBoolean) ?? false);
+  const palette = bright ? BRIGHT_MAP : DARK_MAP;
+
+  useEffect(() => {
+    writeStored(MAP_BRIGHT_KEY, bright);
+  }, [bright]);
 
   useEffect(() => {
     writeStored(MAP_VIEW_KEY, position);
@@ -191,7 +243,7 @@ export const Map2D: React.FC<Map2DProps> = ({
     route: { color: string; focused: boolean } | undefined,
     key: string,
   ) => {
-    const stroke = route ? route.color : RULE;
+    const stroke = route ? route.color : palette.rule;
     const strokeWidth = (route ? (route.focused ? 1.4 : 1) : 0.5) * k;
     const strokeOpacity = route ? (route.focused ? 1 : 0.7) : 0.55;
     const diffLon = target.lon - source.lon;
@@ -226,7 +278,7 @@ export const Map2D: React.FC<Map2DProps> = ({
       x={6 * k}
       y={2.5 * k}
       fontSize={5 * k}
-      fill="#a1a1aa"
+      fill={palette.label}
       fontFamily="'IBM Plex Mono', monospace"
       style={{ pointerEvents: 'none' }}
     >
@@ -236,7 +288,8 @@ export const Map2D: React.FC<Map2DProps> = ({
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden bg-[black]"
+      className="relative h-full w-full overflow-hidden"
+      style={{ background: palette.surface }}
       // Functional update on purpose. Leaving a marker fires mouseleave and
       // mousemove inside the same gesture; reading `tooltip` from the closure
       // here would see the pre-clear value and resurrect the tooltip, which
@@ -250,7 +303,7 @@ export const Map2D: React.FC<Map2DProps> = ({
     >
       <ComposableMap
         projection="geoEquirectangular"
-        style={{ width: '100%', height: '100%', background: '#000', outline: 'none' }}
+        style={{ width: '100%', height: '100%', background: palette.surface, outline: 'none' }}
       >
         <ZoomableGroup
           center={position.coordinates}
@@ -259,7 +312,7 @@ export const Map2D: React.FC<Map2DProps> = ({
           minZoom={1}
           maxZoom={8}
         >
-          <Graticule stroke="rgba(255,255,255,0.05)" strokeWidth={0.4 * k} />
+          <Graticule stroke={palette.graticule} strokeWidth={0.4 * k} />
 
           <Geographies geography={geography}>
             {({ geographies }: { geographies: any[] }) =>
@@ -267,8 +320,8 @@ export const Map2D: React.FC<Map2DProps> = ({
                 <Geography
                   key={geo.rsmKey}
                   geography={geo}
-                  fill={LAND_FILL}
-                  stroke={RULE}
+                  fill={palette.land}
+                  stroke={palette.rule}
                   strokeWidth={0.4 * k}
                   tabIndex={-1}
                   /* Land is a backdrop. Leaving it focusable meant a stray click
@@ -292,9 +345,9 @@ export const Map2D: React.FC<Map2DProps> = ({
                     geography={geo}
                     tabIndex={-1}
                     fill={satelliteColor(coverageSat)}
-                    fillOpacity={0.1}
+                    fillOpacity={palette.coverageFill}
                     stroke={satelliteColor(coverageSat)}
-                    strokeOpacity={0.45}
+                    strokeOpacity={palette.coverageStroke}
                     strokeWidth={0.6 * k}
                     style={{
                       default: { outline: 'none', pointerEvents: 'none' },
@@ -326,14 +379,19 @@ export const Map2D: React.FC<Map2DProps> = ({
 
           {gateways.map(gateway => (
             <Marker key={gateway.id} coordinates={[gateway.lon, gateway.lat]}>
-              <polygon points={`0,${-4 * k} ${4 * k},0 0,${4 * k} ${-4 * k},0`} fill="#a1a1aa" />
+              <polygon points={`0,${-4 * k} ${4 * k},0 0,${4 * k} ${-4 * k},0`} fill={palette.site} />
               {siteLabel(gateway.id)}
             </Marker>
           ))}
 
           {groundStations.map(station => {
             const trace = routes.find(item => item.clientId === station.id);
-            const tint = trace ? (trace.available ? trace.color : ALARM) : '#a1a1aa';
+            const tint = trace ? (trace.available ? trace.color : ALARM) : palette.site;
+            // A site with no route reads as a warning sign rather than as a
+            // marker that happens to be red: the glyph says what the colour
+            // means, which the colour alone never does.
+            const stranded = Boolean(trace && !trace.available);
+            const size = stranded ? 5.2 : 4;
 
             return (
               <Marker
@@ -343,11 +401,26 @@ export const Map2D: React.FC<Map2DProps> = ({
                 style={onSiteClick ? { cursor: 'pointer' } : undefined}
               >
                 <polygon
-                  points={`0,${-4 * k} ${4 * k},${3 * k} ${-4 * k},${3 * k}`}
-                  fill={station.id === focusClientId ? `${tint}33` : 'transparent'}
+                  points={`0,${-size * k} ${size * k},${size * 0.78 * k} ${-size * k},${size * 0.78 * k}`}
+                  fill={station.id === focusClientId || stranded ? `${tint}33` : 'transparent'}
                   stroke={tint}
-                  strokeWidth={(station.id === focusClientId ? 1.6 : 1) * k}
+                  strokeWidth={(station.id === focusClientId || stranded ? 1.6 : 1) * k}
                 />
+                {stranded && (
+                  <g style={{ pointerEvents: 'none' }}>
+                    <title>{t('map.offline', { site: station.id })}</title>
+                    <line
+                      x1={0}
+                      y1={-1.4 * k}
+                      x2={0}
+                      y2={1.6 * k}
+                      stroke={ALARM}
+                      strokeWidth={1.1 * k}
+                      strokeLinecap="butt"
+                    />
+                    <circle cx={0} cy={3 * k} r={0.62 * k} fill={ALARM} />
+                  </g>
+                )}
                 {siteLabel(station.id)}
               </Marker>
             );
@@ -453,7 +526,7 @@ export const Map2D: React.FC<Map2DProps> = ({
                   <motion.circle
                     r={7 * k}
                     fill="transparent"
-                    stroke="#fafafa"
+                    stroke={palette.selection}
                     strokeWidth={1.2 * k}
                     strokeDasharray={`${1.5 * k},${1.5 * k}`}
                     style={{ pointerEvents: 'none' }}
@@ -467,7 +540,7 @@ export const Map2D: React.FC<Map2DProps> = ({
                   <circle
                     r={5.5 * k}
                     fill="transparent"
-                    stroke="#d4d4d8"
+                    stroke={palette.routeHalo}
                     strokeWidth={0.5 * k}
                     opacity={0.6}
                     style={{ pointerEvents: 'none' }}
@@ -488,11 +561,23 @@ export const Map2D: React.FC<Map2DProps> = ({
         </div>
       )}
 
-      <div className="absolute bottom-16 right-3 z-20 flex flex-col border border-rule-strong bg-black/85 backdrop-blur lg:bottom-[4.5rem] lg:right-6">
+      {/* The chrome follows the chart it sits on, or a dark block would float
+          over the bright map. */}
+      <div
+        className={cn(
+          'absolute bottom-16 right-3 z-20 flex flex-col border backdrop-blur lg:bottom-[4.5rem] lg:right-6',
+          bright ? 'border-zinc-400 bg-white/85' : 'border-rule-strong bg-black/85',
+        )}
+      >
         {[
           { label: t('map.zoomIn'), icon: <Plus size={14} />, onClick: handleZoomIn },
           { label: t('map.zoomOut'), icon: <Minus size={14} />, onClick: handleZoomOut },
-          { label: t('map.reset'), icon: <RotateCcw size={13} />, onClick: handleReset }
+          { label: t('map.reset'), icon: <RotateCcw size={13} />, onClick: handleReset },
+          {
+            label: bright ? t('map.dark') : t('map.bright'),
+            icon: bright ? <Moon size={13} /> : <Sun size={13} />,
+            onClick: () => setBright(value => !value),
+          },
         ].map(control => (
           <button
             key={control.label}
@@ -500,7 +585,12 @@ export const Map2D: React.FC<Map2DProps> = ({
             onClick={control.onClick}
             title={control.label}
             aria-label={control.label}
-            className="flex h-7 w-7 items-center justify-center border-t border-rule-strong text-zinc-500 transition-colors first:border-t-0 hover:bg-white/[0.06] hover:text-zinc-100 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none"
+            className={cn(
+              'flex h-7 w-7 items-center justify-center border-t transition-colors first:border-t-0 focus-visible:outline-none',
+              bright
+                ? 'border-zinc-400 text-zinc-500 hover:bg-black/[0.06] hover:text-zinc-900 focus-visible:bg-black/15 focus-visible:text-zinc-900'
+                : 'border-rule-strong text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100 focus-visible:bg-white/15 focus-visible:text-zinc-100',
+            )}
           >
             {control.icon}
           </button>

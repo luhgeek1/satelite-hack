@@ -955,6 +955,32 @@ export const Globe: React.FC<GlobeProps> = ({
       marker.appendChild(core);
     }
 
+    // A site with no route says so in a glyph as well as in the hue, matching
+    // the warning sign the flat map draws for the same state.
+    if (d.offline) {
+      const warn = document.createElement('div');
+      warn.textContent = '!';
+      warn.style.cssText = [
+        'position:absolute',
+        // Left of the dot: the id label already owns the space to its right.
+        'left:-25px',
+        'top:-6px',
+        'width:12px',
+        'height:12px',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'border:1px solid #e4483a',
+        'border-radius:2px',
+        'background:rgba(3,7,18,0.9)',
+        'color:#e4483a',
+        'font-size:9px',
+        'font-weight:700',
+        'line-height:1'
+      ].join(';');
+      content.appendChild(warn);
+    }
+
     const label = document.createElement('div');
     const labelBorder = isGateway ? 'rgba(251,191,36,0.75)' : `${accent}c7`;
     label.style.cssText = `position:absolute;left:${10 + labelOffset.x}px;top:${-11 + labelOffset.y}px;display:flex;flex-direction:column;gap:0;padding:2px 5px;border:1px solid ${d.focused ? '#fafafa' : labelBorder};border-radius:3px;background:rgba(3,7,18,0.9);box-shadow:${d.focused ? `0 0 12px ${accentDim},` : ''}0 3px 10px rgba(0,0,0,0.42);`;
@@ -1012,8 +1038,12 @@ export const Globe: React.FC<GlobeProps> = ({
         ref={globeRef}
         width={dimensions.width || 1}
         height={dimensions.height || 1}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        /* Served from this app, not a CDN: fetched from unpkg the two images
+           cost ~1.8 MB over two redirects, and the Earth stayed blank for
+           several seconds on a first visit — or forever on a locked-down
+           network. */
+        globeImageUrl="/textures/earth-blue-marble.jpg"
+        bumpImageUrl="/textures/earth-topology.png"
         backgroundColor="rgba(0,0,0,0)"
         onZoom={handleZoom}
         

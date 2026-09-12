@@ -196,14 +196,6 @@ export function StudioPage() {
     (satellite) => satellite.id === state.selectedSatelliteId,
   );
 
-  const status = simulation.isError || scenarioQuery.isError
-    ? 'error'
-    : simulation.isFetching || snapshot.isFetching
-      ? 'running'
-      : summary
-        ? 'ready'
-        : 'idle';
-
   const exportHref = summary ? simulationsApi.exportUrl(summary.id) : null;
   const scenarioHref = summary ? simulationsApi.scenarioUrl(summary.id) : null;
 
@@ -275,7 +267,7 @@ export function StudioPage() {
   if (scenarioQuery.isError) {
     return (
       <div className="flex h-full w-full flex-col bg-black">
-        <AppHeader status="error" />
+        <AppHeader />
         <div className="flex flex-1 items-center justify-center p-6">
           <div className="max-w-md">
             <ErrorNote error={scenarioQuery.error} />
@@ -288,7 +280,7 @@ export function StudioPage() {
   if (!scenario || !geometry) {
     return (
       <div className="flex h-full w-full flex-col bg-black">
-        <AppHeader status={status} />
+        <AppHeader />
         <EmptyState title={t('scenario.loading')} hint={t('scenario.connecting')} />
       </div>
     );
@@ -329,7 +321,7 @@ export function StudioPage() {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-black font-sans text-zinc-300">
-      <AppHeader status={status} />
+      <AppHeader />
 
       {state.tab === 'compare' ? (
         <CompareBoard />

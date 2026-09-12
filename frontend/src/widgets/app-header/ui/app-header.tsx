@@ -17,21 +17,9 @@ const LANGUAGES: Array<{ id: Language; label: TranslationKey }> = [
   { id: 'en', label: 'lang.en' },
 ];
 
-interface AppHeaderProps {
-  status: 'ready' | 'running' | 'error' | 'idle';
-}
-
-const STATUS_COPY: Record<AppHeaderProps['status'], { label: TranslationKey; tone: string }> = {
-  ready: { label: 'status.ready', tone: 'text-zinc-300' },
-  running: { label: 'status.running', tone: 'text-zinc-400' },
-  error: { label: 'status.error', tone: 'text-alarm' },
-  idle: { label: 'status.idle', tone: 'text-zinc-600' },
-};
-
-export function AppHeader({ status }: AppHeaderProps) {
+export function AppHeader() {
   const { state, dispatch } = useSession();
   const { t, language, setLanguage } = useI18n();
-  const indicator = STATUS_COPY[status];
 
   return (
     <header className="relative z-40 grid h-14 flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-rule bg-black px-3 sm:gap-4 sm:px-6 lg:h-16">
@@ -72,15 +60,6 @@ export function AppHeader({ status }: AppHeaderProps) {
 
       <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
         <ScenarioPicker />
-        <div className="hidden items-center gap-1.5 font-data text-[10px] tracking-[0.08em] sm:flex">
-          <span
-            className={cn(
-              'h-1.5 w-1.5',
-              status === 'error' ? 'bg-alarm' : status === 'running' ? 'bg-zinc-400' : 'bg-zinc-600',
-            )}
-          />
-          <span className={indicator.tone}>{t(indicator.label)}</span>
-        </div>
 
         {/* Two words, not a dropdown: there are only ever two, and a menu would
             hide the one the reader is looking for behind a click. */}

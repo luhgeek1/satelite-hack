@@ -13,6 +13,9 @@ export const en = {
   'lang.ru': 'РУС',
   'lang.en': 'ENG',
   'lang.switch': 'Language',
+  'meta.title': 'OrbitGuard — satellite resilience studio',
+  'meta.description':
+    'Design a satellite constellation, simulate a day of traffic and see where the route to the gateway breaks.',
 
   'app.title': 'OrbitGuard',
   'app.subtitle': 'Satellite resilience studio',
@@ -20,11 +23,6 @@ export const en = {
   'tab.simulation': 'Simulation',
   'tab.resilience': 'Resilience',
   'tab.compare': 'Compare',
-
-  'status.ready': 'READY',
-  'status.running': 'SOLVING',
-  'status.error': 'ERROR',
-  'status.idle': 'IDLE',
 
   'view.globe': 'Globe',
   'view.map': 'Map',
@@ -34,6 +32,9 @@ export const en = {
   'map.zoomIn': 'Zoom in',
   'map.zoomOut': 'Zoom out',
   'map.reset': 'Reset view',
+  'map.bright': 'Bright map',
+  'map.dark': 'Dark map',
+  'map.offline': '{site} has no route right now',
   'map.lat': 'Lat',
   'map.lon': 'Lon',
   'map.alt': 'Alt',
@@ -264,6 +265,9 @@ export const ru: Record<TranslationKey, string> = {
   'lang.ru': 'РУС',
   'lang.en': 'ENG',
   'lang.switch': 'Язык',
+  'meta.title': 'OrbitGuard — студия отказоустойчивости группировки',
+  'meta.description':
+    'Соберите спутниковую группировку, прогоните сутки трафика и посмотрите, где рвётся маршрут до шлюза.',
 
   'app.title': 'OrbitGuard',
   'app.subtitle': 'Студия отказоустойчивости группировки',
@@ -271,11 +275,6 @@ export const ru: Record<TranslationKey, string> = {
   'tab.simulation': 'Симуляция',
   'tab.resilience': 'Устойчивость',
   'tab.compare': 'Сравнение',
-
-  'status.ready': 'ГОТОВ',
-  'status.running': 'СЧЁТ',
-  'status.error': 'ОШИБКА',
-  'status.idle': 'ПРОСТОЙ',
 
   'view.globe': 'Глобус',
   'view.map': 'Карта',
@@ -285,6 +284,9 @@ export const ru: Record<TranslationKey, string> = {
   'map.zoomIn': 'Приблизить',
   'map.zoomOut': 'Отдалить',
   'map.reset': 'Сбросить вид',
+  'map.bright': 'Светлая карта',
+  'map.dark': 'Тёмная карта',
+  'map.offline': 'У {site} сейчас нет маршрута',
   'map.lat': 'Шир.',
   'map.lon': 'Долг.',
   'map.alt': 'Выс.',

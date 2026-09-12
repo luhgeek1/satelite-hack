@@ -1,2 +1,9 @@
-export { LanguageProvider, useI18n, DEFAULT_LANGUAGE, type Language, type Translate } from './provider';
+export { LanguageProvider, useI18n, type Translate } from './provider';
+export {
+  DEFAULT_LANGUAGE,
+  LANGUAGE_COOKIE,
+  isLanguage,
+  resolveLanguage,
+  type Language,
+} from './language';
 export { type TranslationKey } from './dictionary';
