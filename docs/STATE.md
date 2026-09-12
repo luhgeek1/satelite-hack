@@ -53,6 +53,7 @@ where the work stands.
 | Change tracking | ✅ the panel lists what differs from the file and what it bought, against a baseline run; MOD badge in the header |
 | Optimizer flow | ✅ the result survives being applied; Save and compare names the variant, creates the baseline one and opens the pair |
 | Saved variants | ✅ openable from the scenario picker and from the comparison; the compared pair lives in the session |
+| Comparison board | ✅ verdict first, all five metrics, per-site dumbbell on a fitted axis, changed parameters beside it, and standings over every saved variant that swap either slot in a click |
 | Localization | ✅ Russian and English through one dictionary |
 | Verified in a browser | ✅ real metrics render, failure injection flips the UI in 60 ms and reconciles at ~2.5 s |
 

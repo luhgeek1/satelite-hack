@@ -292,6 +292,30 @@ moving part that can fail during a defence. `prefer_instance` rather than
 `instance` so a job whose machine has been replaced still gets an honest 404,
 and a request the proxy has already moved is never moved again.
 
+**D13. The comparison shows the answer first, then the evidence, and fits its
+axis to the data.** The verdict names the leading variant and the sites still
+under the target; the five compared metrics follow as tiles; the per-site chart
+is a dumbbell per ground site on an axis starting one 5-point step below the
+lowest figure plotted, not at zero and not at the target.
+*Why:* three clients are three categories, not a series — the line chart implied
+a trend between C65 and C70 that does not exist, and on a 0–100% axis every
+variant is a flat line across the top, so the 1.7 pp a whole optimisation buys
+was invisible. Fitting the axis to the data costs the "how far above the target
+are we" reading, which the verdict sentence and the tiles already give in
+figures. The threshold is still drawn whenever it falls inside the window.
+*Also:* the tiles translate the five metric keys the compare endpoint returns
+and fall back to its wording for anything else, so the service keeps one
+vocabulary while the page speaks the user's language. Its recommendation
+sentence is still English prose on a Russian page — the headline above it
+carries the verdict, and structuring that sentence is a backend change nobody
+has needed yet.
+
+**D14. Every saved variant is listed on the comparison page, ranked.**
+*Why:* two dropdowns tell an engineer what a variant is called and nothing about
+where it stands. The standings are the record of what has been tried — which is
+what a jury asks for — and they make the pair a one-click choice instead of two
+menu hunts. They also stop the page being a third full of margin.
+
 **D12. Picking a terminal with nothing in view draws the three footprints that
 come closest to it.** Drawn exactly as a picked node's own footprint is — same
 circle, same fill, same edge, each in its node's colour — with the terminal
