@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Lock, LockOpen, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { SensitivityPanel } from '@/features/analyze-sensitivity';
 import { useOptimizer, type PlaneLock } from '@/features/run-optimizer';
 import { useSession } from '@/entities/session';
 import type { RunInput } from '@/entities/simulation';
@@ -124,6 +125,8 @@ export function CriticalNodes({
         {resilience?.gateway_dependency.map((dependency) => (
           <GatewayExposure key={dependency.gateway_id} dependency={dependency} />
         ))}
+
+        <SensitivityPanel runInput={runInput} />
       </div>
 
       <div className="flex-shrink-0 space-y-2 border-t border-rule p-3">
