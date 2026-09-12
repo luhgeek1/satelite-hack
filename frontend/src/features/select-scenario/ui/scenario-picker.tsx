@@ -1,15 +1,21 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ChevronDown, Trash2, Upload } from 'lucide-react';
 import { useDeleteScenario, useImportScenario, useScenarios } from '@/entities/scenario';
 import { useDeleteVariant, useVariants } from '@/entities/variant';
 import { hasConfigChanges } from '@/entities/simulation';
 import { useSession } from '@/entities/session';
 import { cn, formatPercent } from '@/shared/lib';
-import { ErrorNote } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
-import type { ScenarioDocument } from '@/shared/api';
+import { ApiError, type ScenarioIssue } from '@/shared/api';
+import { ImportReport, type ImportOutcome } from './import-report';
+
+const failure = (issue: Omit<ScenarioIssue, 'params'> & { params?: ScenarioIssue['params'] }) => ({
+  kind: 'failed' as const,
+  issues: [{ params: {}, ...issue }],
+  count: 1,
+});
 
 export function ScenarioPicker() {
   const { state, dispatch } = useSession();
@@ -21,7 +27,8 @@ export function ScenarioPicker() {
   const deleteVariant = useDeleteVariant();
   const fileInput = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
-  const [readError, setReadError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<ImportOutcome | null>(null);
+  const dismissOutcome = useCallback(() => setOutcome(null), []);
 
   const active = scenarios.data?.find((scenario) => scenario.id === state.scenarioId);
   // The name alone stops being true the moment a slider moves, and an
@@ -29,13 +36,31 @@ export function ScenarioPicker() {
   const modified = hasConfigChanges(state.config, state.strategy);
 
   const handleFile = async (file: File) => {
-    setReadError(null);
+    setOutcome(null);
+
+    let document: unknown;
     try {
-      const document = JSON.parse(await file.text()) as ScenarioDocument;
+      document = JSON.parse(await file.text());
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      setOutcome(
+        failure({ code: 'invalid_json', field: null, message: reason, params: { reason } }),
+      );
+      return;
+    }
+
+    try {
       const created = await importScenario.mutateAsync(document);
       dispatch({ type: 'selectScenario', scenarioId: created.id });
+      setOutcome({ kind: 'loaded', scenario: created });
     } catch (error) {
-      if (error instanceof SyntaxError) setReadError(t('scenario.badJson'));
+      if (error instanceof ApiError && error.issues.length > 0) {
+        setOutcome({ kind: 'failed', issues: error.issues, count: error.issueCount });
+      } else {
+        const message = error instanceof ApiError ? error.message : t('error.generic');
+        const field = error instanceof ApiError ? (error.field ?? null) : null;
+        setOutcome(failure({ code: 'unknown', field, message }));
+      }
     }
   };
 
@@ -183,15 +208,9 @@ export function ScenarioPicker() {
         }}
       />
 
-      {(readError || importScenario.isError) && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-[20rem]">
-          {readError ? (
-            <div className="border border-alarm/40 bg-alarm/5 px-3 py-2 font-label text-[12px] text-alarm">
-              {readError}
-            </div>
-          ) : (
-            <ErrorNote error={importScenario.error} />
-          )}
+      {outcome && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-[22rem] max-w-[calc(100vw-2rem)]">
+          <ImportReport outcome={outcome} onDismiss={dismissOutcome} />
         </div>
       )}
     </div>
