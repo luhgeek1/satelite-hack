@@ -206,6 +206,16 @@ Also steal the other team's **three-state timeline legend** (`есть путь`
 `виден, нет пути` / `нет спутника`) — it renders the case's central point
 visually and costs nothing. Our API already serves exactly those three states.
 
+**D8. A slider drag refreshes the run on release and at most every 550 ms in
+between.** *Why:* a pure trailing debounce held the timeline and the metrics on
+the last committed geometry for as long as the pointer kept moving, and then
+jumped — which reads as a frozen panel rather than a live one. A run is ~150 ms,
+so a floor of 550 ms buys a strip that follows the hand at under two requests a
+second. The pointer coming off the control commits immediately, since the end of
+a gesture is not a pause in one. The strip keeps the previous day's bands while
+the next run is in flight: dropping to an empty series was the single most
+visible stall in the panel.
+
 ---
 
 ## E. Findings worth presenting
