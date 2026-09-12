@@ -26,9 +26,17 @@ const studio: TourStep[] = [
   { target: 'timeline', title: 'tour.timeTitle', text: 'tour.timeText' },
   { target: 'window-tool', title: 'tour.windowTitle', text: 'tour.windowText' },
   { target: 'deploy', title: 'tour.deployTitle', text: 'tour.deployText' },
+  { target: 'deploy-find', title: 'tour.findTitle', text: 'tour.findText' },
   { target: 'planes', title: 'tour.planesTitle', text: 'tour.planesText' },
-  { target: 'save', title: 'tour.saveTitle', text: 'tour.saveText' },
-  { target: 'help', title: 'tour.helpTitle', text: 'tour.helpText' },
+  {
+    target: 'resilience-verdict',
+    title: 'tour.resVerdictTitle',
+    text: 'tour.resVerdictText',
+    tab: 'resilience',
+  },
+  { target: 'critical-list', title: 'tour.resListTitle', text: 'tour.resListText', tab: 'resilience' },
+  { target: 'save', title: 'tour.saveTitle', text: 'tour.saveText', tab: 'simulation' },
+  { target: 'help', title: 'tour.helpTitle', text: 'tour.helpText', tab: 'simulation' },
 ];
 
 /**

@@ -215,6 +215,15 @@ export const en = {
   'tour.deployTitle': 'Three launches, one design',
   'tour.deployText':
     'Sixteen satellites per launch, three months apart. A ring keeps the angles it launched with, so the campaign is planned one launch at a time.',
+  'tour.findTitle': 'The angle search',
+  'tour.findText':
+    'The search runs hundreds of full days with different angles and keeps the one where the worst-served client does best. Quick mode takes about a minute; it can be stopped at any time.',
+  'tour.resVerdictTitle': 'Does the design survive a failure',
+  'tour.resVerdictText':
+    'Every satellite is switched off for a day in turn. This card says whether the target holds whichever one fails, and with what margin — for each launch stage.',
+  'tour.resListTitle': 'Which satellites to protect',
+  'tour.resListText':
+    'Ranked by damage: which directions a loss hits and how much longer their outages get. Any of them can be switched off in one click to watch the routes rebuild.',
   'tour.planesTitle': 'The two angles',
   'tour.planesText':
     'RAAN spaces the rings around the Earth; phase spaces the satellites inside a ring. Everything else follows from these six numbers.',
@@ -232,7 +241,7 @@ export const en = {
     'The selected launch is either a draft or a decision. What it is, and what to do about it, is said here.',
   'tour.dFindTitle': 'Let the search choose',
   'tour.dFindText':
-    'It holds every fixed launch, picks this one and the later ones together, and scores the finished constellation — never this stage alone.',
+    'It holds every fixed launch, picks this one and the later ones together, and scores the finished constellation — never this stage alone. Quick or thorough is chosen just below, with the wait quoted.',
   'tour.dFixTitle': 'Fix what you decided',
   'tour.dFixText':
     'A fixed launch is held against every search and every scale, survives a reload, and is freed only by Withdraw.',
@@ -726,6 +735,15 @@ export const ru: Record<TranslationKey, string> = {
   'tour.deployTitle': 'Три запуска, один проект',
   'tour.deployText':
     'По 16 аппаратов, раз в три месяца. Кольцо навсегда сохраняет углы, с которыми взлетело, поэтому кампания планируется по очереди.',
+  'tour.findTitle': 'Подбор углов',
+  'tour.findText':
+    'Алгоритм прогоняет сотни полных суток с разными углами и оставляет вариант, где худшему пункту лучше всего. Быстрый режим — около минуты, остановить можно в любой момент.',
+  'tour.resVerdictTitle': 'Переживёт ли проект отказ',
+  'tour.resVerdictText':
+    'Каждый аппарат по очереди выключается на сутки. Здесь итог: держится ли цель при отказе любого из них и какой остаётся запас — для каждой очереди запуска.',
+  'tour.resListTitle': 'Какие аппараты беречь',
+  'tour.resListText':
+    'Список по ущербу: какие направления задевает отказ и насколько вырастают перерывы. Любой аппарат можно выключить одной кнопкой и посмотреть, как перестроятся маршруты.',
   'tour.planesTitle': 'Два угла',
   'tour.planesText':
     'RAAN разводит кольца вокруг Земли, фаза — аппараты внутри кольца. Всё остальное вытекает из этих шести чисел.',
@@ -743,7 +761,7 @@ export const ru: Record<TranslationKey, string> = {
     'Выбранная очередь — либо черновик, либо принятое решение. Что именно и что с этим делать, написано здесь.',
   'tour.dFindTitle': 'Пусть углы выберет поиск',
   'tour.dFindText':
-    'Он держит все зафиксированные очереди, подбирает эту и последующие вместе и оценивает полную группировку — никогда одну очередь отдельно.',
+    'Он держит все зафиксированные очереди, подбирает эту и последующие вместе и оценивает полную группировку — никогда одну очередь отдельно. Чуть ниже выбирается «Быстро» или «Тщательно», с оценкой времени.',
   'tour.dFixTitle': 'Зафиксировать решение',
   'tour.dFixText':
     'Зафиксированная очередь удерживается против любого поиска и любой шкалы, переживает перезагрузку и снимается только кнопкой «Снять фиксацию».',

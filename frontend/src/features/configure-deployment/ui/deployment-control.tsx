@@ -356,7 +356,9 @@ function StepCard({
               disabled={planning}
               title={t('deploy.findHint')}
               data-tour="deploy-find"
-              className="flex flex-1 items-center justify-center gap-1.5 border border-zinc-600 py-1.5 font-label text-[11px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:outline-none disabled:opacity-40"
+              // The one filled button in the panel: the search is the thing this
+              // studio does that a spreadsheet cannot, and it should read so.
+              className="flex flex-1 items-center justify-center gap-1.5 border border-zinc-100 bg-zinc-100 py-1.5 font-label text-[11px] font-semibold text-black transition-colors hover:bg-white focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-zinc-300 disabled:opacity-40"
             >
               <Sparkles size={11} />
               {t(planning ? 'deploy.finding' : 'deploy.find')}

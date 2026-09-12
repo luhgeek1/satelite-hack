@@ -6,7 +6,7 @@ import { TOURS, type TourId } from './steps';
 
 /** Bumped when the studio tour changes enough that a returning visitor should
  *  see it again. */
-const SEEN_KEY = 'orbitguard-tour-v1';
+const SEEN_KEY = 'orbitguard-tour-v2';
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 

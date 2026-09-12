@@ -89,7 +89,7 @@ export function StudioPage() {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
   const scenarios = useScenarios();
-  const { autoStart } = useTour();
+  const { autoStart, tour } = useTour();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const renameScenario = useRenameScenario();
   const [renameDraft, setRenameDraft] = useState<string | null>(null);
@@ -190,7 +190,9 @@ export function StudioPage() {
     if (state.playing) prefetch(tS, 4);
   }, [state.playing, tS, prefetch]);
 
-  const resilience = useResilience(runInput, state.tab === 'resilience');
+  // Also while the studio tour runs: it visits this tab, and twenty seconds of
+  // spinner is not something to point a newcomer at.
+  const resilience = useResilience(runInput, state.tab === 'resilience' || tour === 'studio');
 
   // The sweeps for whatever is on screen when the page first settles, so the
   // resilience tab opens onto answers rather than spinners. Once only: a sweep
