@@ -308,6 +308,37 @@ its own colour. On the flat map a footprint that swallows a pole is skipped as
 well: equirectangular projects it as a band across the full width, which reads
 as a huge zone rather than as a circle that misses. The globe keeps it.
 
+**D13. An outage window is drawn on the timeline, not typed into a form.**
+Drag across the strip — with the right button at any time, or with the primary
+one after the window button is pressed — and the span turns red with handles on
+both edges. A picker opens above it, centred, with the gateways and the
+satellites as two sections and a search under them.
+*Why:* every question the case asks about an outage is a question about a span
+of the day, and the day is already drawn along the bottom of the screen. The
+forms in the panel ask for the same window as two hour fields, which is the
+same information one step further from the thing it describes. The strip also
+answers immediately: the bands under the window redraw, so the cost of the
+outage appears where it was declared.
+*Why a mode as well as the right button:* a right-drag is not discoverable, and
+on a trackpad it is a two-finger press-and-drag that many people have never
+made. The button says the gesture exists. It hands the strip back as a scrubber
+as soon as a window is drawn, so nobody is left holding a tool they cannot put
+down.
+*Why sections rather than one list:* a gateway outage and a satellite failure
+are different arguments about the network, and the operator arrives knowing
+which one they mean. Search sits under the sections because it searches inside
+the section. Rows toggle: the picker is a list of switches, so what was taken
+down over the window goes back the same way.
+*Several windows at once:* the interesting question is rarely about one span —
+"the gateway is down at dawn and a plane is out at noon" is two of them, and
+the day has to hold both to be worth drawing. Each band is dragged and resized
+on its own; the one the picker points at is the brighter one. A node can be
+down over more than one window, which the engine already supports: it collects
+the failed set per step from the whole list, so repeating an id with a
+different span is a second outage rather than a conflict. Two windows that do
+overlap are one outage, and the later one replaces the earlier — otherwise the
+same node would be listed as failed twice over the same minute.
+
 ---
 
 ## E. Findings worth presenting

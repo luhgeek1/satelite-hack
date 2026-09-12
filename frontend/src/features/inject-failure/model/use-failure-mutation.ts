@@ -36,8 +36,13 @@ export function useInjectFailure(runId: string | undefined, tS: number, horizonS
   return useMutation<SimulationSummary, Error, FailureRequest, Context>({
     mutationFn: ({ satelliteId, startS = tS, endS = horizonS }) => {
       const failure: FailureDto = { satellite_id: satelliteId, start_s: startS, end_s: endS };
+      // Windows that do not overlap this one survive: the same node can be
+      // taken down over several spans of the day.
       const failures = [
-        ...(state.config.failures ?? []).filter((item) => item.satellite_id !== satelliteId),
+        ...(state.config.failures ?? []).filter(
+          (item) =>
+            item.satellite_id !== satelliteId || item.start_s >= endS || item.end_s <= startS,
+        ),
         failure,
       ];
 
@@ -70,11 +75,13 @@ export function useInjectFailure(runId: string | undefined, tS: number, horizonS
       return { snapshotKey, previousSnapshot };
     },
 
-    onError: (_error, { satelliteId }, context) => {
+    onError: (_error, { satelliteId, startS = tS, endS = horizonS }, context) => {
       if (context?.previousSnapshot) {
         queryClient.setQueryData(context.snapshotKey, context.previousSnapshot);
       }
-      dispatch({ type: 'removeFailure', satelliteId });
+      // Only the window this call added; the node's other outages were not ours
+      // to roll back.
+      dispatch({ type: 'removeFailure', satelliteId, window: { startS, endS } });
     },
 
     onSuccess: (summary) => {
