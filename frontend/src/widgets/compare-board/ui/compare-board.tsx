@@ -11,13 +11,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { VariantSelect } from '@/features/manage-variants';
 import { useComparison, useVariants } from '@/entities/variant';
 import { useSession } from '@/entities/session';
 import { cn, formatPercent, formatPoints } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { EmptyState, ErrorNote } from '@/shared/ui';
-import type { ComparedMetric } from '@/shared/api';
+import type { ComparedMetric, Variant } from '@/shared/api';
+import { VariantColumn } from './variant-column';
 
 const SERIES_INK = ['#6b6b72', '#d9d9de'];
 
@@ -36,6 +36,14 @@ export function CompareBoard() {
     [slots, variants.data],
   );
 
+  const openVariant = (variant: Variant) =>
+    dispatch({
+      type: 'openVariant',
+      scenarioId: variant.scenario_id as string,
+      config: variant.config,
+      strategy: variant.strategy,
+    });
+
   const selectedIds = slots.filter((id): id is string => Boolean(id));
   const comparison = useComparison(selectedIds.length === 2 ? selectedIds : []);
 
@@ -53,52 +61,28 @@ export function CompareBoard() {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-5xl space-y-6 lg:space-y-8">
-        <div className="flex items-stretch gap-3 sm:gap-4">
-          <VariantSelect
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 sm:gap-4">
+          <VariantColumn
             slot="A"
             value={resolved[0]}
             exclude={slots[1] ?? undefined}
             onSelect={(id) => setSlots([id, slots[1]])}
+            onOpen={openVariant}
           />
-          <div className="flex flex-shrink-0 items-center font-data text-[10px] tracking-[0.08em] text-zinc-600">
+          {/* Height-matched to the picker so the divider centres on it and not
+              on the whole column. */}
+          <div className="flex h-[2.375rem] items-center font-data text-[10px] tracking-[0.08em] text-zinc-600">
             {t('compare.vs')}
           </div>
-          <VariantSelect
+          <VariantColumn
             slot="B"
             value={resolved[1]}
             exclude={slots[0] ?? undefined}
             lead
             onSelect={(id) => setSlots([slots[0], id])}
+            onOpen={openVariant}
           />
         </div>
-
-        {/* A comparison answers "which one", and the next thing the engineer
-            wants is that one loaded back into the simulation. */}
-        {resolved.some(Boolean) && (
-          <div className="flex gap-3 sm:gap-4">
-            {resolved.map((variant, index) => (
-              <div key={variant?.id ?? index} className="min-w-0 flex-1">
-                {variant?.scenario_id && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      dispatch({
-                        type: 'openVariant',
-                        scenarioId: variant.scenario_id as string,
-                        config: variant.config,
-                        strategy: variant.strategy,
-                      })
-                    }
-                    className="w-full border border-rule-strong py-1.5 font-label text-[11px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none"
-                  >
-                    {t('compare.open')}
-                  </button>
-                )}
-              </div>
-            ))}
-            <div className="w-[2.5rem] flex-shrink-0 sm:w-[2.75rem]" aria-hidden="true" />
-          </div>
-        )}
 
         {variants.data?.length === 0 && (
           <div className="border border-rule-strong">
