@@ -9,7 +9,7 @@ where the work stands.
 
 ### Backend — runnable end to end
 
-84 tests green (63 unit, 21 integration), ruff clean.
+89 tests green (63 unit, 26 integration), ruff clean.
 
 | Area | Status |
 |---|---|
