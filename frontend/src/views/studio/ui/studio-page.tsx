@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, PanelRightClose, PanelRightOpen, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AppHeader } from '@/widgets/app-header';
@@ -66,6 +66,26 @@ export function StudioPage() {
 
   useDisableBrowserZoom();
   const panels = useLocalPanels();
+
+  // How much of the bottom the playback strip takes, so the optimizer card can
+  // clear it whatever the scenario puts in it. A callback ref rather than an
+  // effect: the strip appears only once a scenario has loaded, and an effect
+  // keyed on the tab had already run — and found nothing — by then.
+  const [playbackHeight, setPlaybackHeight] = useState(0);
+  const playbackObserver = useRef<ResizeObserver | null>(null);
+
+  const playbackRef = useCallback((node: HTMLDivElement | null) => {
+    playbackObserver.current?.disconnect();
+
+    if (!node) {
+      setPlaybackHeight(0);
+      return;
+    }
+
+    const observer = new ResizeObserver(([entry]) => setPlaybackHeight(entry.contentRect.height));
+    observer.observe(node);
+    playbackObserver.current = observer;
+  }, []);
 
   useEffect(() => {
     const catalog = scenarios.data;
@@ -413,6 +433,7 @@ export function StudioPage() {
             </div>
 
             {state.tab === 'simulation' && (
+              <div ref={playbackRef}>
               <PlaybackBar
                 tS={tS}
                 horizonS={horizonS}
@@ -428,6 +449,7 @@ export function StudioPage() {
                 onSeek={playback.seek}
                 onSelectClient={selectClient}
               />
+              </div>
             )}
           </motion.div>
 
@@ -484,10 +506,11 @@ export function StudioPage() {
       <AnimatePresence>
         {(optimizer.running || optimizer.start.isPending || optimizer.result) && (
           <motion.div
-            className={cn(
-              'fixed left-3 z-40 lg:left-6',
-              state.tab === 'simulation' ? 'bottom-[4.25rem]' : 'bottom-3 lg:bottom-6',
-            )}
+            className="fixed left-3 z-40 lg:left-6"
+            /* Measured rather than guessed: the strip grows a row per ground
+               site, and a fixed offset landed the card on top of it as soon as
+               a scenario had three. */
+            style={{ bottom: playbackHeight + 12 }}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
