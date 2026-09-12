@@ -18,8 +18,10 @@ import { snapToGrid, usePlayback } from '@/features/timeline-playback';
 import { planeColorMap, readGeometry, useScenario, useScenarios } from '@/entities/scenario';
 import { allFailedIds, useSession } from '@/entities/session';
 import {
+  isSettling,
   outageBands,
   useAvailabilitySeries,
+  useDebouncedRunInput,
   useSimulation,
   useSnapshot,
   useSnapshotPrefetch,
@@ -60,11 +62,13 @@ export function StudioPage() {
   const geometry = scenario ? readGeometry(scenario) : null;
   const colors = useMemo(() => planeColorMap(scenario), [scenario]);
 
-  const runInput = {
+  const liveInput = {
     scenarioId: state.scenarioId,
     config: state.config,
     strategy: state.strategy,
   };
+  const runInput = useDebouncedRunInput(liveInput);
+  const settling = isSettling(liveInput, runInput);
 
   const simulation = useSimulation(runInput);
   const summary = simulation.data;
@@ -315,7 +319,7 @@ export function StudioPage() {
                   routes={snapshot.data?.routes ?? []}
                   selectedClientId={focusClientId}
                   onSelectClient={(clientId) => dispatch({ type: 'selectClient', clientId })}
-                  stale={simulation.isFetching || snapshot.isFetching}
+                  stale={settling || simulation.isFetching || snapshot.isFetching}
                 />
               )}
 
