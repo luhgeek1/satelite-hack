@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { cn, formatDegrees } from '@/shared/lib';
 
 interface ScaleRowProps {
@@ -27,6 +29,28 @@ export function ScaleRow({
   onChange,
   onCommit,
 }: ScaleRowProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const cancelEdit = useRef(false);
+
+  const commitDraft = () => {
+    if (!cancelEdit.current && draft !== null) {
+      const text = draft.trim().replace(',', '.');
+      const parsed = Number(text);
+
+      if (/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text) && Number.isFinite(parsed)) {
+        const snapped = Number((Math.round(parsed / step) * step).toFixed(10));
+        const next = Math.min(max, Math.max(0, snapped));
+        if (next !== value) {
+          onChange(next);
+          onCommit?.(next);
+        }
+      }
+    }
+
+    cancelEdit.current = false;
+    setDraft(null);
+  };
+
   return (
     <div className={cn('flex items-center gap-2.5', disabled && 'opacity-50')}>
       <label
@@ -65,10 +89,37 @@ export function ScaleRow({
         />
       </div>
 
-      <span className="w-[3.25rem] flex-shrink-0 text-right font-data text-[11px] tabular-nums text-zinc-200">
-        {formatDegrees(value)}
-        <span className="text-zinc-500">°</span>
-      </span>
+      <label
+        className={cn(
+          'relative flex h-6 w-[4.75rem] flex-shrink-0 items-center border border-rule-strong bg-white/[0.03] text-zinc-500 transition-colors',
+          !disabled && 'cursor-text hover:border-zinc-500 hover:bg-white/[0.06] focus-within:border-zinc-300 focus-within:bg-white/[0.08] focus-within:text-zinc-200',
+        )}
+        title={`Edit ${label}: 0–${max}°, step ${step}°. Enter to apply, Esc to cancel.`}
+      >
+        <Pencil size={10} className="pointer-events-none absolute left-1.5" aria-hidden="true" />
+        <input
+          id={`${id}-value`}
+          type="text"
+          inputMode="decimal"
+          aria-label={`${label} value in degrees`}
+          autoComplete="off"
+          spellCheck={false}
+          value={draft ?? formatDegrees(value)}
+          disabled={disabled}
+          onFocus={(event) => event.currentTarget.select()}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commitDraft}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === 'Escape') {
+              event.preventDefault();
+              cancelEdit.current = event.key === 'Escape';
+              event.currentTarget.blur();
+            }
+          }}
+          className="h-full w-full min-w-0 bg-transparent pl-5 pr-3 text-right font-data text-[11px] tabular-nums text-zinc-200 outline-none disabled:cursor-not-allowed"
+        />
+        <span className="pointer-events-none absolute right-1 font-data text-[11px]" aria-hidden="true">°</span>
+      </label>
     </div>
   );
 }

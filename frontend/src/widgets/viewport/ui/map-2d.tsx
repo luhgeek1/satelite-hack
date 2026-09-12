@@ -82,24 +82,6 @@ export const Map2D: React.FC<Map2DProps> = ({
     failureRingUnits / Math.max(0.28, Math.cos(lat * (Math.PI / 180)));
   const [tooltip, setTooltip] = useState<{ content: React.ReactNode; x: number; y: number } | null>(null);
   const [position, setPosition] = useState({ coordinates: [0, 0] as [number, number], zoom: 1 });
-  const centredOnRef = useRef<string | null>(null);
-
-  // Recentre when the selection changes — not when the satellites move. Keying
-  // this on the satellite array would drag the view back on every simulation
-  // tick and fight the user's own panning.
-  useEffect(() => {
-    if (!selectedSatellite) {
-      centredOnRef.current = null;
-      return;
-    }
-    if (centredOnRef.current === selectedSatellite) return;
-
-    const sat = satellites.find(s => s.id === selectedSatellite);
-    if (!sat) return;
-
-    centredOnRef.current = selectedSatellite;
-    setPosition({ coordinates: [sat.lon, sat.lat], zoom: 4 });
-  }, [selectedSatellite, satellites]);
 
   // Tweened so the footprint grows out of the satellite rather than popping in.
   const [coverage, setCoverage] = useState<{ id: string | null; scale: number }>({
@@ -277,7 +259,7 @@ export const Map2D: React.FC<Map2DProps> = ({
             }
           </Geographies>
 
-          {coverageShape && (
+          {coverageShape && coverageSat && (
             <Geographies geography={coverageShape}>
               {({ geographies }: { geographies: any[] }) =>
                 geographies.map((geo, index) => (
@@ -285,8 +267,10 @@ export const Map2D: React.FC<Map2DProps> = ({
                     key={`coverage-${index}`}
                     geography={geo}
                     tabIndex={-1}
-                    fill="rgba(228,228,231,0.10)"
-                    stroke="rgba(228,228,231,0.45)"
+                    fill={satelliteColor(coverageSat)}
+                    fillOpacity={0.1}
+                    stroke={satelliteColor(coverageSat)}
+                    strokeOpacity={0.45}
                     strokeWidth={0.6 * k}
                     style={{
                       default: { outline: 'none', pointerEvents: 'none' },
@@ -385,6 +369,7 @@ export const Map2D: React.FC<Map2DProps> = ({
                 }
                 onMouseLeave={() => setTooltip(null)}
                 onClick={() => onSatelliteClick?.(sat)}
+                onDoubleClickCapture={(event: React.MouseEvent) => event.stopPropagation()}
                 style={{ cursor: onSatelliteClick ? 'pointer' : 'default', outline: 'none' } as any}
               >
                 {/* Waves out to the footprint the node has just stopped

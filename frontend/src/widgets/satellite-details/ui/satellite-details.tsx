@@ -1,7 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import { useSession } from '@/entities/session';
 import { neighboursOf, type LinkView, type SatelliteView } from '@/entities/satellite';
 import { RouteChain, tracesThrough, type RouteTrace } from '@/entities/simulation';
@@ -51,16 +51,22 @@ export function SatelliteDetails({
     },
   ];
 
+  // The panel is a column of its own, pinned to the left edge of the data
+  // column: the configuration stays readable beside it, and the reveal wipes
+  // out from under that edge rather than flying in over the globe. Height
+  // follows the content — a fixed full-height sheet would claim space the
+  // readings do not need — and only a long node runs into the scroll.
   const content = (
     <motion.div
-      key={placement === 'overlay' ? `overlay-${satellite.id}` : 'sidebar-details'}
-      initial={placement === 'overlay' ? { x: '100%' } : false}
-      animate={placement === 'overlay' ? { x: 0 } : { opacity: 1 }}
-      exit={placement === 'overlay' ? { x: '100%' } : { opacity: 1 }}
-      transition={{ type: 'spring', damping: 22, stiffness: 210 }}
+      key="satellite-details"
+      initial={placement === 'overlay' ? { opacity: 0, clipPath: 'inset(0 0 0 100%)' } : false}
+      animate={placement === 'overlay' ? { opacity: 1, clipPath: 'inset(0 0 0 0%)' } : { opacity: 1 }}
+      exit={placement === 'overlay' ? { opacity: 0, clipPath: 'inset(0 0 0 100%)' } : { opacity: 1 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
       className={cn(
         'flex h-fit flex-col overflow-y-auto overscroll-contain bg-[#09090b] p-4',
-        placement === 'overlay' && 'absolute inset-x-0 top-0 z-20 max-h-full border-l border-rule-strong shadow-2xl',
+        placement === 'overlay' &&
+          'absolute right-full top-0 z-20 w-[320px] max-h-full border-b border-l border-rule-strong shadow-2xl',
       )}
     >
       <div className="flex items-center gap-3">
@@ -201,5 +207,7 @@ export function SatelliteDetails({
     </motion.div>
   );
 
-  return placement === 'overlay' ? <AnimatePresence>{content}</AnimatePresence> : content;
+  // Exit is driven by the caller's AnimatePresence, so closing wipes out
+  // instead of vanishing the moment the selection clears.
+  return content;
 }

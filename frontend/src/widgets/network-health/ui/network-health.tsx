@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { RouteChain, type RouteTrace } from '@/entities/simulation';
 import { cn, formatDuration, formatPercent, NO_ROUTE_COPY } from '@/shared/lib';
@@ -14,6 +14,8 @@ interface NetworkHealthProps {
   selectedClientId: string | null;
   onSelectClient: (clientId: string) => void;
   stale: boolean;
+  optimizing: boolean;
+  onOptimize: () => void;
 }
 
 export function NetworkHealth({
@@ -23,6 +25,8 @@ export function NetworkHealth({
   selectedClientId,
   onSelectClient,
   stale,
+  optimizing,
+  onOptimize,
 }: NetworkHealthProps) {
   const [expanded, setExpanded] = useState(true);
 
@@ -37,6 +41,7 @@ export function NetworkHealth({
         onClick={() => setExpanded((value) => !value)}
         className="pointer-events-auto flex w-full items-center gap-2 text-left transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
         aria-expanded={expanded}
+        title={expanded ? 'Collapse network health' : 'Expand network health'}
       >
         <span className={cn('h-2 w-2 shrink-0', degraded ? 'bg-alarm' : 'bg-zinc-500')} />
         <span className="font-label text-[13px] text-zinc-300">Network health</span>
@@ -62,41 +67,48 @@ export function NetworkHealth({
                 const focused = client.client_id === selectedClientId;
 
                 return (
-                  <button
+                  // The row is a container, not a control: the hops inside the
+                  // chain are buttons of their own, and a button cannot hold a
+                  // button. Picking the client stays on the summary line.
+                  <div
                     key={client.client_id}
-                    type="button"
-                    onClick={() => onSelectClient(client.client_id)}
-                    aria-pressed={focused}
                     className={cn(
-                      'block w-full border-l-2 py-1 pl-2 pr-1 text-left transition-colors',
+                      'border-l-2 py-1 pl-2 pr-1 transition-colors',
                       focused ? 'border-l-current bg-white/[0.06]' : 'border-l-transparent hover:bg-white/[0.03]',
                     )}
                     style={{ color: trace?.color }}
                   >
-                    <span className="flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
-                      <span className={focused ? 'text-zinc-100' : 'text-zinc-400'}>
-                        {client.client_id}
-                      </span>
-                      <span className={client.meets_target ? 'text-zinc-100' : 'text-alarm'}>
-                        {formatPercent(client.availability)}
-                      </span>
-                    </span>
-                    <span
-                      className={cn(
-                        'mt-0.5 block font-data text-[10.5px] leading-tight',
-                        trace?.available === false ? 'text-alarm' : 'text-zinc-500',
-                      )}
+                    <button
+                      type="button"
+                      onClick={() => onSelectClient(client.client_id)}
+                      aria-pressed={focused}
+                      className="block w-full text-left focus-visible:outline-none"
                     >
-                      {trace
-                        ? trace.available
-                          ? `${trace.hops} hops → ${trace.gatewayId ?? 'gateway'}`
-                          : `no route · ${trace.reason ? NO_ROUTE_COPY[trace.reason] : 'unreachable'}`
-                        : '—'}
-                    </span>
+                      <span className="flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
+                        <span className={focused ? 'text-zinc-100' : 'text-zinc-400'}>
+                          {client.client_id}
+                        </span>
+                        <span className={client.meets_target ? 'text-zinc-100' : 'text-alarm'}>
+                          {formatPercent(client.availability)}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          'mt-0.5 block font-data text-[10.5px] leading-tight',
+                          trace?.available === false ? 'text-alarm' : 'text-zinc-500',
+                        )}
+                      >
+                        {trace
+                          ? trace.available
+                            ? `${trace.hops} hops → ${trace.gatewayId ?? 'gateway'}`
+                            : `no route · ${trace.reason ? NO_ROUTE_COPY[trace.reason] : 'unreachable'}`
+                          : '—'}
+                      </span>
+                    </button>
                     {focused && trace?.available && (
                       <RouteChain trace={trace} className="mt-1.5" />
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -124,6 +136,25 @@ export function NetworkHealth({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Outside the collapse on purpose: folding the readings away should not
+          take the action with them. */}
+      <div className="mt-3 border-t border-rule pt-3">
+        <button
+          type="button"
+          onClick={onOptimize}
+          disabled={optimizing}
+          className={cn(
+            'pointer-events-auto flex h-9 w-full items-center justify-center gap-2 border font-label text-[13px] transition-colors focus-visible:outline-none',
+            optimizing
+              ? 'cursor-wait border-rule-strong text-zinc-500'
+              : 'border-zinc-600 text-zinc-100 hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10',
+          )}
+        >
+          <Zap size={14} />
+          {optimizing ? 'Optimizing' : 'Optimize deployment'}
+        </button>
+      </div>
     </div>
   );
 }

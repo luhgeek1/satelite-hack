@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import GlobeGL from 'react-globe.gl';
 import * as THREE from 'three';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
@@ -220,7 +220,6 @@ export const Globe: React.FC<GlobeProps> = ({
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const coverageCapMaterial = useMemo(
     () => new THREE.MeshBasicMaterial({
-      color: '#7dd3fc',
       transparent: true,
       opacity: COVERAGE_CAP_OPACITY,
       depthWrite: false,
@@ -294,6 +293,21 @@ export const Globe: React.FC<GlobeProps> = ({
   const sphereMaterials = useRef(new Map<string, THREE.MeshBasicMaterial>());
   const satelliteGroups = useRef(new Map<string, THREE.Group>());
   const lastClickRef = useRef<{ id: string; at: number }>({ id: '', at: 0 });
+  const satelliteClickRef = useRef(onSatelliteClick);
+  const siteClickRef = useRef(onSiteClick);
+  satelliteClickRef.current = onSatelliteClick;
+  siteClickRef.current = onSiteClick;
+
+  const onPointClick = useCallback((pt: SatelliteView | null) => {
+    if (!pt || !satelliteClickRef.current) return;
+
+    // The HTML plate and WebGL layers can report the same physical click.
+    const now = Date.now();
+    if (lastClickRef.current.id === pt.id && now - lastClickRef.current.at < 300) return;
+    lastClickRef.current = { id: pt.id, at: now };
+
+    satelliteClickRef.current(pt);
+  }, []);
 
   /**
    * A satellite dot is about 1% of the globe radius — roughly three pixels at
@@ -581,6 +595,12 @@ export const Globe: React.FC<GlobeProps> = ({
     });
   }, [satellites, selectedSatellite, routeNodes, mode, playing, coverageSatelliteId, coverageScale]);
 
+  const coverageColor = pointsData.find(sat => sat.id === coverageSatelliteId)?.color ?? '#ffffff';
+
+  useEffect(() => {
+    coverageCapMaterial.color.set(coverageColor);
+  }, [coverageCapMaterial, coverageColor]);
+
   // Same footprint the coverage cap draws, in the degrees of arc the ring
   // layer measures in — recomputed per scenario since contactRadiusKm is.
   const coverageDegrees = (contactRadiusKm / EARTH_RADIUS_KM) * (180 / Math.PI);
@@ -637,9 +657,10 @@ export const Globe: React.FC<GlobeProps> = ({
         coordinates: [boundary.map(point => [point.lng, point.lat])]
       },
       borderPoints: boundary.map(point => [point.lat, point.lng, 0.008] as [number, number, number]),
+      color: coverageColor,
       borderOpacity: coverageScale
     };
-  }, [satellites, coverageSatelliteId, coverageScale]);
+  }, [satellites, coverageSatelliteId, coverageScale, contactRadiusKm, coverageColor]);
 
   // Prepare links data
   const arcsData = useMemo(() => {
@@ -730,7 +751,7 @@ export const Globe: React.FC<GlobeProps> = ({
       ...orbitPaths,
       {
         points: selectedCoverage.borderPoints,
-        color: `rgba(186,230,253,${(0.9 * selectedCoverage.borderOpacity).toFixed(3)})`,
+        color: `#${new THREE.Color(selectedCoverage.color).getHexString()}${Math.round(255 * 0.9 * selectedCoverage.borderOpacity).toString(16).padStart(2, '0')}`,
         stroke: 0.34,
         dashLength: 0.05,
         dashGap: 0.035,
@@ -739,22 +760,43 @@ export const Globe: React.FC<GlobeProps> = ({
     ];
   }, [orbits, highlightedPlane, selectedCoverage]);
 
+  /** One datum per satellite, reused for as long as that node is deployed. */
+  const satelliteChipData = useRef(new Map<string, any>());
+  /** Restyle hooks for the plates already in the DOM, keyed by satellite id. */
+  const satelliteChipStyles = useRef(new Map<string, (emphasized: boolean, accent: string) => void>());
+
   // Ground sites are deliberately rendered above the satellite layer so their
   // operational labels remain legible against the Earth and the starfield.
   const htmlElementsData = useMemo(() => {
     const data: any[] = [];
 
+    // The plates keep their datum identity for as long as the node exists. The
+    // html layer digests by object identity, so a freshly built datum tears the
+    // element down and builds it again — which, on the plate under the pointer,
+    // reads as the cursor and the plate twitching, and during playback churns
+    // all 48 of them on every tick. Only the fields move; emphasis is written
+    // to the live element by the effect below.
+    const store = satelliteChipData.current;
+    const live = new Set<string>();
+
     satellites.forEach(sat => {
-      data.push({
-        lat: sat.lat,
-        lng: sat.lon,
-        alt: SATELLITE_ALTITUDE,
-        type: 'sat',
-        id: sat.id,
-        sat,
-        accent: sat.failed ? '#e4483a' : sat.color,
-        emphasized: sat.failed || sat.id === selectedSatellite || routeNodes.has(sat.id)
-      });
+      live.add(sat.id);
+      const datum = store.get(sat.id) ?? { type: 'sat', id: sat.id };
+      datum.lat = sat.lat;
+      datum.lng = sat.lon;
+      datum.alt = SATELLITE_ALTITUDE;
+      datum.sat = sat;
+      datum.accent = sat.failed ? '#e4483a' : sat.color;
+      datum.emphasized = sat.failed || sat.id === selectedSatellite || routeNodes.has(sat.id);
+      store.set(sat.id, datum);
+      data.push(datum);
+    });
+
+    store.forEach((_, id) => {
+      if (!live.has(id)) {
+        store.delete(id);
+        satelliteChipStyles.current.delete(id);
+      }
     });
 
     groundStations.forEach((gs, index) => {
@@ -785,6 +827,170 @@ export const Globe: React.FC<GlobeProps> = ({
     });
     return data;
   }, [satellites, groundStations, gateways, selectedSatellite, routeNodes, routes, focusClientId]);
+
+  // Selection is written straight to the plates that are already on screen,
+  // because keeping their datum stable means the layer will not rebuild them.
+  useEffect(() => {
+    satellites.forEach(sat => {
+      satelliteChipStyles.current.get(sat.id)?.(
+        sat.failed || sat.id === selectedSatellite || routeNodes.has(sat.id),
+        sat.failed ? '#e4483a' : sat.color
+      );
+    });
+  }, [satellites, selectedSatellite, routeNodes]);
+
+  // three-globe clears every HTML object when this function changes identity.
+  // Keep it stable through selection and coverage frames; listeners read the
+  // latest callbacks via refs, and datum/style updates keep existing chips live.
+  const createHtmlElement = useCallback((d: any) => {
+    const el = document.createElement('div');
+
+    // Satellites: a small ID plate next to the dot drawn by the points
+    // layer. Kept secondary so 48 of them never turn into noise.
+    if (d.type === 'sat') {
+      el.style.cssText = 'position:relative;width:0;height:0;overflow:visible;pointer-events:none;white-space:nowrap;font-family:\'IBM Plex Mono\', ui-monospace, SFMono-Regular, Menlo, monospace';
+
+      const chip = document.createElement('div');
+      chip.textContent = d.id;
+      chip.style.cssText = [
+        'position:absolute',
+        'left:9px',
+        'top:0',
+        'transform:translateY(-50%)',
+        'padding:2px 5px',
+        'border-radius:3px',
+        'background:rgba(3,7,18,0.82)',
+        'font-size:9px',
+        'line-height:11px',
+        'letter-spacing:0.04em',
+        'font-weight:500',
+        'pointer-events:auto',
+        'cursor:pointer'
+      ].join(';');
+
+      // Idle appearance is kept here rather than re-read from the datum,
+      // so a pointer that is already resting on the plate when the
+      // selection changes does not get the idle colours written over it.
+      let idleBorder = 'rgba(63,63,70,0.9)';
+      let idleColor = '#a1a1aa';
+      let hovered = false;
+
+      const applyEmphasis = (emphasized: boolean, accent: string) => {
+        idleBorder = emphasized ? accent : 'rgba(63,63,70,0.9)';
+        idleColor = emphasized ? accent : '#a1a1aa';
+        chip.style.boxShadow = emphasized
+          ? `0 0 10px ${accent}55`
+          : '0 2px 6px rgba(0,0,0,0.5)';
+        if (hovered) return;
+        chip.style.borderColor = idleBorder;
+        chip.style.color = idleColor;
+      };
+
+      chip.style.border = '1px solid transparent';
+      applyEmphasis(Boolean(d.emphasized), d.accent);
+      satelliteChipStyles.current.set(d.id, applyEmphasis);
+
+      chip.addEventListener('pointerenter', () => {
+        hovered = true;
+        chip.style.borderColor = '#e4e4e7';
+        chip.style.color = '#fafafa';
+      });
+      chip.addEventListener('pointerleave', () => {
+        hovered = false;
+        chip.style.borderColor = idleBorder;
+        chip.style.color = idleColor;
+      });
+
+      // Only a tap counts. A drag that happens to start on a plate should
+      // not select anything.
+      let downAt: { x: number; y: number } | null = null;
+      chip.addEventListener('pointerdown', event => {
+        downAt = { x: event.clientX, y: event.clientY };
+      });
+      chip.addEventListener('click', event => {
+        if (!downAt) return;
+        const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
+        downAt = null;
+        if (moved > 4) return;
+        onPointClick(d.sat);
+      });
+
+      el.appendChild(chip);
+      return el;
+    }
+
+    const isGateway = d.type === 'gw';
+    const accent = isGateway
+      ? '#fbbf24'
+      : d.offline
+        ? '#e4483a'
+        : (d.routeColor ?? '#60a5fa');
+    const accentDim = `${accent}38`;
+    // Sites cluster around the served region, so labels are fanned out by
+    // index rather than pinned to ids the jury's file will not contain.
+    const labelOffset = d.labelOffset ?? { x: 0, y: 0 };
+
+    el.style.cssText = [
+      `pointer-events:${isGateway ? 'none' : 'auto'}`,
+      'white-space:nowrap',
+      'font-family:ui-monospace, SFMono-Regular, Menlo, monospace'
+    ].join(';');
+
+    // CSS2DRenderer owns the outer element's transform. The site itself
+    // uses a zero-size anchor, so marker and label stay rigidly grouped.
+    const content = document.createElement('div');
+    content.style.cssText = 'position:relative;width:0;height:0;overflow:visible;';
+
+    const marker = document.createElement('div');
+    marker.style.cssText = isGateway
+      ? `position:absolute;left:-7px;top:-7px;box-sizing:border-box;width:14px;height:14px;background:${accent};transform:rotate(45deg);border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 0 4px ${accentDim},0 0 18px ${accent};`
+      : `position:absolute;left:-8px;top:-8px;box-sizing:border-box;width:16px;height:16px;border-radius:50%;border:2px solid ${accent};background:#08111f;box-shadow:0 0 0 4px ${accentDim},0 0 18px ${accent};`;
+
+    if (!isGateway) {
+      const core = document.createElement('div');
+      core.style.cssText = `position:absolute;inset:3px;border-radius:50%;background:${accent};`;
+      marker.appendChild(core);
+    }
+
+    const label = document.createElement('div');
+    const labelBorder = isGateway ? 'rgba(251,191,36,0.75)' : `${accent}c7`;
+    label.style.cssText = `position:absolute;left:${10 + labelOffset.x}px;top:${-11 + labelOffset.y}px;display:flex;flex-direction:column;gap:0;padding:2px 5px;border:1px solid ${d.focused ? '#fafafa' : labelBorder};border-radius:3px;background:rgba(3,7,18,0.9);box-shadow:${d.focused ? `0 0 12px ${accentDim},` : ''}0 3px 10px rgba(0,0,0,0.42);`;
+
+    if (!isGateway && siteClickRef.current) {
+      label.style.cursor = 'pointer';
+      marker.style.cursor = 'pointer';
+
+      let downAt: { x: number; y: number } | null = null;
+      const arm = (event: PointerEvent) => {
+        downAt = { x: event.clientX, y: event.clientY };
+      };
+      const fire = (event: MouseEvent) => {
+        if (!downAt) return;
+        const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
+        downAt = null;
+        if (moved > 4) return;
+        siteClickRef.current?.(d.id);
+      };
+
+      for (const target of [label, marker]) {
+        target.addEventListener('pointerdown', arm);
+        target.addEventListener('click', fire);
+      }
+    }
+
+    const code = document.createElement('span');
+    code.textContent = d.id;
+    code.style.cssText = `color:${accent};font-size:10px;font-weight:700;line-height:12px;letter-spacing:0.04em;text-shadow:0 0 8px ${accentDim};`;
+
+    const name = document.createElement('span');
+    name.textContent = d.name;
+    name.style.cssText = 'max-width:112px;overflow:hidden;text-overflow:ellipsis;color:#d4d4d8;font-size:8px;line-height:10px;letter-spacing:0.02em;';
+
+    label.append(code, name);
+    content.append(marker, label);
+    el.appendChild(content);
+    return el;
+  }, [onPointClick]);
 
   return (
     <div
@@ -877,132 +1083,7 @@ export const Globe: React.FC<GlobeProps> = ({
         htmlElementsData={htmlElementsData}
         htmlAltitude={(d: any) => d.alt ?? 0}
         htmlTransitionDuration={0}
-        htmlElement={(d: any) => {
-          const el = document.createElement('div');
-
-          // Satellites: a small ID plate next to the dot drawn by the points
-          // layer. Kept secondary so 48 of them never turn into noise.
-          if (d.type === 'sat') {
-            el.style.cssText = 'pointer-events:none;white-space:nowrap;font-family:\'IBM Plex Mono\', ui-monospace, SFMono-Regular, Menlo, monospace';
-
-            const idleBorder = d.emphasized ? d.accent : 'rgba(63,63,70,0.9)';
-            const chip = document.createElement('div');
-            chip.textContent = d.id;
-            chip.style.cssText = [
-              'transform:translate(9px,-50%)',
-              'padding:2px 5px',
-              'border-radius:3px',
-              `border:1px solid ${idleBorder}`,
-              'background:rgba(3,7,18,0.82)',
-              `color:${d.emphasized ? d.accent : '#a1a1aa'}`,
-              'font-size:9px',
-              'line-height:11px',
-              'letter-spacing:0.04em',
-              `font-weight:${d.emphasized ? 700 : 500}`,
-              'pointer-events:auto',
-              'cursor:pointer',
-              d.emphasized ? `box-shadow:0 0 10px ${d.accent}55` : 'box-shadow:0 2px 6px rgba(0,0,0,0.5)'
-            ].join(';');
-
-            chip.addEventListener('pointerenter', () => {
-              chip.style.borderColor = '#e4e4e7';
-              chip.style.color = '#fafafa';
-            });
-            chip.addEventListener('pointerleave', () => {
-              chip.style.borderColor = idleBorder;
-              chip.style.color = d.emphasized ? d.accent : '#a1a1aa';
-            });
-
-            // Only a tap counts. A drag that happens to start on a plate should
-            // not select anything.
-            let downAt: { x: number; y: number } | null = null;
-            chip.addEventListener('pointerdown', event => {
-              downAt = { x: event.clientX, y: event.clientY };
-            });
-            chip.addEventListener('click', event => {
-              if (!downAt) return;
-              const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
-              downAt = null;
-              if (moved > 4) return;
-              onPointClick(d.sat);
-            });
-
-            el.appendChild(chip);
-            return el;
-          }
-
-          const isGateway = d.type === 'gw';
-          const accent = isGateway
-            ? '#fbbf24'
-            : d.offline
-              ? '#e4483a'
-              : (d.routeColor ?? '#60a5fa');
-          const accentDim = `${accent}38`;
-          // Sites cluster around the served region, so labels are fanned out by
-          // index rather than pinned to ids the jury's file will not contain.
-          const labelOffset = d.labelOffset ?? { x: 0, y: 0 };
-
-          el.style.cssText = [
-            `pointer-events:${isGateway ? 'none' : 'auto'}`,
-            'white-space:nowrap',
-            'font-family:ui-monospace, SFMono-Regular, Menlo, monospace'
-          ].join(';');
-
-          // CSS2DRenderer owns the outer element's transform. The site itself
-          // uses a zero-size anchor, so marker and label stay rigidly grouped.
-          const content = document.createElement('div');
-          content.style.cssText = 'position:relative;width:0;height:0;overflow:visible;';
-
-          const marker = document.createElement('div');
-          marker.style.cssText = isGateway
-            ? `position:absolute;left:-7px;top:-7px;box-sizing:border-box;width:14px;height:14px;background:${accent};transform:rotate(45deg);border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 0 4px ${accentDim},0 0 18px ${accent};`
-            : `position:absolute;left:-8px;top:-8px;box-sizing:border-box;width:16px;height:16px;border-radius:50%;border:2px solid ${accent};background:#08111f;box-shadow:0 0 0 4px ${accentDim},0 0 18px ${accent};`;
-
-          if (!isGateway) {
-            const core = document.createElement('div');
-            core.style.cssText = `position:absolute;inset:3px;border-radius:50%;background:${accent};`;
-            marker.appendChild(core);
-          }
-
-          const label = document.createElement('div');
-          const labelBorder = isGateway ? 'rgba(251,191,36,0.75)' : `${accent}c7`;
-          label.style.cssText = `position:absolute;left:${10 + labelOffset.x}px;top:${-11 + labelOffset.y}px;display:flex;flex-direction:column;gap:0;padding:2px 5px;border:1px solid ${d.focused ? '#fafafa' : labelBorder};border-radius:3px;background:rgba(3,7,18,0.9);box-shadow:${d.focused ? `0 0 12px ${accentDim},` : ''}0 3px 10px rgba(0,0,0,0.42);`;
-
-          if (!isGateway && onSiteClick) {
-            label.style.cursor = 'pointer';
-            marker.style.cursor = 'pointer';
-
-            let downAt: { x: number; y: number } | null = null;
-            const arm = (event: PointerEvent) => {
-              downAt = { x: event.clientX, y: event.clientY };
-            };
-            const fire = (event: MouseEvent) => {
-              if (!downAt) return;
-              const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
-              downAt = null;
-              if (moved > 4) return;
-              onSiteClick(d.id);
-            };
-
-            for (const target of [label, marker]) {
-              target.addEventListener('pointerdown', arm);
-              target.addEventListener('click', fire);
-            }
-          }
-
-          const code = document.createElement('span');
-          code.textContent = d.id;
-          code.style.cssText = `color:${accent};font-size:10px;font-weight:700;line-height:12px;letter-spacing:0.04em;text-shadow:0 0 8px ${accentDim};`;
-
-          const name = document.createElement('span');
-          name.textContent = d.name;
-          name.style.cssText = 'max-width:112px;overflow:hidden;text-overflow:ellipsis;color:#d4d4d8;font-size:8px;line-height:10px;letter-spacing:0.02em;';
-
-          label.append(code, name);
-          content.append(marker, label);
-          el.appendChild(content);
-          return el;
-        }}
+        htmlElement={createHtmlElement}
       />
     </div>
   );
@@ -1016,16 +1097,4 @@ export const Globe: React.FC<GlobeProps> = ({
     `;
   }
 
-  function onPointClick(pt: any) {
-    if (!pt || !onSatelliteClick) return;
-
-    // One click can be reported by up to three paths: the ID plate, the points
-    // layer and the objects layer. Selection toggles, so a duplicate would undo
-    // the selection the user just made.
-    const now = Date.now();
-    if (lastClickRef.current.id === pt.id && now - lastClickRef.current.at < 300) return;
-    lastClickRef.current = { id: pt.id, at: now };
-
-    onSatelliteClick(pt as SatelliteView);
-  }
 };

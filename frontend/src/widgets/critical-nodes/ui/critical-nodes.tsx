@@ -1,50 +1,48 @@
 'use client';
 
-import { useState } from 'react';
-import { Lock, LockOpen, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { Lock, LockOpen } from 'lucide-react';
 import { SensitivityPanel } from '@/features/analyze-sensitivity';
 import {
   estimateSeconds,
   gridSize,
   SEARCH_DEPTHS,
-  useOptimizer,
+  type Optimizer,
   type PlaneLock,
   type SearchDepth,
 } from '@/features/run-optimizer';
 import { useSession } from '@/entities/session';
 import type { RunInput } from '@/entities/simulation';
-import { cn, criticalityLevel, formatDegrees, formatDuration, formatPercent } from '@/shared/lib';
-import { EmptyState, ErrorNote, IndeterminateBar, ProgressBar } from '@/shared/ui';
-import type { GatewayDependency, ResilienceResponse, ScenarioDocument } from '@/shared/api';
+import { cn, criticalityLevel, formatDuration, formatPercent } from '@/shared/lib';
+import { EmptyState, ErrorNote, IndeterminateBar } from '@/shared/ui';
+import type { GatewayDependency, ResilienceResponse } from '@/shared/api';
 
 interface CriticalNodesProps {
-  scenario: ScenarioDocument;
   resilience: ResilienceResponse | undefined;
   loading: boolean;
   error: unknown;
   colors: Record<string, string>;
   runInput: RunInput;
+  /** Owned by the studio: the run is reported in the corner, not in here. */
+  optimizer: Optimizer;
+  depth: SearchDepth;
+  onDepthChange: (depth: SearchDepth) => void;
+  locks: PlaneLock[];
+  onLocksChange: (locks: PlaneLock[]) => void;
 }
 
 export function CriticalNodes({
-  scenario,
   resilience,
   loading,
   error,
   colors,
   runInput,
+  optimizer,
+  depth,
+  onDepthChange,
+  locks,
+  onLocksChange,
 }: CriticalNodesProps) {
   const { state, dispatch } = useSession();
-  const optimizer = useOptimizer(runInput);
-  const [depth, setDepth] = useState<SearchDepth>('quick');
-  const [locks, setLocks] = useState<PlaneLock[]>(
-    scenario.design.planes.map((plane) => ({
-      planeId: plane.id,
-      raanLocked: false,
-      phaseLocked: false,
-    })),
-  );
 
   const ranked = (resilience?.impacts ?? []).slice(0, 8);
 
@@ -148,8 +146,8 @@ export function CriticalNodes({
                   key={key}
                   type="button"
                   onClick={() =>
-                    setLocks((current) =>
-                      current.map((item, itemIndex) =>
+                    onLocksChange(
+                      locks.map((item, itemIndex) =>
                         itemIndex === index ? { ...item, [key]: !item[key] } : item,
                       ),
                     )
@@ -174,7 +172,7 @@ export function CriticalNodes({
             <button
               key={key}
               type="button"
-              onClick={() => setDepth(key)}
+              onClick={() => onDepthChange(key)}
               disabled={optimizer.running}
               aria-pressed={depth === key}
               className={cn(
@@ -211,160 +209,9 @@ export function CriticalNodes({
         {optimizer.start.isError && <ErrorNote error={optimizer.start.error} />}
       </div>
 
-      <AnimatePresence>
-        {(optimizer.running || optimizer.result) && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            className="absolute inset-0 z-30 flex flex-col bg-black"
-          >
-            {optimizer.running ? (
-              <div className="flex flex-1 flex-col items-center justify-center px-6">
-                <div className="w-full max-w-[220px]">
-                  <div className="font-label text-[13px] text-zinc-200">Searching configurations</div>
-                  <div className="mt-1 font-data text-[11px] tabular-nums text-zinc-500">
-                    {optimizer.status?.explored ?? 0} / {optimizer.status?.total ?? '—'} explored
-                  </div>
-                  {optimizer.remainingS !== null && (
-                    <div className="mt-0.5 font-data text-[11px] tabular-nums text-zinc-600">
-                      about {formatDuration(optimizer.remainingS)} left
-                    </div>
-                  )}
-                  <div className="mt-3">
-                    {optimizer.status?.total ? (
-                      <ProgressBar value={optimizer.status.progress} />
-                    ) : (
-                      <IndeterminateBar />
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              optimizer.result && (
-                <div className="flex h-full min-h-0 flex-col">
-                  <div className="flex flex-shrink-0 items-start justify-between border-b border-rule px-3 pb-2.5 pt-3">
-                    <div>
-                      <div className="font-label text-[11px] text-zinc-500">Optimizer</div>
-                      <div className="font-data text-[13px] text-zinc-100">
-                        {optimizer.result.improved ? 'Recommended' : 'No improvement found'}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={optimizer.dismiss}
-                      aria-label="Dismiss recommendation"
-                      className="text-zinc-500 transition-colors hover:text-zinc-100"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-
-                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                    {[
-                      {
-                        label: 'Worst availability',
-                        from: formatPercent(optimizer.result.baseline.worst_availability),
-                        to: formatPercent(optimizer.result.best.worst_availability),
-                      },
-                      {
-                        label: 'Longest outage',
-                        from: formatDuration(optimizer.result.baseline.worst_outage_s),
-                        to: formatDuration(optimizer.result.best.worst_outage_s),
-                      },
-                    ].map((row) => (
-                      <div key={row.label} className="flex items-baseline gap-2 border-b border-rule px-3 py-2.5">
-                        <span className="font-label text-[12px] text-zinc-400">{row.label}</span>
-                        <span className="ml-auto font-data text-[11px] tabular-nums text-zinc-600">{row.from}</span>
-                        <span className="font-data text-[11px] text-zinc-700">→</span>
-                        <span className="font-data text-[12px] tabular-nums text-zinc-100">{row.to}</span>
-                      </div>
-                    ))}
-
-                    {Object.keys(optimizer.result.changed_planes).length > 0 && (
-                      <div className="border-b border-rule px-3 py-2.5">
-                        <div className="font-label text-[12px] text-zinc-400">Orbit changes</div>
-                        <div className="mt-2 space-y-1.5">
-                          {Object.entries(optimizer.result.changed_planes).flatMap(([planeId, change]) =>
-                            (['raan_deg', 'phase_deg'] as const)
-                              .filter((key) => change[key] !== null)
-                              .map((key) => {
-                                const plane = scenario.design.planes.find((item) => item.id === planeId);
-                                return (
-                                  <div
-                                    key={`${planeId}-${key}`}
-                                    className="flex items-baseline gap-2 font-data text-[11px] tabular-nums"
-                                  >
-                                    <span className="h-2.5 w-0.5 self-center" style={{ background: colors[planeId] }} />
-                                    <span className="text-zinc-300">{planeId}</span>
-                                    <span className="text-[10px] text-zinc-500">
-                                      {key === 'raan_deg' ? 'RAAN' : 'PHASE'}
-                                    </span>
-                                    <span className="ml-auto text-zinc-600">
-                                      {formatDegrees(
-                                        key === 'raan_deg' ? (plane?.raan_deg ?? 0) : (plane?.phase_deg ?? 0),
-                                      )}
-                                    </span>
-                                    <span className="text-zinc-700">→</span>
-                                    <span className="text-zinc-100">{formatDegrees(change[key] as number)}</span>
-                                  </div>
-                                );
-                              }),
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <p className="px-3 py-3 font-label text-[11px] leading-relaxed text-zinc-400">
-                      {optimizer.result.verdict}
-                    </p>
-                  </div>
-
-                  <div className="flex-shrink-0 space-y-2 border-t border-rule p-3">
-                    <button
-                      type="button"
-                      disabled={!optimizer.result.improved}
-                      onClick={() => {
-                        dispatch({ type: 'applyPlanes', planes: toPlaneOverrides(optimizer.result!.changed_planes) });
-                        optimizer.dismiss();
-                      }}
-                      className="flex h-10 w-full items-center justify-center border border-zinc-600 font-label text-[13px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none disabled:opacity-40"
-                    >
-                      Apply configuration
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        optimizer.dismiss();
-                        dispatch({ type: 'setTab', tab: 'compare' });
-                      }}
-                      className="flex h-9 w-full items-center justify-center border border-rule-strong font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none"
-                    >
-                      Compare saved variants
-                    </button>
-                  </div>
-                </div>
-              )
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 }
-
-const toPlaneOverrides = (
-  changed: Record<string, { raan_deg: number | null; phase_deg: number | null }>,
-): Record<string, { raan_deg?: number; phase_deg?: number }> =>
-  Object.fromEntries(
-    Object.entries(changed).map(([planeId, change]) => [
-      planeId,
-      {
-        ...(change.raan_deg !== null ? { raan_deg: change.raan_deg } : {}),
-        ...(change.phase_deg !== null ? { phase_deg: change.phase_deg } : {}),
-      },
-    ]),
-  );
 
 function GatewayExposure({ dependency }: { dependency: GatewayDependency }) {
   return (

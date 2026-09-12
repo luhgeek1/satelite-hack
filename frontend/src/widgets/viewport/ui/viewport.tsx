@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
 import { useSession } from '@/entities/session';
@@ -8,7 +8,7 @@ import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import type { RouteTrace } from '@/entities/simulation';
 import { GlobeBoundary } from './globe-boundary';
-import type { OrbitTrack } from './globe';
+import type { GlobeCameraPosition, OrbitTrack } from './globe';
 
 const Globe = dynamic(() => import('./globe').then((module) => module.Globe), {
   ssr: false,
@@ -45,6 +45,12 @@ export function Viewport({
 }: ViewportProps) {
   const { state, dispatch } = useSession();
   const [webglBroken, setWebglBroken] = useState(false);
+
+  // Switching to the flat map unmounts the globe. The camera is kept out here
+  // so coming back lands on the view the user left, not on the default framing.
+  // A ref rather than state: the globe reads it once, at mount, and storing it
+  // would otherwise re-render the whole viewport on every drag.
+  const camera = useRef<GlobeCameraPosition | undefined>(undefined);
 
   useEffect(() => {
     if (webglBroken && state.viewMode === '3d') {
@@ -97,6 +103,10 @@ export function Viewport({
               onSiteClick={selectSite}
               orbits={orbits}
               playing={state.playing}
+              cameraPosition={camera.current}
+              onCameraPositionChange={(position) => {
+                camera.current = position;
+              }}
               onSatelliteClick={select}
               selectedSatellite={state.selectedSatelliteId}
               focusOn={state.focusRequest}

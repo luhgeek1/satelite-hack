@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Activity, PanelRightClose, PanelRightOpen, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AppHeader } from '@/widgets/app-header';
@@ -12,6 +12,15 @@ import { PlaybackBar } from '@/widgets/playback-bar';
 import { SatelliteDetails } from '@/widgets/satellite-details';
 import { Viewport, type OrbitTrack } from '@/widgets/viewport';
 import { ViewToggle } from '@/features/toggle-view';
+import {
+  freeLocks,
+  toPlaneOverrides,
+  useOptimizer,
+  OptimizerProgress,
+  OptimizerResult,
+  type PlaneLock,
+  type SearchDepth,
+} from '@/features/run-optimizer';
 import { useInjectFailure, useRestoreSatellite } from '@/features/inject-failure';
 import { impactIndex, useResilience } from '@/features/analyze-resilience';
 import { snapToGrid, usePlayback } from '@/features/timeline-playback';
@@ -94,6 +103,18 @@ export function StudioPage() {
 
   const injectFailure = useInjectFailure(summary?.id, tS, horizonS);
   const restore = useRestoreSatellite();
+
+  // The search is owned here, not by a panel: it is started from the network
+  // health card as well as from the resilience column, and it reports from a
+  // fixed corner so the answer survives a tab change.
+  const optimizer = useOptimizer(runInput);
+  const [locks, setLocks] = useState<PlaneLock[]>([]);
+  const [depth, setDepth] = useState<SearchDepth>('quick');
+  const planeIds = scenario?.design.planes.map((plane) => plane.id).join(',') ?? '';
+
+  useEffect(() => {
+    setLocks(planeIds ? freeLocks(planeIds.split(',')) : []);
+  }, [planeIds]);
 
   const launchStage = state.config.launch_stage ?? scenario?.design.launch_stage ?? 3;
   const failedIds = useMemo(() => allFailedIds(state.config), [state.config]);
@@ -286,12 +307,16 @@ export function StudioPage() {
 
   const resilienceBody = (
     <CriticalNodes
-      scenario={scenario}
       resilience={resilience.data}
       loading={resilience.isLoading}
       error={resilience.error}
       colors={colors}
       runInput={runInput}
+      optimizer={optimizer}
+      depth={depth}
+      onDepthChange={setDepth}
+      locks={locks}
+      onLocksChange={setLocks}
     />
   );
 
@@ -333,6 +358,8 @@ export function StudioPage() {
                   selectedClientId={focusClientId}
                   onSelectClient={(clientId) => dispatch({ type: 'selectClient', clientId })}
                   stale={settling || simulation.isFetching || snapshot.isFetching}
+                  optimizing={optimizer.running || optimizer.start.isPending}
+                  onOptimize={() => optimizer.start.mutate({ locks, depth })}
                 />
               )}
 
@@ -392,17 +419,19 @@ export function StudioPage() {
           >
             {dataColumn(state.tab, state.tab === 'resilience' ? resilienceBody : configBody)}
 
-            {state.selectedSatelliteId && !panels.hidden && (
-              <SatelliteDetails
-                satellite={selectedSatellite}
-                links={links}
-                routes={routeTraces}
-                hasResilience={Boolean(resilience.data)}
-                pending={injectFailure.isPending}
-                onInjectFailure={(id) => injectFailure.mutate({ satelliteId: id })}
-                onRestore={restore}
-              />
-            )}
+            <AnimatePresence initial={false}>
+              {state.selectedSatelliteId && !panels.hidden && (
+                <SatelliteDetails
+                  satellite={selectedSatellite}
+                  links={links}
+                  routes={routeTraces}
+                  hasResilience={Boolean(resilience.data)}
+                  pending={injectFailure.isPending}
+                  onInjectFailure={(id) => injectFailure.mutate({ satelliteId: id })}
+                  onRestore={restore}
+                />
+              )}
+            </AnimatePresence>
           </div>
 
           <MobileDrawer
@@ -426,6 +455,46 @@ export function StudioPage() {
           </MobileDrawer>
         </div>
       )}
+
+      {/* The search runs against the whole scenario, so it reports from a fixed
+          corner rather than from whichever panel started it. On the simulation
+          tab it clears the playback strip. */}
+      <AnimatePresence>
+        {(optimizer.running || optimizer.start.isPending || optimizer.result) && (
+          <motion.div
+            className={cn(
+              'fixed left-3 z-40 lg:left-6',
+              state.tab === 'simulation' ? 'bottom-[4.25rem]' : 'bottom-3 lg:bottom-6',
+            )}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+          >
+            {optimizer.result ? (
+              <OptimizerResult
+                result={optimizer.result}
+                scenario={scenario}
+                colors={colors}
+                onApply={() => {
+                  dispatch({
+                    type: 'applyPlanes',
+                    planes: toPlaneOverrides(optimizer.result!.changed_planes),
+                  });
+                  optimizer.dismiss();
+                }}
+                onCompare={() => {
+                  optimizer.dismiss();
+                  dispatch({ type: 'setTab', tab: 'compare' });
+                }}
+                onDismiss={optimizer.dismiss}
+              />
+            ) : (
+              <OptimizerProgress status={optimizer.status} remainingS={optimizer.remainingS} />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
