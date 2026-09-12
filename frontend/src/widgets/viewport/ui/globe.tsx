@@ -16,6 +16,8 @@ import {
   FAILURE_RING_FLIGHT_MS,
   FAILURE_RING_INTERVAL_MS
 } from '../model/use-failure-pings';
+import { useKonamiCode } from '../model/use-konami-code';
+import { PlanetExplosionController, type ExplosionPhase } from '../model/globe-explosion';
 
 export type OrbitTrack = {
   planeId: string;
@@ -233,6 +235,9 @@ export const Globe: React.FC<GlobeProps> = ({
   const isUserInteractingRef = useRef(false);
   const hasSavedCameraPositionRef = useRef(Boolean(cameraPosition));
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [isGlobeVisible, setIsGlobeVisible] = useState(true);
+  const [explosionPhase, setExplosionPhase] = useState<ExplosionPhase>('idle');
+  const explosionControllerRef = useRef<PlanetExplosionController | null>(null);
   const coverageCapMaterial = useMemo(
     () => new THREE.MeshBasicMaterial({
       transparent: true,
@@ -520,6 +525,56 @@ export const Globe: React.FC<GlobeProps> = ({
       (stars.material as THREE.PointsMaterial).dispose();
     };
   }, []);
+
+  // Initialize 3D explosion controller in Three.js scene
+  useEffect(() => {
+    let controller: PlanetExplosionController | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const init = () => {
+      const scene = globeRef.current?.scene?.();
+      if (!scene) {
+        timer = setTimeout(init, 100);
+        return;
+      }
+
+      controller = new PlanetExplosionController(scene, {
+        onGlobeVisibility: (visible) => {
+          setIsGlobeVisible(visible);
+          if (globeRef.current?.showGlobe) {
+            globeRef.current.showGlobe(visible);
+          }
+          if (globeRef.current?.showAtmosphere) {
+            globeRef.current.showAtmosphere(visible);
+          }
+        },
+        onShake: (x, y) => {
+          if (containerRef.current) {
+            containerRef.current.style.transform = (x === 0 && y === 0)
+              ? ''
+              : `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+          }
+        },
+        onPhaseChange: (phase) => {
+          setExplosionPhase(phase);
+        }
+      });
+
+      explosionControllerRef.current = controller;
+    };
+
+    init();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      controller?.dispose();
+      explosionControllerRef.current = null;
+    };
+  }, []);
+
+  useKonamiCode(useCallback(() => {
+    explosionControllerRef.current?.start();
+  }, []));
 
   // Keep the whole globe inside the viewport as the container resizes — once
   // the container has stopped. Refitting on every frame of a drag pumps the
@@ -1186,7 +1241,10 @@ export const Globe: React.FC<GlobeProps> = ({
         backgroundColor="rgba(0,0,0,0)"
         onZoom={handleZoom}
         
-        pointsData={playing ? [] : pointsData}
+        showGlobe={isGlobeVisible}
+        showAtmosphere={isGlobeVisible}
+
+        pointsData={isGlobeVisible ? (playing ? [] : pointsData) : []}
         pointLat="lat"
         pointLng="lon"
         pointColor="color"
@@ -1197,7 +1255,7 @@ export const Globe: React.FC<GlobeProps> = ({
         onPointClick={(pt: any) => onPointClick(pt)}
         pointLabel={satelliteTooltip}
 
-        objectsData={pointsData}
+        objectsData={isGlobeVisible ? pointsData : []}
         objectLat="lat"
         objectLng="lon"
         objectAltitude="globeAltitude"
@@ -1205,7 +1263,7 @@ export const Globe: React.FC<GlobeProps> = ({
         objectLabel={satelliteTooltip}
         onObjectClick={(obj: any) => onPointClick(obj)}
 
-        arcsData={arcsData}
+        arcsData={isGlobeVisible ? arcsData : []}
         arcStartLat="startLat"
         arcStartLng="startLng"
         arcStartAltitude="startAlt"
@@ -1220,7 +1278,7 @@ export const Globe: React.FC<GlobeProps> = ({
         arcAltitudeAutoScale={0.2}
         arcsTransitionDuration={0}
 
-        polygonsData={selectedCoverage ? [...gapCoverage, selectedCoverage] : gapCoverage}
+        polygonsData={isGlobeVisible ? (selectedCoverage ? [...gapCoverage, selectedCoverage] : gapCoverage) : []}
         polygonGeoJsonGeometry="geometry"
         polygonCapMaterial={(d: any) => d.material ?? coverageCapMaterial}
         polygonSideColor="rgba(148,163,184,0)"
@@ -1229,7 +1287,7 @@ export const Globe: React.FC<GlobeProps> = ({
         polygonCapCurvatureResolution={(d: any) => d.curvature ?? 1}
         polygonsTransitionDuration={0}
 
-        ringsData={failurePingData}
+        ringsData={isGlobeVisible ? failurePingData : []}
         ringLat="lat"
         ringLng="lng"
         ringAltitude={0.01}
@@ -1239,7 +1297,7 @@ export const Globe: React.FC<GlobeProps> = ({
         ringRepeatPeriod={FAILURE_RING_INTERVAL_MS}
         ringResolution={96}
 
-        pathsData={pathsData}
+        pathsData={isGlobeVisible ? pathsData : []}
         pathPoints="points"
         pathPointLat={(p: any) => p[0]}
         pathPointLng={(p: any) => p[1]}
@@ -1252,11 +1310,43 @@ export const Globe: React.FC<GlobeProps> = ({
         pathResolution={2}
         pathTransitionDuration={0}
 
-        htmlElementsData={htmlElementsData}
+        htmlElementsData={isGlobeVisible ? htmlElementsData : []}
         htmlAltitude={(d: any) => d.alt ?? 0}
         htmlTransitionDuration={0}
         htmlElement={createHtmlElement}
       />
+
+      {explosionPhase !== 'idle' && explosionPhase !== 'restored' && (
+        <div className="pointer-events-auto absolute top-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 border border-red-500/50 bg-black/90 px-4 py-2 shadow-[0_0_30px_rgba(239,68,68,0.45)] backdrop-blur-md transition-all">
+          <div className="relative flex h-3 w-3 items-center justify-center">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-mono text-[11px] font-bold tracking-wider text-red-400 uppercase">
+              {explosionPhase === 'buildup'
+                ? '⚠ КРИТИЧЕСКАЯ ПЕРЕГРУЗКА ЯДРА'
+                : explosionPhase === 'reassembling'
+                  ? '↺ ГРАВИТАЦИОННОЕ ВОССТАНОВЛЕНИЕ'
+                  : '💥 ВЗРЫВ ПЛАНЕТЫ (КОД KONAMI)'}
+            </span>
+            <span className="font-mono text-[9px] text-zinc-400">
+              {explosionPhase === 'reassembling'
+                ? 'Сборка тектонических плит...'
+                : 'Разрушение коры и мантии. Земля уничтожена.'}
+            </span>
+          </div>
+          {explosionPhase === 'exploding' && (
+            <button
+              type="button"
+              onClick={() => explosionControllerRef.current?.requestReassemble()}
+              className="ml-2 cursor-pointer rounded border border-red-500/60 bg-red-500/20 px-2.5 py-1 font-mono text-[10px] font-semibold text-red-200 transition hover:bg-red-500/35 active:scale-95"
+            >
+              Восстановить
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 
