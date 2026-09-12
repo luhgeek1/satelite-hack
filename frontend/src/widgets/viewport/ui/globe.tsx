@@ -208,7 +208,6 @@ export const Globe: React.FC<GlobeProps> = ({
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const coverageCapMaterial = useMemo(
     () => new THREE.MeshBasicMaterial({
-      color: '#7dd3fc',
       transparent: true,
       opacity: COVERAGE_CAP_OPACITY,
       depthWrite: false,
@@ -556,6 +555,12 @@ export const Globe: React.FC<GlobeProps> = ({
     });
   }, [satellites, selectedSatellite, activeRoute, mode, playing, coverageSatelliteId, coverageScale]);
 
+  const coverageColor = pointsData.find(sat => sat.id === coverageSatelliteId)?.color ?? '#ffffff';
+
+  useEffect(() => {
+    coverageCapMaterial.color.set(coverageColor);
+  }, [coverageCapMaterial, coverageColor]);
+
   // Same footprint the coverage cap draws, in the degrees of arc the ring
   // layer measures in — recomputed per scenario since contactRadiusKm is.
   const coverageDegrees = (contactRadiusKm / EARTH_RADIUS_KM) * (180 / Math.PI);
@@ -611,9 +616,10 @@ export const Globe: React.FC<GlobeProps> = ({
         coordinates: [boundary.map(point => [point.lng, point.lat])]
       },
       borderPoints: boundary.map(point => [point.lat, point.lng, 0.008] as [number, number, number]),
+      color: coverageColor,
       borderOpacity: coverageScale
     };
-  }, [satellites, coverageSatelliteId, coverageScale]);
+  }, [satellites, coverageSatelliteId, coverageScale, contactRadiusKm, coverageColor]);
 
   // Prepare links data
   const arcsData = useMemo(() => {
@@ -703,7 +709,7 @@ export const Globe: React.FC<GlobeProps> = ({
       ...orbitPaths,
       {
         points: selectedCoverage.borderPoints,
-        color: `rgba(186,230,253,${(0.9 * selectedCoverage.borderOpacity).toFixed(3)})`,
+        color: `#${new THREE.Color(selectedCoverage.color).getHexString()}${Math.round(255 * 0.9 * selectedCoverage.borderOpacity).toString(16).padStart(2, '0')}`,
         stroke: 0.34,
         dashLength: 0.05,
         dashGap: 0.035,

@@ -128,15 +128,20 @@ function reducer(state: SessionState, action: Action): SessionState {
     case 'setSpeed':
       return { ...state, speed: action.speed };
 
-    case 'selectSatellite':
+    case 'selectSatellite': {
+      const selectedSatelliteId =
+        state.selectedSatelliteId === action.satelliteId ? null : action.satelliteId;
       return {
         ...state,
-        selectedSatelliteId: action.satelliteId,
+        selectedSatelliteId,
         focusRequest:
-          action.focus && action.satelliteId
-            ? { id: action.satelliteId, nonce: Date.now() }
-            : state.focusRequest,
+          selectedSatelliteId === null
+            ? null
+            : action.focus
+              ? { id: selectedSatelliteId, nonce: Date.now() }
+              : state.focusRequest,
       };
+    }
 
     case 'selectClient':
       return { ...state, selectedClientId: action.clientId };
