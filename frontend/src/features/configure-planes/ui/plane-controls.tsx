@@ -61,7 +61,6 @@ export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
       </div>
       <p className="mt-2.5 font-label text-[11px] leading-relaxed text-zinc-500">
         {t('config.planesHint')}
-        <span className="mt-1 block">{t('config.typeHint')}</span>
       </p>
     </>
   );
