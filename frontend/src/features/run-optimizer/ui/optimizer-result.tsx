@@ -13,6 +13,12 @@ interface OptimizerResultProps {
   /** True once the found angles are in the configuration on screen. */
   applied: boolean;
   saving: boolean;
+  /**
+   * Launch stage the search was scored at, when that is not the stage on
+   * screen. Planning a launch judges the finished constellation, so without
+   * this the readings below silently describe a different network.
+   */
+  scoredAtStage: number | null;
   onApply: () => void;
   onSaveAndCompare: (name: string) => void;
   onDismiss: () => void;
@@ -33,6 +39,7 @@ export function OptimizerResult({
   colors,
   applied,
   saving,
+  scoredAtStage,
   onApply,
   onSaveAndCompare,
   onDismiss,
@@ -124,6 +131,12 @@ export function OptimizerResult({
               ))}
             </div>
           </div>
+        )}
+
+        {scoredAtStage !== null && (
+          <p className="border-b border-rule px-3 py-2 font-label text-[11px] leading-relaxed text-zinc-500">
+            {t('optimizer.scoredAt', { stage: scoredAtStage })}
+          </p>
         )}
 
         <p className="px-3 py-2.5 font-label text-[11px] leading-relaxed text-zinc-400">

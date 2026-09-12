@@ -98,6 +98,33 @@ export const en = {
   'window.none': 'Nothing here to switch off.',
   'playback.focusClient': 'Show {client} on the map',
 
+  'deploy.open': 'Plan across launches',
+  'deploy.close': 'Close the deployment plan',
+  'deploy.title': 'Deployment plan',
+  'deploy.intro':
+    "A ring's angles are fixed when it is launched. The same set has to serve every stage that follows.",
+  'deploy.colStage': 'LAUNCH',
+  'deploy.colRings': 'IN ORBIT',
+  'deploy.colWorst': 'WORST',
+  'deploy.colOutage': 'MAX GAP',
+  'deploy.sv': '{count} SV',
+  'deploy.show': 'Show launch {stage} on the globe',
+  'deploy.commits': 'Commits {rings}',
+  'deploy.commitsNone': 'Nothing new committed',
+  'deploy.planFrom': 'Plan from here',
+  'deploy.planFromHint':
+    'Hold everything already in orbit, choose this launch and the later ones together, and score the finished constellation at launch {last}.',
+  'deploy.planNote':
+    'Planning a launch for its own stage alone buys a few points for three months and costs far more for the rest of the constellation\u2019s life, so the search always scores the finished constellation.',
+  'deploy.stripLabel': 'Connectivity over the day at this launch stage',
+  'deploy.spread': 'Ring spread',
+  'deploy.spreadEven': 'EVEN',
+  'deploy.spreadUneven': 'UNEVEN',
+  'deploy.spreadEvenNote':
+    'Rings sit {ideal}\u00b0 apart around the Earth, which is what a working end state looks like.',
+  'deploy.spreadUnevenNote':
+    'Rings should sit about {ideal}\u00b0 apart. Bunched rings leave a swathe of the Earth to one ring alone and the end state suffers.',
+
   'changes.title': 'Changed from the file',
   'changes.badge': 'MOD',
   'changes.reset': 'Reset all',
@@ -309,6 +336,7 @@ export const en = {
   'optimizer.longestOutage': 'Longest outage',
   'optimizer.orbitChanges': 'Orbit changes',
   'optimizer.apply': 'Apply configuration',
+  'optimizer.scoredAt': 'Scored on the finished constellation, launch {stage}, not on the stage shown.',
   'optimizer.appliedBadge': 'APPLIED',
   'optimizer.appliedNote': 'Applied to the configuration',
   'optimizer.saveCompare': 'Save and compare',
@@ -327,14 +355,18 @@ export const en = {
     'Configure the network on the Simulation tab and save it as a variant, then save a second one.',
   'compare.changed': 'Changed parameters',
   'compare.availability': 'Availability by ground site',
-  'compare.recommendation': 'Recommendation',
   'compare.target': 'target {value}',
   'compare.pickTwo': 'Pick two variants to compare',
   'compare.leads': '{name} is ahead',
-  'compare.tied': 'Neither variant is ahead',
   'compare.allMeet': 'every site meets the target',
   'compare.belowTarget': 'below the target: {sites}',
   'compare.noChanges': 'The two variants share every parameter',
+  'compare.recoMeets':
+    '{name} is the strongest option: every client stays at or above the {target} target, with the worst-served one at {worst}.',
+  'compare.recoMisses':
+    '{name} is the best of the compared options at {worst} for the worst-served client, but it still misses the {target} target for {sites}. Reaching the target needs an architectural change — more satellites in the staged batches or a longer ISL range — not a different phasing.',
+  'compare.recoCaveat':
+    'Note that these runs do not share one environment — altitude, ISL range or the elevation mask differ — so this is a sensitivity comparison, not a design comparison.',
   'compare.saved': 'Saved variants',
   'compare.assign': 'Compare {name} as {slot}',
   'compare.colVariant': 'Variant',
@@ -448,6 +480,33 @@ export const ru: Record<TranslationKey, string> = {
   'window.offNow': 'ВЫКЛ',
   'window.none': 'Здесь нечего выключать.',
   'playback.focusClient': 'Показать {client} на карте',
+
+  'deploy.open': 'План по очередям',
+  'deploy.close': 'Закрыть план развёртывания',
+  'deploy.title': 'План развёртывания',
+  'deploy.intro':
+    'Углы кольца задаются при его запуске. Один и тот же набор обслуживает все последующие очереди.',
+  'deploy.colStage': 'ОЧЕР.',
+  'deploy.colRings': 'НА ОРБИТЕ',
+  'deploy.colWorst': 'ХУДШИЙ',
+  'deploy.colOutage': 'МАКС. ПЕРЕРЫВ',
+  'deploy.sv': '{count} КА',
+  'deploy.show': 'Показать очередь {stage} на глобусе',
+  'deploy.commits': 'Фиксирует {rings}',
+  'deploy.commitsNone': 'Новых колец нет',
+  'deploy.planFrom': 'Планировать отсюда',
+  'deploy.planFromHint':
+    'Удержать всё, что уже на орбите, выбрать эту очередь и последующие вместе и оценить по полной группировке на очереди {last}.',
+  'deploy.planNote':
+    'Подбор очереди только под неё саму даёт несколько пунктов на три месяца и стоит гораздо больше на всю оставшуюся жизнь группировки, поэтому поиск всегда оценивает полную группировку.',
+  'deploy.stripLabel': 'Связность за сутки на этой очереди запуска',
+  'deploy.spread': 'Разнос колец',
+  'deploy.spreadEven': 'РАВНОМЕРНО',
+  'deploy.spreadUneven': 'НЕРАВНОМЕРНО',
+  'deploy.spreadEvenNote':
+    'Кольца стоят через {ideal}\u00b0 вокруг Земли — так выглядит работающее конечное состояние.',
+  'deploy.spreadUnevenNote':
+    'Кольца должны стоять примерно через {ideal}\u00b0. Сбитые в кучу кольца оставляют часть Земли одному кольцу, и конечное состояние страдает.',
 
   'changes.title': 'Изменено относительно файла',
   'changes.badge': 'ИЗМ',
@@ -660,6 +719,7 @@ export const ru: Record<TranslationKey, string> = {
   'optimizer.longestOutage': 'Самый долгий простой',
   'optimizer.orbitChanges': 'Изменения орбит',
   'optimizer.apply': 'Применить конфигурацию',
+  'optimizer.scoredAt': 'Оценка по полной группировке, очередь {stage}, а не по показанной очереди.',
   'optimizer.appliedBadge': 'ПРИМЕНЕНО',
   'optimizer.appliedNote': 'Применено к конфигурации',
   'optimizer.saveCompare': 'Сохранить и сравнить',
@@ -678,13 +738,17 @@ export const ru: Record<TranslationKey, string> = {
     'Настройте сеть на вкладке «Симуляция» и сохраните её как вариант, затем сохраните второй.',
   'compare.changed': 'Изменённые параметры',
   'compare.availability': 'Доступность по объектам',
-  'compare.recommendation': 'Рекомендация',
   'compare.target': 'цель {value}',
   'compare.pickTwo': 'Выберите два варианта для сравнения',
   'compare.leads': 'Лучше: {name}',
-  'compare.tied': 'Варианты равны',
   'compare.allMeet': 'все пункты в норме',
   'compare.belowTarget': 'ниже цели: {sites}',
+  'compare.recoMeets':
+    '{name} — сильнейший вариант: доступность каждого пункта не ниже цели {target}, у худшего — {worst}.',
+  'compare.recoMisses':
+    '{name} — лучший из сравниваемых вариантов: у худшего пункта {worst}, но цель {target} всё ещё не достигнута для {sites}. Для достижения цели нужно архитектурное изменение — больше спутников в очередях запуска или больший радиус МСС, — а не другая фазировка.',
+  'compare.recoCaveat':
+    'Обратите внимание: эти прогоны не используют одну среду — высота, радиус МСС или маска возвышения отличаются, — поэтому это анализ чувствительности, а не сравнение проектов.',
   'compare.noChanges': 'Параметры вариантов совпадают',
   'compare.saved': 'Сохранённые варианты',
   'compare.assign': 'Сравнить {name} как {slot}',

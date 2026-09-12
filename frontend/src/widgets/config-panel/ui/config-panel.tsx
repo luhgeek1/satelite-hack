@@ -38,6 +38,7 @@ interface ConfigPanelProps {
   summary: SimulationSummary | undefined;
   /** The same scenario with nothing changed, so the panel can show what the changes bought. */
   baseline: SimulationSummary | undefined;
+  onOpenDeploymentPlan: () => void;
 }
 
 export function ConfigPanel({
@@ -56,6 +57,7 @@ export function ConfigPanel({
   scenarioHref,
   summary,
   baseline,
+  onOpenDeploymentPlan,
 }: ConfigPanelProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
@@ -102,7 +104,7 @@ export function ConfigPanel({
           open={open.deployment}
           onToggle={() => toggle('deployment')}
         >
-          <DeploymentControl scenario={scenario} />
+          <DeploymentControl scenario={scenario} onOpenPlan={onOpenDeploymentPlan} />
         </ParamGroup>
 
         <ParamGroup

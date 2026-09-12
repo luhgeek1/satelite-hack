@@ -8,6 +8,7 @@ import {
   type OptimizeRequest,
   type PlaneBounds,
   type ScenarioDocument,
+  type SimulationConfig,
 } from '@/shared/api';
 import { normalizeConfig, type RunInput } from '@/entities/simulation';
 import { phasePeriodDeg } from '@/entities/scenario';
@@ -138,11 +139,24 @@ export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undef
   const [startedAt, setStartedAt] = useState<number | null>(null);
 
   const start = useMutation({
-    mutationFn: ({ locks, depth }: { locks: PlaneLock[]; depth: SearchDepth }) => {
+    /**
+     * `config` overrides what the search is scored against. Planning a launch
+     * needs it: the angles are chosen at that launch but judged on the finished
+     * constellation, which is a different launch stage than the one on screen.
+     */
+    mutationFn: ({
+      locks,
+      depth,
+      config,
+    }: {
+      locks: PlaneLock[];
+      depth: SearchDepth;
+      config?: SimulationConfig;
+    }) => {
       const preset = SEARCH_DEPTHS[depth];
       const payload: OptimizeRequest = {
         scenario_id: input.scenarioId as string,
-        config: normalizeConfig(input.config),
+        config: normalizeConfig(config ?? input.config),
         strategy: input.strategy,
         objective: 'worst_first',
         bounds: toBounds(locks, scenario, input),

@@ -4,6 +4,7 @@ export {
   useEphemeris,
   useAvailabilitySeries,
   useSnapshotPrefetch,
+  useStageRuns,
 } from './api/queries';
 export { emptyConfig, normalizeConfig, type RunInput } from './model/run-input';
 export {

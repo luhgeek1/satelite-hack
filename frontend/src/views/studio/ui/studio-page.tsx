@@ -10,6 +10,7 @@ import { CriticalNodes } from '@/widgets/critical-nodes';
 import { NetworkHealth } from '@/widgets/network-health';
 import { PlaybackBar } from '@/widgets/playback-bar';
 import { SatelliteDetails } from '@/widgets/satellite-details';
+import { DeploymentPlan } from '@/widgets/deployment-plan';
 import { Viewport, type OrbitTrack } from '@/widgets/viewport';
 import { ViewToggle } from '@/features/toggle-view';
 import {
@@ -25,7 +26,14 @@ import { useInjectFailure, useRestoreSatellite } from '@/features/inject-failure
 import type { OutageNode, OutageTarget, OutageWindow } from '@/features/schedule-outage';
 import { impactIndex, useResilience } from '@/features/analyze-resilience';
 import { snapToGrid, usePlayback } from '@/features/timeline-playback';
-import { planeColorMap, readGeometry, useScenario, useScenarios } from '@/entities/scenario';
+import {
+  launchStages,
+  planeColorMap,
+  planeCommitStage,
+  readGeometry,
+  useScenario,
+  useScenarios,
+} from '@/entities/scenario';
 import { allFailedIds, useSession } from '@/entities/session';
 import {
   buildRouteTraces,
@@ -193,13 +201,45 @@ export function StudioPage() {
   // A search takes tens of seconds, so its answer stays on screen after it is
   // applied rather than vanishing with nothing to show it ever ran.
   const [optimizerApplied, setOptimizerApplied] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planScoredAt, setPlanScoredAt] = useState<number | null>(null);
   const variants = useVariants();
   const saveVariant = useSaveVariant();
 
   const startOptimizer = useCallback(() => {
     setOptimizerApplied(false);
+    setPlanScoredAt(null);
     optimizer.start.mutate({ locks, depth });
   }, [optimizer.start, locks, depth]);
+
+  /**
+   * Plan the campaign from one launch onwards.
+   *
+   * Everything already in orbit is held: its angles were fixed when it flew and
+   * an engineer cannot revisit them. This launch and every later one are chosen
+   * together and scored on the finished constellation, because choosing a
+   * launch for its own stage alone is measurably a trap — see DECISIONS E8.
+   */
+  const planFromStage = useCallback(
+    (stage: number) => {
+      if (!scenario) return;
+      const stages = launchStages(scenario);
+      const lastStage = stages[stages.length - 1]?.stage ?? 3;
+
+      setOptimizerApplied(false);
+      setPlanOpen(false);
+      setPlanScoredAt(lastStage);
+      optimizer.start.mutate({
+        depth,
+        locks: scenario.design.planes.map((plane) => {
+          const flown = planeCommitStage(scenario, plane.id) < stage;
+          return { planeId: plane.id, raanLocked: flown, phaseLocked: flown };
+        }),
+        config: { ...state.config, launch_stage: lastStage },
+      });
+    },
+    [scenario, depth, optimizer.start, state.config],
+  );
 
   const dismissOptimizer = useCallback(() => {
     setOptimizerApplied(false);
@@ -487,6 +527,7 @@ export function StudioPage() {
       scenarioHref={scenarioHref}
       summary={summary}
       baseline={baseline}
+      onOpenDeploymentPlan={() => setPlanOpen(true)}
     />
   );
 
@@ -617,6 +658,19 @@ export function StudioPage() {
             {dataColumn(state.tab, state.tab === 'resilience' ? resilienceBody : configBody)}
 
             <AnimatePresence initial={false}>
+              {planOpen && !panels.hidden && state.tab === 'simulation' && (
+                <DeploymentPlan
+                  scenario={scenario}
+                  runInput={runInput}
+                  colors={colors}
+                  planning={optimizer.running || optimizer.start.isPending}
+                  onPlanFrom={planFromStage}
+                  onClose={() => setPlanOpen(false)}
+                />
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence initial={false}>
               {state.selectedSatelliteId && !panels.hidden && (
                 <SatelliteDetails
                   satellite={selectedSatellite}
@@ -678,6 +732,7 @@ export function StudioPage() {
                 colors={colors}
                 applied={optimizerApplied}
                 saving={saveVariant.isPending}
+                scoredAtStage={planScoredAt}
                 onApply={applyOptimizerResult}
                 onSaveAndCompare={saveOptimizerResult}
                 onDismiss={dismissOptimizer}

@@ -1,16 +1,23 @@
 'use client';
 
+import { Layers } from 'lucide-react';
 import { useSession } from '@/entities/session';
-import { launchStages } from '@/entities/scenario';
+import { launchStages, raanSpread } from '@/entities/scenario';
 import { cn } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import type { ScenarioDocument } from '@/shared/api';
 
-export function DeploymentControl({ scenario }: { scenario: ScenarioDocument }) {
+interface DeploymentControlProps {
+  scenario: ScenarioDocument;
+  onOpenPlan: () => void;
+}
+
+export function DeploymentControl({ scenario, onOpenPlan }: DeploymentControlProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
   const stages = launchStages(scenario);
   const current = state.config.launch_stage ?? scenario.design.launch_stage;
+  const spread = raanSpread(scenario, state.config);
 
   return (
     <>
@@ -40,6 +47,22 @@ export function DeploymentControl({ scenario }: { scenario: ScenarioDocument }) 
           planes: scenario.design.planes.length,
         })}
       </p>
+
+      {/* The switch shows one launch; the plan is about all of them at once,
+          and the angles chosen here have to serve every stage that follows. */}
+      <button
+        type="button"
+        onClick={onOpenPlan}
+        className="mt-2 flex w-full items-center gap-2 border border-rule-strong px-2 py-1.5 font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:border-zinc-400 focus-visible:outline-none"
+      >
+        <Layers size={12} />
+        {t('deploy.open')}
+        {spread && !spread.even && (
+          <span className="ml-auto font-data text-[9px] tracking-[0.08em] text-alarm">
+            {t('deploy.spreadUneven')}
+          </span>
+        )}
+      </button>
     </>
   );
 }
