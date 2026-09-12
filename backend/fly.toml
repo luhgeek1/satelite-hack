@@ -24,8 +24,13 @@ primary_region = 'fra'
 # Dedicated cores, not shared ones. A sweep pins every core it is given for
 # tens of seconds, and Fly throttles a shared vCPU to its baseline quota once
 # the burst balance is gone — the same sweep measured 832 s on `shared-cpu-2x`
-# against 20 s here. Two cores is the right size because the fan-out is capped
-# at two workers; four measured no faster.
+# against 20 s here.
+#
+# Two cores is a budget choice, not a technical ceiling: the fan-out scales
+# almost linearly on this hardware (1.97x on two workers, 3.95x on four), so
+# cores buy search time directly. Raising the size means raising
+# OPTIMIZER_MAX_WORKERS and ANALYSIS_MAX_WORKERS with it — they are capped at 2
+# and would otherwise leave the extra cores idle.
 #
 # Keep this in step with the live machines: `fly deploy` resizes them to
 # whatever is written here, so a size set only from the dashboard is undone by

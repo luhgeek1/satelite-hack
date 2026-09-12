@@ -244,8 +244,18 @@ the server and the VM had 207 MB usable. It idles at ~270 MB after the bump.
 which is the one workload shared vCPUs are worst at. Fly throttles a shared
 vCPU to its baseline quota once the burst balance is gone, and the same
 resilience sweep measured **832 s** on `shared-cpu-2x` against **20 s** on
-dedicated cores. Two cores, not four: the fan-out is capped at two workers, so
-`performance-4x` measured no faster and cost twice as much.
+dedicated cores.
+
+*Why only two cores:* budget, not physics. Measured on the deployed machine, one
+full-day simulation costs **749 ms** against **164 ms** on an M-series laptop —
+the Fly core is 4.5x slower — and the fan-out scales almost linearly here:
+**1.97x** on two workers, **2.67x** on three, **3.95x** on four. C8's "about 2x
+over eight workers" was measured on a laptop whose efficiency cores flatten the
+curve, and it does not describe this hardware. So cores buy optimizer time
+directly: a 86-configuration search takes ~33 s on two and ~16 s on four.
+`performance-2x` costs $2.15 a machine a day, `performance-4x` twice that.
+Raising the size is only half the change — `OPTIMIZER_MAX_WORKERS` and
+`ANALYSIS_MAX_WORKERS` are pinned at 2 and would leave the new cores idle.
 
 *Why the size lives in `fly.toml`:* `fly deploy` resizes machines to the
 `[[vm]]` block, so a size set from the dashboard is silently undone by the next
