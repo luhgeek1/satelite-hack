@@ -48,6 +48,7 @@ import {
   useMediaQuery,
 } from '@/shared/lib';
 import { EmptyState, ErrorNote, MobileDrawer } from '@/shared/ui';
+import { useI18n } from '@/shared/i18n';
 import { simulationsApi } from '@/shared/api';
 import { useLocalPanels } from '../model/use-local-panels';
 
@@ -55,6 +56,7 @@ const SPRING = { type: 'spring', stiffness: 360, damping: 36, mass: 0.9 } as con
 
 export function StudioPage() {
   const { state, dispatch } = useSession();
+  const { t } = useI18n();
   const scenarios = useScenarios();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
@@ -219,7 +221,7 @@ export function StudioPage() {
             <div className="flex min-h-0 w-[320px] flex-1 flex-col">
               <div className="flex flex-shrink-0 items-start justify-between border-b border-rule px-3 pb-2.5 pt-3">
                 <div className="min-w-0">
-                  <div className="font-label text-[11px] text-zinc-500">Scenario</div>
+                  <div className="font-label text-[11px] text-zinc-500">{t('scenario.label')}</div>
                   <div className="truncate font-data text-[13px] text-zinc-100">
                     {scenario?.meta.id ?? '—'}
                   </div>
@@ -227,7 +229,7 @@ export function StudioPage() {
                 <button
                   type="button"
                   onClick={panels.hide}
-                  aria-label="Collapse panel"
+                  aria-label={t('panel.collapse')}
                   className="text-zinc-600 transition-colors hover:text-zinc-200"
                 >
                   <PanelRightClose size={16} />
@@ -244,7 +246,7 @@ export function StudioPage() {
           <motion.button
             type="button"
             onClick={panels.show}
-            aria-label="Open panel"
+            aria-label={t('panel.open')}
             initial={{ opacity: 0, scale: 0.92, x: 10 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.92, x: 10 }}
@@ -285,7 +287,7 @@ export function StudioPage() {
     return (
       <div className="flex h-full w-full flex-col bg-black">
         <AppHeader status={status} />
-        <EmptyState title="Loading scenario catalog" hint="Connecting to the simulation service." />
+        <EmptyState title={t('scenario.loading')} hint={t('scenario.connecting')} />
       </div>
     );
   }
@@ -366,16 +368,18 @@ export function StudioPage() {
 
               {state.tab === 'resilience' && (
                 <div className="absolute bottom-3 left-3 border border-rule-strong bg-black/80 p-3 backdrop-blur lg:bottom-auto lg:left-6 lg:top-6 lg:p-4">
-                  <div className="mb-2 font-label text-[12px] text-zinc-300 lg:mb-3">Node criticality</div>
+                  <div className="mb-2 font-label text-[12px] text-zinc-300 lg:mb-3">{t('criticality.legend')}</div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 lg:block lg:space-y-1.5">
                     {[0, 50, 75, 90].map((sample) => {
                       const level = criticalityLevel(sample);
                       return (
-                        <div key={level.token} className="flex items-center gap-2">
+                        <div key={level.tier} className="flex items-center gap-2">
                           <span className="h-1.5 w-1.5 shrink-0" style={{ background: level.color }} />
-                          <span className="font-label text-[12px] text-zinc-400">{level.label}</span>
+                          <span className="font-label text-[12px] text-zinc-400">
+                            {t(`criticality.${level.tier}` as 'criticality.low')}
+                          </span>
                           <span className="ml-auto font-data text-[9px] tracking-[0.08em] text-zinc-600">
-                            {level.token}
+                            {t(`criticality.token.${level.tier}` as 'criticality.token.low')}
                           </span>
                         </div>
                       );
@@ -385,7 +389,7 @@ export function StudioPage() {
               )}
 
               {mobileToggle(
-                state.tab === 'resilience' ? 'Critical nodes' : 'Panel',
+                state.tab === 'resilience' ? t('critical.title') : t('panel.mobile'),
                 state.tab === 'resilience' ? <ShieldAlert size={13} /> : <Activity size={13} />,
               )}
 
@@ -437,7 +441,7 @@ export function StudioPage() {
 
           <MobileDrawer
             open={panels.drawerOpen}
-            title={state.tab === 'resilience' ? 'Critical nodes' : 'Configuration'}
+            title={state.tab === 'resilience' ? t('critical.title') : t('panel.configuration')}
             onClose={panels.closeDrawer}
           >
             {state.tab === 'resilience' ? resilienceBody : configBody}

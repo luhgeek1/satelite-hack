@@ -4,26 +4,33 @@ import { Activity, BarChart3, Globe as GlobeIcon, ShieldAlert } from 'lucide-rea
 import { ScenarioPicker } from '@/features/select-scenario';
 import { useSession, type StudioTab } from '@/entities/session';
 import { cn } from '@/shared/lib';
+import { useI18n, type Language, type TranslationKey } from '@/shared/i18n';
 
-const TABS: Array<{ id: StudioTab; label: string; icon: typeof Activity }> = [
-  { id: 'simulation', label: 'Simulation', icon: Activity },
-  { id: 'resilience', label: 'Resilience', icon: ShieldAlert },
-  { id: 'compare', label: 'Compare', icon: BarChart3 },
+const TABS: Array<{ id: StudioTab; label: TranslationKey; icon: typeof Activity }> = [
+  { id: 'simulation', label: 'tab.simulation', icon: Activity },
+  { id: 'resilience', label: 'tab.resilience', icon: ShieldAlert },
+  { id: 'compare', label: 'tab.compare', icon: BarChart3 },
+];
+
+const LANGUAGES: Array<{ id: Language; label: TranslationKey }> = [
+  { id: 'ru', label: 'lang.ru' },
+  { id: 'en', label: 'lang.en' },
 ];
 
 interface AppHeaderProps {
   status: 'ready' | 'running' | 'error' | 'idle';
 }
 
-const STATUS_COPY: Record<AppHeaderProps['status'], { label: string; tone: string }> = {
-  ready: { label: 'READY', tone: 'text-zinc-300' },
-  running: { label: 'SOLVING', tone: 'text-zinc-400' },
-  error: { label: 'ERROR', tone: 'text-alarm' },
-  idle: { label: 'IDLE', tone: 'text-zinc-600' },
+const STATUS_COPY: Record<AppHeaderProps['status'], { label: TranslationKey; tone: string }> = {
+  ready: { label: 'status.ready', tone: 'text-zinc-300' },
+  running: { label: 'status.running', tone: 'text-zinc-400' },
+  error: { label: 'status.error', tone: 'text-alarm' },
+  idle: { label: 'status.idle', tone: 'text-zinc-600' },
 };
 
 export function AppHeader({ status }: AppHeaderProps) {
   const { state, dispatch } = useSession();
+  const { t, language, setLanguage } = useI18n();
   const indicator = STATUS_COPY[status];
 
   return (
@@ -34,10 +41,10 @@ export function AppHeader({ status }: AppHeaderProps) {
         </div>
         <div className="hidden min-w-0 sm:block">
           <h1 className="truncate font-label text-[14px] font-semibold leading-tight text-zinc-100">
-            OrbitGuard
+            {t('app.title')}
           </h1>
           <div className="hidden font-label text-[11px] leading-tight text-zinc-500 lg:block">
-            Satellite resilience studio
+            {t('app.subtitle')}
           </div>
         </div>
       </div>
@@ -49,7 +56,7 @@ export function AppHeader({ status }: AppHeaderProps) {
             type="button"
             onClick={() => dispatch({ type: 'setTab', tab: id })}
             aria-pressed={state.tab === id}
-            title={label}
+            title={t(label)}
             className={cn(
               'flex h-full items-center gap-2 border-l border-rule-strong px-2.5 font-label text-[13px] transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:outline-none sm:px-4 lg:px-6',
               state.tab === id
@@ -58,7 +65,7 @@ export function AppHeader({ status }: AppHeaderProps) {
             )}
           >
             <Icon size={14} className="md:hidden" />
-            <span className="hidden md:inline">{label}</span>
+            <span className="hidden md:inline">{t(label)}</span>
           </button>
         ))}
       </div>
@@ -72,7 +79,32 @@ export function AppHeader({ status }: AppHeaderProps) {
               status === 'error' ? 'bg-alarm' : status === 'running' ? 'bg-zinc-400' : 'bg-zinc-600',
             )}
           />
-          <span className={indicator.tone}>{indicator.label}</span>
+          <span className={indicator.tone}>{t(indicator.label)}</span>
+        </div>
+
+        {/* Two words, not a dropdown: there are only ever two, and a menu would
+            hide the one the reader is looking for behind a click. */}
+        <div
+          className="flex flex-shrink-0 items-center border border-rule-strong"
+          role="group"
+          aria-label={t('lang.switch')}
+        >
+          {LANGUAGES.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setLanguage(id)}
+              aria-pressed={language === id}
+              className={cn(
+                'h-7 border-l border-rule-strong px-2 font-data text-[11px] tracking-[0.04em] transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:outline-none',
+                language === id
+                  ? 'bg-white/[0.12] text-zinc-100'
+                  : 'text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200',
+              )}
+            >
+              {t(label)}
+            </button>
+          ))}
         </div>
       </div>
     </header>

@@ -8,10 +8,12 @@ export type SweepParameter = 'isl_range_km' | 'min_elevation_deg' | 'altitude_km
 
 export interface SweepSpec {
   parameter: SweepParameter;
-  label: string;
+  /** Dictionary keys: the sweep is data, its wording is not. */
+  labelKey: 'sweep.isl.label' | 'sweep.elev.label' | 'sweep.alt.label';
+  tokenKey: 'sweep.isl' | 'sweep.elev' | 'sweep.alt';
+  rationaleKey: 'sweep.isl.rationale' | 'sweep.elev.rationale' | 'sweep.alt.rationale';
   unit: string;
   values: number[];
-  rationale: string;
 }
 
 /**
@@ -23,25 +25,27 @@ export interface SweepSpec {
 export const SWEEPS: SweepSpec[] = [
   {
     parameter: 'isl_range_km',
-    label: 'Inter-satellite range',
+    labelKey: 'sweep.isl.label',
+    tokenKey: 'sweep.isl',
+    rationaleKey: 'sweep.isl.rationale',
     unit: 'km',
     values: [2000, 2200, 2400, 2600, 2700, 2750, 2800, 3000],
-    rationale:
-      'In-plane neighbours sit 2700 km apart, so the along-orbit mesh forms or fails across this range.',
   },
   {
     parameter: 'min_elevation_deg',
-    label: 'Elevation mask',
+    labelKey: 'sweep.elev.label',
+    tokenKey: 'sweep.elev',
+    rationaleKey: 'sweep.elev.rationale',
     unit: '°',
     values: [5, 10, 15, 20, 25],
-    rationale: 'A lower mask buys contact time at the cost of a longer, shallower ground link.',
   },
   {
     parameter: 'altitude_km',
-    label: 'Orbit altitude',
+    labelKey: 'sweep.alt.label',
+    tokenKey: 'sweep.alt',
+    rationaleKey: 'sweep.alt.rationale',
     unit: 'km',
     values: [400, 500, 550, 700, 900],
-    rationale: 'Higher orbits see further, at the cost of more satellites needed per plane.',
   },
 ];
 

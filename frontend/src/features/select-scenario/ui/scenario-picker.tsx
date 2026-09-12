@@ -6,10 +6,12 @@ import { useImportScenario, useScenarios } from '@/entities/scenario';
 import { useSession } from '@/entities/session';
 import { cn } from '@/shared/lib';
 import { ErrorNote } from '@/shared/ui';
+import { useI18n } from '@/shared/i18n';
 import type { ScenarioDocument } from '@/shared/api';
 
 export function ScenarioPicker() {
   const { state, dispatch } = useSession();
+  const { t } = useI18n();
   const scenarios = useScenarios();
   const importScenario = useImportScenario();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -25,7 +27,7 @@ export function ScenarioPicker() {
       const created = await importScenario.mutateAsync(document);
       dispatch({ type: 'selectScenario', scenarioId: created.id });
     } catch (error) {
-      if (error instanceof SyntaxError) setReadError('That file is not valid JSON');
+      if (error instanceof SyntaxError) setReadError(t('scenario.badJson'));
     }
   };
 
@@ -38,7 +40,7 @@ export function ScenarioPicker() {
           aria-expanded={open}
           className="flex h-9 items-center gap-2 border border-rule-strong px-2.5 font-data text-[12px] text-zinc-200 transition-colors hover:border-zinc-600 focus-visible:border-zinc-400 focus-visible:outline-none"
         >
-          <span className="max-w-[11rem] truncate">{active?.id ?? 'Select scenario'}</span>
+          <span className="max-w-[11rem] truncate">{active?.id ?? t('scenario.select')}</span>
           <ChevronDown size={12} className="text-zinc-500" />
         </button>
 
@@ -62,7 +64,7 @@ export function ScenarioPicker() {
                   <span className="flex items-baseline gap-2">
                     <span className="font-data text-[12px] text-zinc-100">{scenario.id}</span>
                     <span className="ml-auto font-data text-[9px] tracking-[0.08em] text-zinc-600">
-                      {scenario.source === 'official' ? 'CASE' : 'IMPORT'}
+                      {scenario.source === 'official' ? t('scenario.case') : t('scenario.import')}
                     </span>
                   </span>
                   <span className="truncate font-label text-[11px] text-zinc-500">{scenario.title}</span>

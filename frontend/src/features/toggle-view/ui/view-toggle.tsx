@@ -3,27 +3,29 @@
 import { Globe as GlobeIcon, Map as MapIcon } from 'lucide-react';
 import { useSession, type ViewMode } from '@/entities/session';
 import { cn } from '@/shared/lib';
+import { useI18n, type TranslationKey } from '@/shared/i18n';
 
-const modes: Array<{ id: ViewMode; label: string; icon: typeof GlobeIcon }> = [
-  { id: '3d', label: 'Globe', icon: GlobeIcon },
-  { id: '2d', label: 'Map', icon: MapIcon },
+const modes: Array<{ id: ViewMode; label: TranslationKey; title: TranslationKey; icon: typeof GlobeIcon }> = [
+  { id: '3d', label: 'view.globe', title: 'view.globeTitle', icon: GlobeIcon },
+  { id: '2d', label: 'view.map', title: 'view.mapTitle', icon: MapIcon },
 ];
 
 export function ViewToggle({ style }: { style?: React.CSSProperties }) {
   const { state, dispatch } = useSession();
+  const { t } = useI18n();
 
   return (
     <div
       style={style}
       className="absolute right-3 top-[3.25rem] z-20 flex border border-rule-strong bg-black/85 backdrop-blur lg:top-6"
     >
-      {modes.map(({ id, label, icon: Icon }) => (
+      {modes.map(({ id, label, title, icon: Icon }) => (
         <button
           key={id}
           type="button"
           onClick={() => dispatch({ type: 'setViewMode', viewMode: id })}
           aria-pressed={state.viewMode === id}
-          title={`${label} view`}
+          title={t(title)}
           className={cn(
             'flex h-9 items-center gap-2 border-l border-rule-strong px-3.5 font-label text-[13px] transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none',
             state.viewMode === id
@@ -32,7 +34,7 @@ export function ViewToggle({ style }: { style?: React.CSSProperties }) {
           )}
         >
           <Icon size={15} />
-          {label}
+          {t(label)}
         </button>
       ))}
     </div>

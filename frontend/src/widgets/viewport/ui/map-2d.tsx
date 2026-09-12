@@ -10,6 +10,7 @@ import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import { routeEdgeIndex, edgeKey, type RouteTrace } from '@/entities/simulation';
 import { criticalityLevel, isFiniteNumber, isRecord, readStored, writeStored } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
 import {
   useFailurePings,
@@ -85,6 +86,7 @@ export const Map2D: React.FC<Map2DProps> = ({
   mode = 'simulation',
   contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM
 }) => {
+  const { t } = useI18n();
   const failurePings = useFailurePings(satellites);
   const coverageDegrees = (contactRadiusKm / EARTH_RADIUS_KM_EXPORT) * (180 / Math.PI);
   // A failure wave stops at the node's own footprint, same as on the globe.
@@ -368,19 +370,19 @@ export const Map2D: React.FC<Map2DProps> = ({
                         <div className="mb-1 flex items-center justify-between gap-3 border-b border-rule pb-1">
                           <span className="text-zinc-100">{sat.id}</span>
                           <span className={isFailed ? 'text-alarm' : 'text-zinc-500'}>
-                            {isFailed ? 'FAIL' : 'NOM'}
+                            {isFailed ? t('config.stateFailed') : t('config.stateNominal')}
                           </span>
                         </div>
                         <div className="flex justify-between gap-3 tabular-nums text-zinc-500">
-                          <span>Plane</span>
+                          <span>{t('sat.plane')}</span>
                           <span className="text-zinc-300">{sat.planeId}</span>
                         </div>
                         <div className="flex justify-between gap-3 tabular-nums text-zinc-500">
-                          <span>Lat</span>
+                          <span>{t('map.lat')}</span>
                           <span className="text-zinc-300">{sat.lat.toFixed(2)}&deg;</span>
                         </div>
                         <div className="flex justify-between gap-3 tabular-nums text-zinc-500">
-                          <span>Lon</span>
+                          <span>{t('map.lon')}</span>
                           <span className="text-zinc-300">{sat.lon.toFixed(2)}&deg;</span>
                         </div>
                       </div>
@@ -488,9 +490,9 @@ export const Map2D: React.FC<Map2DProps> = ({
 
       <div className="absolute bottom-16 right-3 z-20 flex flex-col border border-rule-strong bg-black/85 backdrop-blur lg:bottom-[4.5rem] lg:right-6">
         {[
-          { label: 'Zoom in', icon: <Plus size={14} />, onClick: handleZoomIn },
-          { label: 'Zoom out', icon: <Minus size={14} />, onClick: handleZoomOut },
-          { label: 'Reset view', icon: <RotateCcw size={13} />, onClick: handleReset }
+          { label: t('map.zoomIn'), icon: <Plus size={14} />, onClick: handleZoomIn },
+          { label: t('map.zoomOut'), icon: <Minus size={14} />, onClick: handleZoomOut },
+          { label: t('map.reset'), icon: <RotateCcw size={13} />, onClick: handleReset }
         ].map(control => (
           <button
             key={control.label}

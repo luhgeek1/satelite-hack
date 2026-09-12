@@ -1,7 +1,8 @@
 'use client';
 
 import { useSession } from '@/entities/session';
-import { cn, formatClock, formatDuration, NO_ROUTE_COPY } from '@/shared/lib';
+import { cn, formatClock } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import type { ClientMetrics } from '@/shared/api';
 
 interface OutageListProps {
@@ -13,6 +14,7 @@ interface OutageListProps {
 
 export function OutageList({ clients, focusClientId, currentTS, stepS }: OutageListProps) {
   const { dispatch } = useSession();
+  const { t, formatDuration } = useI18n();
 
   const client = clients.find((item) => item.client_id === focusClientId) ?? clients[0];
   if (!client) return null;
@@ -22,7 +24,7 @@ export function OutageList({ clients, focusClientId, currentTS, stepS }: OutageL
   if (windows.length === 0) {
     return (
       <p className="font-label text-[11px] leading-relaxed text-zinc-500">
-        {client.client_id} keeps a route to the gateway for the whole horizon.
+        {t('outage.clear', { client: client.client_id })}
       </p>
     );
   }
@@ -77,9 +79,9 @@ export function OutageList({ clients, focusClientId, currentTS, stepS }: OutageL
               {(window.leading || window.trailing) && (
                 <span
                   className="font-data text-[9px] tracking-[0.08em] text-zinc-600"
-                  title="Touches the edge of the horizon, so its true length is unknown"
+                  title={t('outage.edgeHint')}
                 >
-                  EDGE
+                  {t('outage.edge')}
                 </span>
               )}
               <span
@@ -88,7 +90,7 @@ export function OutageList({ clients, focusClientId, currentTS, stepS }: OutageL
                   window.reason === 'no_visible_satellite' ? 'text-alarm' : 'text-zinc-500',
                 )}
               >
-                {window.reason ? NO_ROUTE_COPY[window.reason] : '—'}
+                {window.reason ? t(`route.${window.reason}` as 'route.none') : '—'}
               </span>
             </button>
           );
@@ -96,8 +98,7 @@ export function OutageList({ clients, focusClientId, currentTS, stepS }: OutageL
       </div>
 
       <p className="font-label text-[11px] leading-relaxed text-zinc-500">
-        Longest gap {formatDuration(client.max_outage_s)}. Pick one to jump the
-        timeline there and see how the site is connected at that moment.
+        {t('outage.longest', { duration: formatDuration(client.max_outage_s) })}
       </p>
     </div>
   );

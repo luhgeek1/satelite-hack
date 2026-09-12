@@ -6,9 +6,11 @@ import { useSaveVariant } from '@/entities/variant';
 import { useSession } from '@/entities/session';
 import { normalizeConfig } from '@/entities/simulation';
 import { Button, ErrorNote } from '@/shared/ui';
+import { useI18n } from '@/shared/i18n';
 
 export function SaveVariantButton({ suggestedName }: { suggestedName: string }) {
   const { state } = useSession();
+  const { t } = useI18n();
   const saveVariant = useSaveVariant();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(suggestedName);
@@ -40,7 +42,7 @@ export function SaveVariantButton({ suggestedName }: { suggestedName: string }) 
         }}
       >
         <BookmarkPlus size={13} />
-        Save variant
+        {t('variant.save')}
       </Button>
     );
   }
@@ -48,7 +50,7 @@ export function SaveVariantButton({ suggestedName }: { suggestedName: string }) 
   return (
     <div className="space-y-2 border border-rule-strong p-2">
       <label htmlFor="variant-name" className="block font-label text-[11px] text-zinc-400">
-        Name this configuration
+        {t('variant.name')}
       </label>
       <input
         id="variant-name"
@@ -63,10 +65,10 @@ export function SaveVariantButton({ suggestedName }: { suggestedName: string }) 
       />
       <div className="flex gap-2">
         <Button size="sm" variant="solid" className="flex-1" onClick={submit}>
-          Save
+          {t('variant.confirm')}
         </Button>
         <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditing(false)}>
-          Cancel
+          {t('variant.cancel')}
         </Button>
       </div>
       {saveVariant.isError && <ErrorNote error={saveVariant.error} />}

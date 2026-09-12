@@ -2,7 +2,8 @@
 
 import { useRef } from 'react';
 import { Pause, Play } from 'lucide-react';
-import { cn, formatClock, formatDuration } from '@/shared/lib';
+import { cn, formatClock } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import type { OutageBand } from '@/entities/simulation';
 
 interface PlaybackBarProps {
@@ -32,6 +33,7 @@ export function PlaybackBar({
   onSpeed,
   onSeek,
 }: PlaybackBarProps) {
+  const { t, formatDuration } = useI18n();
   const track = useRef<HTMLDivElement>(null);
 
   const seekFromClientX = (clientX: number) => {
@@ -49,7 +51,7 @@ export function PlaybackBar({
         <button
           type="button"
           onClick={onToggle}
-          aria-label={playing ? 'Pause' : 'Play'}
+          aria-label={playing ? t('playback.pause') : t('playback.play')}
           className="flex h-7 w-7 flex-shrink-0 items-center justify-center border border-rule-strong text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white focus-visible:border-zinc-300 focus-visible:outline-none"
         >
           {playing ? <Pause size={14} /> : <Play size={14} />}
@@ -88,7 +90,7 @@ export function PlaybackBar({
             ref={track}
             role="slider"
             tabIndex={0}
-            aria-label="Simulation time"
+            aria-label={t('playback.time')}
             aria-valuemin={0}
             aria-valuemax={horizonS}
             aria-valuenow={Math.round(tS)}
@@ -119,7 +121,7 @@ export function PlaybackBar({
                   key={`${band.clientId}-${index}`}
                   title={`${band.clientId} · ${formatClock(band.startFraction * horizonS)} · ${formatDuration(
                     band.widthFraction * horizonS,
-                  )} · ${band.state === 'no_satellite' ? 'no satellite in view' : 'satellite in view, no route'}`}
+                  )} · ${band.state === 'no_satellite' ? t('playback.bandNoSatellite') : t('playback.bandNoRoute')}`}
                   /* Two causes, one ink: the strip is white-and-grey by
                      design, so the harsher state is the brighter block rather
                      than a second hue. */
@@ -146,10 +148,10 @@ export function PlaybackBar({
 
         <div className="flex flex-shrink-0 items-center gap-3 font-data text-[9px] tracking-[0.08em] text-zinc-600">
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-2.5 bg-zinc-500" /> NO ROUTE
+            <span className="h-1.5 w-2.5 bg-zinc-500" /> {t('playback.noRoute')}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-2.5 bg-zinc-300" /> NO SATELLITE
+            <span className="h-1.5 w-2.5 bg-zinc-300" /> {t('playback.noSatellite')}
           </span>
         </div>
       </div>

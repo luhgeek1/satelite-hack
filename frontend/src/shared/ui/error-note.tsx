@@ -1,8 +1,12 @@
+'use client';
+
 import { AlertTriangle } from 'lucide-react';
 import { ApiError } from '@/shared/api';
+import { useI18n } from '@/shared/i18n';
 
 export function ErrorNote({ error }: { error: unknown }) {
-  const message = error instanceof ApiError ? error.message : 'Something went wrong';
+  const { t } = useI18n();
+  const message = error instanceof ApiError ? error.message : t('error.generic');
   const field = error instanceof ApiError ? error.field : undefined;
 
   return (

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useI18n } from '@/shared/i18n';
 
 interface MobileDrawerProps {
   open: boolean;
@@ -12,6 +13,8 @@ interface MobileDrawerProps {
 }
 
 export function MobileDrawer({ open, title, onClose, children }: MobileDrawerProps) {
+  const { t } = useI18n();
+
   return (
     <AnimatePresence>
       {open && (
@@ -35,7 +38,7 @@ export function MobileDrawer({ open, title, onClose, children }: MobileDrawerPro
           >
             <div className="flex flex-shrink-0 items-center justify-between border-b border-rule px-4 py-3">
               <span className="font-label text-[13px] text-zinc-300">{title}</span>
-              <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200" aria-label="Close panel">
+              <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200" aria-label={t('panel.close')}>
                 <X size={18} />
               </button>
             </div>

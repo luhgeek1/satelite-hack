@@ -1,7 +1,8 @@
 'use client';
 
 import { useSession } from '@/entities/session';
-import { cn, NO_ROUTE_COPY } from '@/shared/lib';
+import { cn } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import type { RouteTrace } from '../model/routes';
 
 interface RouteChainProps {
@@ -12,11 +13,12 @@ interface RouteChainProps {
 
 export function RouteChain({ trace, emphasize = null, className }: RouteChainProps) {
   const { dispatch } = useSession();
+  const { t } = useI18n();
 
   if (!trace.available) {
     return (
       <div className={cn('font-data text-[11px] leading-relaxed text-zinc-500', className)}>
-        {trace.reason ? NO_ROUTE_COPY[trace.reason] : 'No route'}
+        {trace.reason ? t(`route.${trace.reason}` as 'route.none') : t('route.none')}
       </div>
     );
   }

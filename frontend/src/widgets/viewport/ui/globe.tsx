@@ -7,6 +7,7 @@ import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import { routeEdgeIndex, edgeKey, type RouteTrace } from '@/entities/simulation';
 import { criticalityLevel } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
 import {
   useFailurePings,
@@ -208,6 +209,7 @@ export const Globe: React.FC<GlobeProps> = ({
   focusOn = null,
   contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM
 }) => {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<any>(undefined);
   const resumeRotationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1093,7 +1095,7 @@ export const Globe: React.FC<GlobeProps> = ({
     return `
       <div style="background:#000;padding:4px 8px;border:1px solid #2e2e34;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:#e4e4e7;">
         ${sat.id}<br/>
-        <span style="color:#71717a">Alt ${sat.altitudeKm.toFixed(0)} km</span>
+        <span style="color:#71717a">${t('map.alt')} ${t('sat.km', { value: sat.altitudeKm.toFixed(0) })}</span>
       </div>
     `;
   }

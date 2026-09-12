@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { formatClock } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import type { SatelliteView } from '@/entities/satellite';
 import type { FailureRequest } from '../model/use-failure-mutation';
 
@@ -24,6 +25,7 @@ export function FailureForm({
   onSubmit,
   onCancel,
 }: FailureFormProps) {
+  const { t } = useI18n();
   const [satelliteId, setSatelliteId] = useState('');
   const [span, setSpan] = useState<Span>('horizon');
   const [startHour, setStartHour] = useState(Math.floor(currentTS / 3600));
@@ -49,15 +51,15 @@ export function FailureForm({
   };
 
   const spans: Array<{ id: Span; label: string }> = [
-    { id: 'horizon', label: 'Whole day' },
-    { id: 'from-now', label: `From ${formatClock(currentTS)}` },
-    { id: 'custom', label: 'Window' },
+    { id: 'horizon', label: t('failure.wholeDay') },
+    { id: 'from-now', label: t('failure.fromNow', { time: formatClock(currentTS) }) },
+    { id: 'custom', label: t('failure.window') },
   ];
 
   return (
     <div className="space-y-2 border border-rule-strong p-2">
       <label htmlFor="failure-target" className="block font-label text-[11px] text-zinc-400">
-        Which satellite fails?
+        {t('failure.which')}
       </label>
       <select
         id="failure-target"
@@ -67,7 +69,7 @@ export function FailureForm({
         className="param-select w-full border border-rule-strong bg-black py-1.5 pl-2 pr-6 font-data text-[11px] text-zinc-200 focus:border-zinc-500 focus:outline-none"
       >
         <option value="" disabled>
-          Select a node
+          {t('failure.pick')}
         </option>
         {candidates.map((satellite) => (
           <option key={satellite.id} value={satellite.id}>
@@ -97,7 +99,7 @@ export function FailureForm({
       {span === 'custom' && (
         <div className="flex items-center gap-2 font-data text-[10px] text-zinc-500">
           <label htmlFor="failure-start" className="sr-only">
-            Outage start hour
+            {t('failure.startHour')}
           </label>
           <input
             id="failure-start"
@@ -108,9 +110,9 @@ export function FailureForm({
             onChange={(event) => setStartHour(Number(event.target.value))}
             className="w-14 border border-rule-strong bg-black px-1.5 py-1 text-center text-zinc-200 focus:border-zinc-500 focus:outline-none"
           />
-          <span>to</span>
+          <span>{t('failure.to')}</span>
           <label htmlFor="failure-end" className="sr-only">
-            Outage end hour
+            {t('failure.endHour')}
           </label>
           <input
             id="failure-end"
@@ -121,7 +123,7 @@ export function FailureForm({
             onChange={(event) => setEndHour(Number(event.target.value))}
             className="w-14 border border-rule-strong bg-black px-1.5 py-1 text-center text-zinc-200 focus:border-zinc-500 focus:outline-none"
           />
-          <span>h UTC</span>
+          <span>{t('failure.hUtc')}</span>
         </div>
       )}
 
@@ -132,14 +134,14 @@ export function FailureForm({
           disabled={!satelliteId}
           className="flex-1 border border-zinc-600 py-1.5 font-label text-[11px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none disabled:opacity-40"
         >
-          Inject
+          {t('failure.submit')}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="flex-1 border border-rule py-1.5 font-label text-[11px] text-zinc-500 transition-colors hover:border-rule-strong hover:text-zinc-300 focus-visible:outline-none"
         >
-          Cancel
+          {t('failure.cancel')}
         </button>
       </div>
     </div>
