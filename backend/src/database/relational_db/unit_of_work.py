@@ -17,6 +17,18 @@ class UoW:
         elif exc_type is not None:
             await self.session.rollback()
 
+    async def release(self) -> None:
+        """Close the transaction and hand the connection back to the pool.
+
+        Call this before work that takes seconds. A session keeps its connection
+        checked out until the transaction ends, so a resilience sweep that loads
+        a scenario and then computes for twenty seconds pins one connection for
+        the whole run. Fifteen of those exhaust the pool and every endpoint —
+        not just the slow one — starts failing with `QueuePool limit ... reached`.
+        Queries after this point acquire a connection again on their own.
+        """
+        await self.session.commit()
+
     async def commit(self):
         await self.session.commit()
         self._committed = True

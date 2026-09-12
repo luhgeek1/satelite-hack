@@ -90,6 +90,9 @@ class SimulationService:
         if existing is not None:
             return SimulationSummary.model_validate(existing.summary)
 
+        # The jury may upload a scenario far larger than the official four, and
+        # the write below re-acquires a connection on its own.
+        await self.uow.release()
         result = await asyncio.to_thread(simulate, effective, strategy=strategy)
         summary = self._summarise(
             run_id=run_id,
