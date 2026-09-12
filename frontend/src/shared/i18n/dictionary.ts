@@ -55,6 +55,7 @@ export const en = {
   'panel.collapse': 'Collapse panel',
   'panel.open': 'Open panel',
   'panel.close': 'Close panel',
+  'panel.resize': 'Drag to resize, double-click to reset',
   'panel.mobile': 'Panel',
   'panel.configuration': 'Configuration',
 
@@ -407,6 +408,7 @@ export const ru: Record<TranslationKey, string> = {
   'panel.collapse': 'Свернуть панель',
   'panel.open': 'Открыть панель',
   'panel.close': 'Закрыть панель',
+  'panel.resize': 'Потяните, чтобы изменить ширину; двойной клик — вернуть',
   'panel.mobile': 'Панель',
   'panel.configuration': 'Конфигурация',
 

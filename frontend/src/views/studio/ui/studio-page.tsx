@@ -56,6 +56,7 @@ import { EmptyState, ErrorNote, MobileDrawer } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
 import { simulationsApi, type ClientMetrics } from '@/shared/api';
 import { useLocalPanels } from '../model/use-local-panels';
+import { usePanelWidth } from '../model/use-panel-width';
 
 const SPRING = { type: 'spring', stiffness: 360, damping: 36, mass: 0.9 } as const;
 
@@ -70,6 +71,7 @@ export function StudioPage() {
 
   useDisableBrowserZoom();
   const panels = useLocalPanels();
+  const panel = usePanelWidth();
 
   // How much of the bottom the playback strip takes, so the optimizer card can
   // clear it whatever the scenario puts in it. A callback ref rather than an
@@ -391,12 +393,12 @@ export function StudioPage() {
             key={key}
             layout
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 320, opacity: 1 }}
+            animate={{ width: panel.layoutWidth, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={SPRING}
             className="relative hidden min-h-0 flex-shrink-0 flex-col overflow-hidden border-l border-rule bg-black lg:flex"
           >
-            <div className="flex min-h-0 w-[320px] flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 flex-col" style={{ width: panel.layoutWidth }}>
               <div className="flex flex-shrink-0 items-start justify-between border-b border-rule px-3 pb-2.5 pt-3">
                 <div className="min-w-0">
                   <div className="font-label text-[11px] text-zinc-500">{t('scenario.label')}</div>
@@ -608,12 +610,34 @@ export function StudioPage() {
             )}
           </motion.div>
 
+          {/* Zoom rather than a second set of sizes: the whole subtree — type,
+              rules, spacing and the detail panel that slides out of it — draws
+              at one scale, and the layout stays the one that was designed. */}
           <div
-            className={cn(
-              'relative hidden lg:flex',
-              panels.hidden ? 'w-0' : 'w-[320px] flex-shrink-0',
-            )}
+            className={cn('relative hidden lg:flex', !panels.hidden && 'flex-shrink-0')}
+            style={{
+              zoom: panel.scale,
+              width: panels.hidden ? 0 : panel.layoutWidth,
+            }}
           >
+            {!panels.hidden && (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={t('panel.resize')}
+                title={t('panel.resize')}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  panel.startResize();
+                }}
+                onDoubleClick={panel.reset}
+                className={cn(
+                  'absolute inset-y-0 -left-[3px] z-30 w-[5px] cursor-col-resize transition-colors',
+                  panel.resizing ? 'bg-zinc-500' : 'hover:bg-zinc-700',
+                )}
+              />
+            )}
+
             {dataColumn(state.tab, state.tab === 'resilience' ? resilienceBody : configBody)}
 
             <AnimatePresence initial={false}>

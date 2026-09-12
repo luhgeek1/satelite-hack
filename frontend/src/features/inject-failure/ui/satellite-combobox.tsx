@@ -31,7 +31,9 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
   const wrapper = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLUListElement>(null);
-  const [anchor, setAnchor] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [anchor, setAnchor] = useState<
+    { left: number; top: number; width: number; height: number; scale: number } | null
+  >(null);
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -53,8 +55,9 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
     if (!open) return;
 
     const place = () => {
-      const box = field.current?.getBoundingClientRect();
-      if (!box) return;
+      const element = field.current;
+      const box = element?.getBoundingClientRect();
+      if (!element || !box) return;
       const below = window.innerHeight - box.bottom;
       setAnchor({
         left: box.left,
@@ -62,6 +65,11 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
         width: box.width,
         // Open upwards when the field sits too near the bottom to show a list.
         height: below < 140 ? -box.top : below,
+        // The panel this field sits in may be zoomed. A rect is in screen
+        // pixels and `offsetWidth` in the field's own, so their ratio is the
+        // zoom the list has to match — it is drawn outside the panel and would
+        // otherwise arrive at the right size in the wrong type.
+        scale: element.offsetWidth > 0 ? box.width / element.offsetWidth : 1,
       });
     };
 
@@ -189,19 +197,24 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
           ref={list}
           id={`${id}-list`}
           role="listbox"
+          // Every figure below is in screen pixels, so each one is divided by
+          // the field's zoom and the list is drawn at that zoom instead.
           style={
             anchor.height > 0
               ? {
-                  left: anchor.left,
-                  top: anchor.top + 1,
-                  width: anchor.width,
-                  maxHeight: Math.min(224, anchor.height - 12),
+                  zoom: anchor.scale,
+                  left: anchor.left / anchor.scale,
+                  top: (anchor.top + 1) / anchor.scale,
+                  width: anchor.width / anchor.scale,
+                  maxHeight: Math.min(224, anchor.height - 12) / anchor.scale,
                 }
               : {
-                  left: anchor.left,
-                  bottom: window.innerHeight - anchor.top + anchor.height + 1,
-                  width: anchor.width,
-                  maxHeight: Math.min(224, -anchor.height - 12),
+                  zoom: anchor.scale,
+                  left: anchor.left / anchor.scale,
+                  bottom:
+                    (window.innerHeight - anchor.top + anchor.height + 1) / anchor.scale,
+                  width: anchor.width / anchor.scale,
+                  maxHeight: Math.min(224, -anchor.height - 12) / anchor.scale,
                 }
           }
           className="fixed z-50 overflow-y-auto overscroll-contain border border-rule-strong bg-black shadow-xl"
