@@ -162,9 +162,35 @@ async def test_variants_and_comparison(client):
     paths = {d["path"] for d in comparison["changed_parameters"]}
     assert "design.launch_stage" in paths
     assert comparison["recommendation"]
+    assert all(variant["environment_modified"] is False for variant in comparison["variants"])
 
     worst = next(m for m in comparison["metrics"] if m["key"] == "worst_availability")
     assert worst["values"][0] > worst["values"][1]
+
+
+async def test_variant_flags_environment_modified(client):
+    """Tuning `isl_range_km` is a sensitivity study, not a design variant — the
+    flag has to survive onto the saved variant so a comparison can say so."""
+    baseline = await client.post(
+        "/api/v1/variants", json={"name": "Baseline", "scenario_id": FULL}
+    )
+    tuned = await client.post(
+        "/api/v1/variants",
+        json={"name": "Shorter ISL", "scenario_id": FULL, "config": {"isl_range_km": 2500.0}},
+    )
+    assert baseline.status_code == 201 and tuned.status_code == 201
+    assert baseline.json()["environment_modified"] is False
+    assert tuned.json()["environment_modified"] is True
+
+    comparison = (
+        await client.post(
+            "/api/v1/variants/compare",
+            json={"variant_ids": [baseline.json()["id"], tuned.json()["id"]]},
+        )
+    ).json()
+    flags = {v["id"]: v["environment_modified"] for v in comparison["variants"]}
+    assert flags[baseline.json()["id"]] is False
+    assert flags[tuned.json()["id"]] is True
 
 
 async def test_site_conditions_raise_the_horizon_and_are_reported(client):

@@ -25,6 +25,7 @@ const pendingVariant = (input: VariantCreate): Variant => ({
   meets_target: false,
   max_bounded_outage_s: 0,
   availability_by_client: {},
+  environment_modified: false,
 });
 
 export function useSaveVariant() {

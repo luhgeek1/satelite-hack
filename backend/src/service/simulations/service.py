@@ -446,6 +446,7 @@ def _variant_model(row: VariantRow) -> VariantModel:
         meets_target=summary.meets_target,
         max_bounded_outage_s=max((c.max_bounded_outage_s for c in summary.clients), default=0),
         availability_by_client={c.client_id: c.availability for c in summary.clients},
+        environment_modified=summary.environment_modified,
     )
 
 

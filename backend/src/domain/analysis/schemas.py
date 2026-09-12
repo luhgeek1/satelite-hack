@@ -193,6 +193,7 @@ class VariantModel(WireModel):
     meets_target: bool
     max_bounded_outage_s: int
     availability_by_client: dict[str, float]
+    environment_modified: bool
 
 
 class ParameterDiff(WireModel):
