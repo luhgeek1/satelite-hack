@@ -21,10 +21,14 @@ primary_region = 'fra'
     timeout = "5s"
     path = "/api/ping"
 
-# Sized for the search workers: a search is CPU-bound, so cores matter more
-# than RAM. Keep this in step with the live machines — `fly deploy` resizes
-# them to whatever is written here.
+# Dedicated cores, not shared ones. A sweep pins every core it is given for
+# tens of seconds, and Fly throttles a shared vCPU to its baseline quota once
+# the burst balance is gone — the same sweep measured 832 s on `shared-cpu-2x`
+# against 20 s here. Two cores is the right size because the fan-out is capped
+# at two workers; four measured no faster.
+#
+# Keep this in step with the live machines: `fly deploy` resizes them to
+# whatever is written here, so a size set only from the dashboard is undone by
+# the next push.
 [[vm]]
-  memory = '2gb'
-  cpus = 2
-  cpu_kind = 'shared'
+  size = 'performance-2x'

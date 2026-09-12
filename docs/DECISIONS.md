@@ -230,46 +230,41 @@ visible stall in the panel.
 
 ---
 
-**D8. Hosting: Fly.io in `fra`, three apps, and the database gets 1 GB.**
-`orbitguard-backend` (two `shared-cpu-2x` / 2 GB machines, sized in
-`backend/fly.toml`), `orbitguard-db` (Fly Postgres 18, one machine, 1 GB RAM) and
-`orbitguard-redis` (256 MB). The backend runs `alembic upgrade head` on every
-boot, so a database that is down takes the API down with it.
-*Why 1 GB for Postgres:* the default 256 MB machine was OOM-killing `postgres`
-within hours (12 Sep 2026): `postgres-flex` runs repmgr and a monitor next to the
-server and the VM had 207 MB usable. After the bump the machine idles at ~270 MB.
-*Why the backend size lives in `fly.toml`:* `fly deploy` resizes machines to the
-`[[vm]]` block, so a size set only from the dashboard is undone by the next push.
+**D9. Hosting: Fly.io in `fra`, three apps, dedicated cores for the API.**
+`orbitguard-backend` (two `performance-2x` machines — 2 dedicated cores, 4 GB —
+sized in `backend/fly.toml`), `orbitguard-db` (Fly Postgres 18, one machine,
+1 GB) and `orbitguard-redis` (256 MB). The backend runs `alembic upgrade head`
+on every boot, so a database that is down takes the API down with it.
 
-**D9. A ground site may carry its surroundings, and they can only take sky away.**
-`ground_sites[].site_conditions` holds a named profile (open, sea, forest,
-urban, mountain, custom), a uniform local mask, an optional azimuth-dependent
-horizon profile and a height above the sphere. The effective mask is
-`max(scenario mask, local mask)`; `engine/site_conditions.py` filters the ground
-edges `geometry.snapshot()` admits before routing sees them.
-*Why this shape:* the scenario mask describes the terminal — below it the link
-budget does not close — and the surroundings describe the place. Taking the
-maximum is the physics (both must hold) and it guarantees the layer never admits
-a link the organisers' geometry rejects. A site whose block raises nothing is
-skipped outright, which is what keeps the twelve reference figures byte-identical.
-*Why not model multipath or reflections:* they change link quality, not whether a
-line of sight exists, and the case counts instants with a route.
-*Why named profiles:* an engineer without a site survey should still be able to
-say "this terminal is in a city" and get a defensible number. The defaults
-(forest 15°, urban 25°, mountain 30°) are typical, not measured; each carries a
-rationale the interface shows next to the value, and `custom` exposes the number.
-*How we know it is right,* pinned by `tests/unit/test_site_conditions.py`:
-- at zero altitude our look angles equal `geometry.py`'s elevation to 1e-9°;
-- open-field visible instants = filtered visible instants + masked instants,
-  exactly, so the loss is accounted for and nothing leaks;
-- a wall to the north blocks northern bearings and nothing south of them;
-- neutral profiles leave every reference figure untouched.
-*Cost:* about 15 ms on a 165 ms run.
-*Not a sensitivity study:* two variants that differ only in surroundings are a
-legitimate design comparison — the constellation is the same, the assumption
-about the site is what changed — so the run carries `site_conditions_active`,
-not `environment_modified`, and the comparison lists the site as a changed
-parameter.
+*Why 1 GB for Postgres:* the default 256 MB machine was OOM-killing `postgres`
+within hours (12 Sep 2026) — `postgres-flex` runs repmgr and a monitor beside
+the server and the VM had 207 MB usable. It idles at ~270 MB after the bump.
+
+*Why dedicated cores:* a sweep pins every core it is given for tens of seconds,
+which is the one workload shared vCPUs are worst at. Fly throttles a shared
+vCPU to its baseline quota once the burst balance is gone, and the same
+resilience sweep measured **832 s** on `shared-cpu-2x` against **20 s** on
+dedicated cores. Two cores, not four: the fan-out is capped at two workers, so
+`performance-4x` measured no faster and cost twice as much.
+
+*Why the size lives in `fly.toml`:* `fly deploy` resizes machines to the
+`[[vm]]` block, so a size set from the dashboard is silently undone by the next
+push to `main`. D10 covers what the slow sweep did to the API.
+
+**D10. A request hands its database connection back before it computes.**
+`UoW.release()` is called after the scenario is loaded and before the engine
+runs, and `MAX_CONCURRENT_ANALYSES` caps how many sweeps hold the cores at once.
+*Why:* a session keeps its connection checked out until the transaction ends, so
+a twenty-second sweep pinned one connection for twenty seconds. Fifteen
+concurrent sweeps exhausted the pool and **every** endpoint began failing with
+`QueuePool limit of size 5 overflow 10 reached` — production showed nineteen
+transactions idle for up to fourteen minutes. The cap matters because each
+request opens its own process pool: unbounded, twenty pools on two cores starve
+each other, the client retries, and the queue grows faster than it drains. The
+database also sets `idle_in_transaction_session_timeout = 120s` as a backstop,
+which is why the engine now runs with `pool_pre_ping`.
+
+---
 
 ## E. Findings worth presenting
 

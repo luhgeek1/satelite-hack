@@ -75,12 +75,17 @@ where the work stands.
 1. **Nothing blocking.** The API covers every mandatory case requirement.
 2. Prune old runs (`SimulationRunInterface.prune` exists, nothing calls it yet).
 3. Deployment: live on Fly.io at `https://orbitguard-backend.fly.dev`, two
-   `shared-cpu-2x` machines (see D8 in DECISIONS.md). **A14 requires it to stay
-   up from code freeze until the end of all defences.** Budget CPU, not RAM: a
-   search needs about 34 MB per worker but is bound by core count and memory
-   traffic, so a two-vCPU box runs roughly four times slower than a laptop. If
-   the API dies on boot, check `orbitguard-db` first — it is the one dependency
-   that stops the migration step.
+   `performance-2x` machines (see D9 and D10 in DECISIONS.md). **A14 requires it
+   to stay up from code freeze until the end of all defences.** Budget CPU, not
+   RAM: a search needs about 34 MB per worker but is bound by core count and
+   memory traffic. Dedicated cores are not a luxury here — on shared vCPUs Fly
+   throttles to the baseline quota once the burst balance is gone, and a
+   resilience sweep took 832 s instead of 20 s.
+   Two things to check when the deployed API misbehaves. If it dies on boot,
+   look at `orbitguard-db` first: it is the one dependency that stops the
+   migration step. If every endpoint is slow or failing at once, look for
+   transactions left `idle in transaction` on the database — that is the
+   signature of a sweep holding its connection while it computes.
 
 ### Frontend
 
