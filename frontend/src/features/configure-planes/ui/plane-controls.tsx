@@ -57,6 +57,7 @@ export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
       </div>
       <p className="mt-2.5 font-label text-[11px] leading-relaxed text-zinc-500">
         RAAN 0–359°, phase 0–22.5° per plane.
+        <span className="mt-1 block">Click a value to type. Enter to apply · Esc to cancel.</span>
       </p>
     </>
   );
