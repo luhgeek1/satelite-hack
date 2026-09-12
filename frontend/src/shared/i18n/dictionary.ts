@@ -99,33 +99,6 @@ export const en = {
   'window.none': 'Nothing here to switch off.',
   'playback.focusClient': 'Show {client} on the map',
 
-  'deploy.open': 'Plan across launches',
-  'deploy.close': 'Close the deployment plan',
-  'deploy.title': 'Deployment plan',
-  'deploy.intro':
-    "A ring's angles are fixed when it is launched. The same set has to serve every stage that follows.",
-  'deploy.colStage': 'LAUNCH',
-  'deploy.colRings': 'IN ORBIT',
-  'deploy.colWorst': 'WORST',
-  'deploy.colOutage': 'MAX GAP',
-  'deploy.sv': '{count} SV',
-  'deploy.show': 'Show launch {stage} on the globe',
-  'deploy.commits': 'Commits {rings}',
-  'deploy.commitsNone': 'Nothing new committed',
-  'deploy.planFrom': 'Plan from here',
-  'deploy.planFromHint':
-    'Hold everything already in orbit, choose this launch and the later ones together, and score the finished constellation at launch {last}.',
-  'deploy.planNote':
-    'Planning a launch for its own stage alone buys a few points for three months and costs far more for the rest of the constellation\u2019s life, so the search always scores the finished constellation.',
-  'deploy.stripLabel': 'Connectivity over the day at this launch stage',
-  'deploy.spread': 'Ring spread',
-  'deploy.spreadEven': 'EVEN',
-  'deploy.spreadUneven': 'UNEVEN',
-  'deploy.spreadEvenNote':
-    'Rings sit {ideal}\u00b0 apart around the Earth, which is what a working end state looks like.',
-  'deploy.spreadUnevenNote':
-    'Rings should sit about {ideal}\u00b0 apart. Bunched rings leave a swathe of the Earth to one ring alone and the end state suffers.',
-
   'changes.title': 'Changed from the file',
   'changes.badge': 'MOD',
   'changes.reset': 'Reset all',
@@ -523,33 +496,6 @@ export const ru: Record<TranslationKey, string> = {
   'window.offNow': 'ВЫКЛ',
   'window.none': 'Здесь нечего выключать.',
   'playback.focusClient': 'Показать {client} на карте',
-
-  'deploy.open': 'План по очередям',
-  'deploy.close': 'Закрыть план развёртывания',
-  'deploy.title': 'План развёртывания',
-  'deploy.intro':
-    'Углы кольца задаются при его запуске. Один и тот же набор обслуживает все последующие очереди.',
-  'deploy.colStage': 'ОЧЕР.',
-  'deploy.colRings': 'НА ОРБИТЕ',
-  'deploy.colWorst': 'ХУДШИЙ',
-  'deploy.colOutage': 'МАКС. ПЕРЕРЫВ',
-  'deploy.sv': '{count} КА',
-  'deploy.show': 'Показать очередь {stage} на глобусе',
-  'deploy.commits': 'Фиксирует {rings}',
-  'deploy.commitsNone': 'Новых колец нет',
-  'deploy.planFrom': 'Планировать отсюда',
-  'deploy.planFromHint':
-    'Удержать всё, что уже на орбите, выбрать эту очередь и последующие вместе и оценить по полной группировке на очереди {last}.',
-  'deploy.planNote':
-    'Подбор очереди только под неё саму даёт несколько пунктов на три месяца и стоит гораздо больше на всю оставшуюся жизнь группировки, поэтому поиск всегда оценивает полную группировку.',
-  'deploy.stripLabel': 'Связность за сутки на этой очереди запуска',
-  'deploy.spread': 'Разнос колец',
-  'deploy.spreadEven': 'РАВНОМЕРНО',
-  'deploy.spreadUneven': 'НЕРАВНОМЕРНО',
-  'deploy.spreadEvenNote':
-    'Кольца стоят через {ideal}\u00b0 вокруг Земли — так выглядит работающее конечное состояние.',
-  'deploy.spreadUnevenNote':
-    'Кольца должны стоять примерно через {ideal}\u00b0. Сбитые в кучу кольца оставляют часть Земли одному кольцу, и конечное состояние страдает.',
 
   'changes.title': 'Изменено относительно файла',
   'changes.badge': 'ИЗМ',
