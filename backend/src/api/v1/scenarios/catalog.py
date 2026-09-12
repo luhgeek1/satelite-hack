@@ -4,10 +4,29 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
 
-from domain.scenario import ScenarioDetail, ScenarioSummary
+from domain.scenario import ScenarioDetail, ScenarioSummary, SiteProfileModel
+from engine import PROFILES
 from service.scenarios import ScenarioService, get_scenario_service
 
 router = APIRouter()
+
+
+@router.get(
+    path="/scenarios/site-profiles",
+    response_model=list[SiteProfileModel],
+    summary="Named surroundings profiles for ground sites, with their default masks",
+)
+async def list_site_profiles() -> list[SiteProfileModel]:
+    """Static, but served rather than duplicated: the numbers live in the engine."""
+    return [
+        SiteProfileModel(
+            id=profile.id,
+            mask_deg=profile.mask_deg,
+            altitude_m=profile.altitude_m,
+            rationale=profile.rationale,
+        )
+        for profile in PROFILES.values()
+    ]
 
 
 @router.get(

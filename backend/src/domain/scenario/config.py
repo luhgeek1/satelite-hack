@@ -50,12 +50,43 @@ class GatewayOutageConfigModel(WireModel):
         return self
 
 
+SiteProfileName = Literal["open", "sea", "forest", "urban", "mountain", "custom"]
+
+
+class SiteConditionsModel(WireModel):
+    """What surrounds one ground site — see `engine.site_conditions`.
+
+    A named profile supplies a default local mask; `mask_deg` overrides it,
+    `azimuth_mask` adds a horizon profile as `[azimuth_deg, elevation_deg]`
+    pairs, and `altitude_m` lifts the site off the sphere. The effective mask is
+    the higher of the scenario's mask and the local one, so conditions can only
+    remove links, never add them.
+    """
+
+    profile: SiteProfileName = "custom"
+    mask_deg: float | None = Field(None, ge=0, lt=90)
+    altitude_m: float | None = Field(None, ge=-500, le=9000)
+    azimuth_mask: list[tuple[float, float]] | None = Field(None, max_length=720)
+
+
+class SiteProfileModel(WireModel):
+    """A named starting point for a site's surroundings, with its rationale."""
+
+    id: str
+    mask_deg: float
+    altitude_m: float
+    rationale: str
+
+
 class ConfigModel(WireModel):
     """Overrides applied to a base scenario before a run.
 
     `failures` and `gateway_outages` replace the scenario's lists when present
     and leave them untouched when absent, so the panel can own the full list
     without needing add/remove verbs.
+
+    `sites` sets a site's surroundings; `null` for a site clears the block its
+    scenario file carried; sites not named keep whatever they had.
 
     The environment block is separate from the design block on purpose: the case
     says variants are compared at a fixed altitude, ISL range and elevation mask,
@@ -67,6 +98,7 @@ class ConfigModel(WireModel):
     planes: dict[str, PlaneConfigModel] = Field(default_factory=dict)
     failures: list[FailureConfigModel] | None = None
     gateway_outages: list[GatewayOutageConfigModel] | None = None
+    sites: dict[str, SiteConditionsModel | None] = Field(default_factory=dict)
 
     isl_range_km: float | None = Field(None, gt=0, le=10_000)
     min_elevation_deg: float | None = Field(None, ge=0, lt=90)

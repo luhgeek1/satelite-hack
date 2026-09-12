@@ -215,6 +215,32 @@
         }
       }
     },
+    "/api/v1/scenarios/site-profiles": {
+      "get": {
+        "tags": [
+          "scenarios"
+        ],
+        "summary": "Named surroundings profiles for ground sites, with their default masks",
+        "description": "Static, but served rather than duplicated: the numbers live in the engine.",
+        "operationId": "list_site_profiles_api_v1_scenarios_site_profiles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SiteProfileModel"
+                  },
+                  "type": "array",
+                  "title": "Response List Site Profiles Api V1 Scenarios Site Profiles Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/scenarios/{scenario_id}": {
       "get": {
         "tags": [
@@ -1293,6 +1319,36 @@
             },
             "type": "array",
             "title": "Outage Windows"
+          },
+          "site_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Profile",
+            "description": "Surroundings profile applied to this site, if any"
+          },
+          "effective_mask_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Mask Deg",
+            "description": "The elevation mask the site actually saw: scenario mask or higher"
+          },
+          "masked_share": {
+            "type": "number",
+            "title": "Masked Share",
+            "description": "Fraction 0…1 of instants a satellite cleared the scenario mask but the site's surroundings hid every one",
+            "default": 0.0
           }
         },
         "additionalProperties": false,
@@ -1490,6 +1546,20 @@
             ],
             "title": "Gateway Outages"
           },
+          "sites": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SiteConditionsModel"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Sites"
+          },
           "isl_range_km": {
             "anyOf": [
               {
@@ -1571,7 +1641,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ConfigModel",
-        "description": "Overrides applied to a base scenario before a run.\n\n`failures` and `gateway_outages` replace the scenario's lists when present\nand leave them untouched when absent, so the panel can own the full list\nwithout needing add/remove verbs.\n\nThe environment block is separate from the design block on purpose: the case\nsays variants are compared at a fixed altitude, ISL range and elevation mask,\nso touching those marks the run as a sensitivity study rather than a design\nvariant, and every response echoes the effective environment back."
+        "description": "Overrides applied to a base scenario before a run.\n\n`failures` and `gateway_outages` replace the scenario's lists when present\nand leave them untouched when absent, so the panel can own the full list\nwithout needing add/remove verbs.\n\n`sites` sets a site's surroundings; `null` for a site clears the block its\nscenario file carried; sites not named keep whatever they had.\n\nThe environment block is separate from the design block on purpose: the case\nsays variants are compared at a fixed altitude, ISL range and elevation mask,\nso touching those marks the run as a sensitivity study rather than a design\nvariant, and every response echoes the effective environment back."
       },
       "EphemerisResponse": {
         "properties": {
@@ -1867,11 +1937,22 @@
             "minItems": 1,
             "title": "Bounds"
           },
+          "method": {
+            "type": "string",
+            "enum": [
+              "coordinate_descent",
+              "grid"
+            ],
+            "title": "Method",
+            "description": "Move one angle at a time from several starting points, or enumerate the full grid. The grid costs coarse_steps ** free_axes full-day simulations and samples each angle far more coarsely for the same budget",
+            "default": "coordinate_descent"
+          },
           "coarse_steps": {
             "type": "integer",
             "maximum": 24.0,
             "minimum": 2.0,
             "title": "Coarse Steps",
+            "description": "Grid: samples per axis",
             "default": 6
           },
           "refine_rounds": {
@@ -1879,7 +1960,32 @@
             "maximum": 4.0,
             "minimum": 0.0,
             "title": "Refine Rounds",
+            "description": "Local steps around the winner",
             "default": 2
+          },
+          "axis_steps": {
+            "type": "integer",
+            "maximum": 64.0,
+            "minimum": 2.0,
+            "title": "Axis Steps",
+            "description": "Descent: samples per axis sweep",
+            "default": 12
+          },
+          "passes": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Passes",
+            "description": "Descent: sweeps over every axis",
+            "default": 3
+          },
+          "starts": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Starts",
+            "description": "Descent: independent starting points",
+            "default": 3
           }
         },
         "additionalProperties": false,
@@ -2826,6 +2932,12 @@
             "title": "Environment Modified",
             "description": "True when the run changed altitude/ISL range/elevation mask, which makes it a sensitivity study rather than a comparable design variant"
           },
+          "site_conditions_active": {
+            "type": "boolean",
+            "title": "Site Conditions Active",
+            "description": "True when at least one ground site models terrain, buildings or altitude that raise its horizon above the scenario mask",
+            "default": false
+          },
           "effective_scenario": {
             "additionalProperties": true,
             "type": "object",
@@ -2858,6 +2970,108 @@
           "compute_ms"
         ],
         "title": "SimulationSummary"
+      },
+      "SiteConditionsModel": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "enum": [
+              "open",
+              "sea",
+              "forest",
+              "urban",
+              "mountain",
+              "custom"
+            ],
+            "title": "Profile",
+            "default": "custom"
+          },
+          "mask_deg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 90.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mask Deg"
+          },
+          "altitude_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 9000.0,
+                "minimum": -500.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Altitude M"
+          },
+          "azimuth_mask": {
+            "anyOf": [
+              {
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array",
+                  "maxItems": 2,
+                  "minItems": 2
+                },
+                "type": "array",
+                "maxItems": 720
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Azimuth Mask"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SiteConditionsModel",
+        "description": "What surrounds one ground site — see `engine.site_conditions`.\n\nA named profile supplies a default local mask; `mask_deg` overrides it,\n`azimuth_mask` adds a horizon profile as `[azimuth_deg, elevation_deg]`\npairs, and `altitude_m` lifts the site off the sphere. The effective mask is\nthe higher of the scenario's mask and the local one, so conditions can only\nremove links, never add them."
+      },
+      "SiteProfileModel": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "mask_deg": {
+            "type": "number",
+            "title": "Mask Deg"
+          },
+          "altitude_m": {
+            "type": "number",
+            "title": "Altitude M"
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "mask_deg",
+          "altitude_m",
+          "rationale"
+        ],
+        "title": "SiteProfileModel",
+        "description": "A named starting point for a site's surroundings, with its rationale."
       },
       "SnapshotEdgeModel": {
         "properties": {
@@ -2936,6 +3150,17 @@
             },
             "type": "array",
             "title": "Offline Gateways"
+          },
+          "masked_satellites": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Masked Satellites",
+            "description": "Per site: satellites above the scenario mask that its surroundings hide"
           },
           "active_satellites": {
             "type": "integer",

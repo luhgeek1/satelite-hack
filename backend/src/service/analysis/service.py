@@ -26,7 +26,7 @@ from domain.analysis import (
 )
 from domain.analysis.schemas import CandidateModel
 from domain.scenario import ConfigModel
-from engine import ConfigOverride, FailureWindow, PlaneOverride, RoutingStrategy, apply_override
+from engine import RoutingStrategy
 from engine.analysis import analyse_gateway_dependency, analyse_resilience
 from engine.optimizer import (
     Candidate,
@@ -36,9 +36,9 @@ from engine.optimizer import (
     optimize,
     sweep_environment,
 )
-from engine.scenario import GatewayOutage, ScenarioError
 from service.analysis.jobs import Job, JobRegistry
 from service.scenarios.service import check_scenario
+from service.simulations.overrides import effective_scenario
 
 logger = logging.getLogger(__name__)
 
@@ -225,35 +225,7 @@ class AnalysisService:
         else:
             base = check_scenario(inline)
 
-        override = ConfigOverride(
-            launch_stage=config.launch_stage,
-            planes={
-                pid: PlaneOverride(raan_deg=p.raan_deg, phase_deg=p.phase_deg)
-                for pid, p in config.planes.items()
-            },
-            failures=(
-                [FailureWindow(f.satellite_id, f.start_s, f.end_s) for f in config.failures]
-                if config.failures is not None
-                else None
-            ),
-            gateway_outages=(
-                [GatewayOutage(g.gateway_id, g.start_s, g.end_s) for g in config.gateway_outages]
-                if config.gateway_outages is not None
-                else None
-            ),
-            isl_range_km=config.isl_range_km,
-            min_elevation_deg=config.min_elevation_deg,
-            altitude_km=config.altitude_km,
-            inclination_deg=config.inclination_deg,
-            step_s=config.step_s,
-            horizon_s=config.horizon_s,
-        )
-        try:
-            return apply_override(base, override)
-        except ScenarioError as exc:
-            raise BadRequestError(
-                exc.message, details={"field": exc.field} if exc.field else None
-            ) from exc
+        return effective_scenario(base, config)
 
 
 def _bounds(models: list[PlaneBoundsModel], scenario: dict[str, Any]) -> list[PlaneBounds]:

@@ -15,6 +15,7 @@ from typing import Any, Literal
 from pydantic import Field, field_validator
 
 from domain.common import WireModel
+from domain.scenario.config import SiteConditionsModel
 
 
 class ScenarioMetaModel(WireModel):
@@ -58,6 +59,8 @@ class GroundSiteModel(WireModel):
     role: Literal["client", "gateway"]
     lat_deg: float = Field(..., ge=-90, le=90)
     lon_deg: float = Field(..., ge=-180, le=180)
+    # Our extension; the official validator ignores it, the engine checks it.
+    site_conditions: SiteConditionsModel | None = None
 
 
 class FailureModel(WireModel):

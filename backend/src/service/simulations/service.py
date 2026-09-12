@@ -50,11 +50,11 @@ from domain.simulation import (
     SnapshotEdgeModel,
     SnapshotResponse,
 )
-from engine import ConfigOverride, FailureWindow, PlaneOverride, RoutingStrategy, apply_override
+from engine import RoutingStrategy, active_site_conditions
 from engine.export import build_result
-from engine.scenario import GatewayOutage, ScenarioError
 from engine.simulate import SimulationResult, ephemeris, simulate, snapshot_at
 from service.scenarios.service import check_scenario
+from service.simulations.overrides import effective_scenario
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class SimulationService:
             raise BadRequestError(str(exc)) from exc
 
         base = await self._base_scenario(request.scenario_id, request.scenario)
-        effective = self._apply(base, request.config)
+        effective = effective_scenario(base, request.config)
         strategy = RoutingStrategy(request.strategy.value)
         run_id = content_id(effective, strategy)
 
@@ -145,6 +145,7 @@ class SimulationService:
             routes=[_route_model(r) for r in snap.routes.values()],
             elevation_deg=snap.elevation_deg,
             offline_gateways=sorted(snap.offline_gateways),
+            masked_satellites={site: list(ids) for site, ids in snap.masked_satellites.items()},
             active_satellites=sum(1 for s in snap.satellites if s.active),
             total_satellites=len(snap.satellites),
         )
@@ -284,37 +285,6 @@ class SimulationService:
             return row.payload
         return check_scenario(inline)
 
-    def _apply(self, base: dict[str, Any], config: ConfigModel) -> dict[str, Any]:
-        override = ConfigOverride(
-            launch_stage=config.launch_stage,
-            planes={
-                plane_id: PlaneOverride(raan_deg=p.raan_deg, phase_deg=p.phase_deg)
-                for plane_id, p in config.planes.items()
-            },
-            failures=(
-                [FailureWindow(f.satellite_id, f.start_s, f.end_s) for f in config.failures]
-                if config.failures is not None
-                else None
-            ),
-            gateway_outages=(
-                [GatewayOutage(g.gateway_id, g.start_s, g.end_s) for g in config.gateway_outages]
-                if config.gateway_outages is not None
-                else None
-            ),
-            isl_range_km=config.isl_range_km,
-            min_elevation_deg=config.min_elevation_deg,
-            altitude_km=config.altitude_km,
-            inclination_deg=config.inclination_deg,
-            step_s=config.step_s,
-            horizon_s=config.horizon_s,
-        )
-        try:
-            return apply_override(base, override)
-        except ScenarioError as exc:
-            raise BadRequestError(
-                exc.message, details={"field": exc.field} if exc.field else None
-            ) from exc
-
     async def _require_run(self, run_id: str) -> SimulationRunRow:
         row = await self.runs.get(run_id)
         if row is None:
@@ -352,8 +322,11 @@ class SimulationService:
         config: ConfigModel,
         result: SimulationResult,
     ) -> SimulationSummary:
-        names = {site["id"]: site["name"] for site in result.effective_scenario["ground_sites"]}
+        scenario = result.effective_scenario
+        names = {site["id"]: site["name"] for site in scenario["ground_sites"]}
         availabilities = [m.availability for m in result.metrics.values()]
+        scenario_mask = float(scenario["environment"]["min_elevation_deg"])
+        conditions = active_site_conditions(scenario)
 
         return SimulationSummary(
             id=run_id,
@@ -383,6 +356,15 @@ class SimulationService:
                     min_hops=m.min_hops,
                     max_hops=m.max_hops,
                     outage_reasons=m.reason_counts,
+                    site_profile=(
+                        conditions[m.client_id].profile if m.client_id in conditions else None
+                    ),
+                    effective_mask_deg=(
+                        max(scenario_mask, conditions[m.client_id].peak_mask_deg)
+                        if m.client_id in conditions
+                        else scenario_mask
+                    ),
+                    masked_share=m.masked_share,
                     outage_windows=[
                         OutageWindowModel(
                             client_id=w.client_id,
@@ -400,9 +382,15 @@ class SimulationService:
             ],
             config=config,
             environment_modified=config.touches_environment,
-            effective_scenario=result.effective_scenario,
+            site_conditions_active=bool(conditions),
+            effective_scenario=scenario,
             compute_ms=round(result.duration_s * 1000, 2),
         )
+
+
+# Bumped whenever the stored summary gains a field, so a run persisted under the
+# previous shape is recomputed instead of being served with the field missing.
+SUMMARY_VERSION = b"summary-v2"
 
 
 def content_id(effective_scenario: dict[str, Any], strategy: RoutingStrategy) -> str:
@@ -410,6 +398,7 @@ def content_id(effective_scenario: dict[str, Any], strategy: RoutingStrategy) ->
     blob = orjson.dumps(effective_scenario, option=orjson.OPT_SORT_KEYS)
     digest = hashlib.blake2b(blob, digest_size=10)
     digest.update(strategy.value.encode())
+    digest.update(SUMMARY_VERSION)
     return f"sim_{digest.hexdigest()}"
 
 
@@ -501,7 +490,33 @@ def _parameter_diff(rows: list[VariantRow]) -> list[ParameterDiff]:
     if len(set(counts)) > 1:
         diffs.append(ParameterDiff(path="failures", label="Failure windows", values=list(counts)))
 
+    site_ids = sorted({site["id"] for s in scenarios for site in s["ground_sites"]})
+    for site_id in site_ids:
+        values = [_site_conditions_label(s, site_id) for s in scenarios]
+        if len(set(values)) > 1:
+            diffs.append(
+                ParameterDiff(
+                    path=f"ground_sites[{site_id}].site_conditions",
+                    label=f"{site_id} surroundings",
+                    values=values,
+                )
+            )
+
     return diffs
+
+
+def _site_conditions_label(scenario: dict[str, Any], site_id: str) -> str:
+    """One readable token per site: the profile and the horizon it raises to."""
+    conditions = active_site_conditions(scenario).get(site_id)
+    if conditions is None:
+        return "open"
+    mask = max(float(scenario["environment"]["min_elevation_deg"]), conditions.peak_mask_deg)
+    label = f"{conditions.profile} {mask:g}°"
+    if conditions.azimuth_mask:
+        label += " (az profile)"
+    if conditions.altitude_m:
+        label += f" +{conditions.altitude_m:g} m"
+    return label
 
 
 def _metric_rows(summaries: list[SimulationSummary]) -> list[ComparedMetric]:

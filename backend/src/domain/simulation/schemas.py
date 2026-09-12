@@ -80,6 +80,17 @@ class ClientMetricsModel(WireModel):
     max_hops: int | None
     outage_reasons: dict[str, int]
     outage_windows: list[OutageWindowModel]
+    site_profile: str | None = Field(
+        None, description="Surroundings profile applied to this site, if any"
+    )
+    effective_mask_deg: float | None = Field(
+        None, description="The elevation mask the site actually saw: scenario mask or higher"
+    )
+    masked_share: float = Field(
+        0.0,
+        description="Fraction 0…1 of instants a satellite cleared the scenario mask "
+        "but the site's surroundings hid every one",
+    )
 
 
 class AvailabilitySample(WireModel):
@@ -117,6 +128,11 @@ class SimulationSummary(WireModel):
         ...,
         description="True when the run changed altitude/ISL range/elevation mask, "
         "which makes it a sensitivity study rather than a comparable design variant",
+    )
+    site_conditions_active: bool = Field(
+        False,
+        description="True when at least one ground site models terrain, buildings or "
+        "altitude that raise its horizon above the scenario mask",
     )
     effective_scenario: dict[str, Any]
     compute_ms: float
@@ -167,6 +183,10 @@ class SnapshotResponse(WireModel):
     routes: list[RouteModel]
     elevation_deg: dict[str, dict[str, float]]
     offline_gateways: list[str]
+    masked_satellites: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Per site: satellites above the scenario mask that its surroundings hide",
+    )
     active_satellites: int
     total_satellites: int
 

@@ -165,3 +165,90 @@ async def test_variants_and_comparison(client):
 
     worst = next(m for m in comparison["metrics"] if m["key"] == "worst_availability")
     assert worst["values"][0] > worst["values"][1]
+
+
+async def test_site_conditions_raise_the_horizon_and_are_reported(client):
+    """A city around a terminal costs visibility, and every layer says so."""
+    profiles = (await client.get("/api/v1/scenarios/site-profiles")).json()
+    assert {p["id"] for p in profiles} >= {"open", "sea", "forest", "urban", "mountain"}
+    urban = next(p for p in profiles if p["id"] == "urban")
+    assert urban["rationale"]
+
+    baseline = (await client.post("/api/v1/simulations", json={"scenario_id": FULL})).json()
+    assert baseline["site_conditions_active"] is False
+    base_c65 = next(c for c in baseline["clients"] if c["client_id"] == "C65")
+    assert base_c65["effective_mask_deg"] == 10.0
+    assert base_c65["masked_share"] == 0.0
+
+    response = await client.post(
+        "/api/v1/simulations",
+        json={"scenario_id": FULL, "config": {"sites": {"C65": {"profile": "urban"}}}},
+    )
+    assert response.status_code == 200
+    summary = response.json()
+    assert summary["id"] != baseline["id"]
+    assert summary["site_conditions_active"] is True
+
+    c65 = next(c for c in summary["clients"] if c["client_id"] == "C65")
+    assert c65["site_profile"] == "urban"
+    assert c65["effective_mask_deg"] == urban["mask_deg"]
+    assert c65["visibility"] < base_c65["visibility"]
+    assert c65["masked_share"] > 0
+    assert c65["visibility"] + c65["masked_share"] == pytest.approx(base_c65["visibility"])
+
+    c70 = next(c for c in summary["clients"] if c["client_id"] == "C70")
+    assert c70["site_profile"] is None
+    assert (
+        c70["availability"]
+        == next(c for c in baseline["clients"] if c["client_id"] == "C70")["availability"]
+    )
+
+    site = next(s for s in summary["effective_scenario"]["ground_sites"] if s["id"] == "C65")
+    assert site["site_conditions"] == {"profile": "urban", "mask_deg": urban["mask_deg"]}
+
+    # Somewhere in the day a satellite is above the scenario mask yet hidden.
+    masked_seen = False
+    for t_s in range(0, 86_400, 7200):
+        snapshot = (
+            await client.get(f"/api/v1/simulations/{summary['id']}/snapshot?t_s={t_s}")
+        ).json()
+        if snapshot["masked_satellites"].get("C65"):
+            masked_seen = True
+            for sat_id in snapshot["masked_satellites"]["C65"]:
+                assert snapshot["elevation_deg"]["C65"][sat_id] >= 10.0
+                assert not any(
+                    {e["source"], e["target"]} == {"C65", sat_id} for e in snapshot["edges"]
+                )
+            break
+    assert masked_seen
+
+    bad = await client.post(
+        "/api/v1/simulations",
+        json={"scenario_id": FULL, "config": {"sites": {"C65": {"profile": "swamp"}}}},
+    )
+    assert bad.status_code == 422
+
+
+async def test_site_conditions_show_up_as_a_changed_parameter(client):
+    open_field = await client.post(
+        "/api/v1/variants", json={"scenario_id": FULL, "name": "Open field"}
+    )
+    valley = await client.post(
+        "/api/v1/variants",
+        json={
+            "scenario_id": FULL,
+            "name": "Valley",
+            "config": {"sites": {"C72": {"profile": "mountain"}}},
+        },
+    )
+    assert open_field.status_code == 201 and valley.status_code == 201
+
+    comparison = (
+        await client.post(
+            "/api/v1/variants/compare",
+            json={"variant_ids": [open_field.json()["id"], valley.json()["id"]]},
+        )
+    ).json()
+    path = "ground_sites[C72].site_conditions"
+    diff = next(d for d in comparison["changed_parameters"] if d["path"] == path)
+    assert diff["values"] == ["open", "mountain 30°"]
