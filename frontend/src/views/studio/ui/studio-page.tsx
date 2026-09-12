@@ -88,7 +88,9 @@ export function StudioPage() {
       return;
     }
 
-    const observer = new ResizeObserver(([entry]) => setPlaybackHeight(entry.contentRect.height));
+    // The rendered height, not the laid-out one: the strip draws at the data
+    // column's scale, and the card above it clears what is on screen.
+    const observer = new ResizeObserver(() => setPlaybackHeight(node.getBoundingClientRect().height));
     observer.observe(node);
     playbackObserver.current = observer;
   }, []);
@@ -391,11 +393,14 @@ export function StudioPage() {
         {!panels.hidden && (
           <motion.aside
             key={key}
-            layout
+            layout={!panel.resizing}
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: panel.layoutWidth, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={SPRING}
+            // A drag is a direct manipulation: the edge belongs under the
+            // pointer, not a beat behind it. The spring is what opening and
+            // closing the panel is worth, and nothing else.
+            transition={panel.resizing ? { duration: 0 } : SPRING}
             className="relative hidden min-h-0 flex-shrink-0 flex-col overflow-hidden border-l border-rule bg-black lg:flex"
           >
             <div className="flex min-h-0 flex-1 flex-col" style={{ width: panel.layoutWidth }}>
@@ -585,7 +590,9 @@ export function StudioPage() {
             </div>
 
             {state.tab === 'simulation' && (
-              <div ref={playbackRef}>
+              // The strip keeps step with the data column: one scale for the
+              // two frames around the map, so neither reads as the odd one.
+              <div ref={playbackRef} style={{ zoom: panel.scale }}>
               <PlaybackBar
                 tS={tS}
                 horizonS={horizonS}
