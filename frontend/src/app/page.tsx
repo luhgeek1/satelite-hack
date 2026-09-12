@@ -1,3 +1,5 @@
+import { StudioPage } from '@/views/studio';
+
 export default function Page() {
-  return <main>OrbitGuard</main>;
+  return <StudioPage />;
 }
