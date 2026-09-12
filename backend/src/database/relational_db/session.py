@@ -27,7 +27,18 @@ def get_engine(settings: Settings | None = None) -> AsyncEngine:
 
     if _engine is None:
         settings = settings or get_settings()
-        _engine = create_async_engine(settings.DATABASE_URL, echo=settings.SQL_ECHO)
+        _engine = create_async_engine(
+            settings.DATABASE_URL,
+            echo=settings.SQL_ECHO,
+            pool_size=settings.DB_POOL_SIZE,
+            max_overflow=settings.DB_MAX_OVERFLOW,
+            # The database kills transactions left idle for two minutes, and Fly
+            # recycles idle TCP anyway, so a pooled connection can be dead by the
+            # time it is reused. Check it rather than hand a broken one to a
+            # request.
+            pool_pre_ping=True,
+            pool_recycle=1800,
+        )
 
     return _engine
 

@@ -42,6 +42,25 @@ from service.scenarios.service import check_scenario
 
 logger = logging.getLogger(__name__)
 
+_analysis_slots: asyncio.Semaphore | None = None
+
+
+def analysis_gate() -> asyncio.Semaphore:
+    """Cap how many sweeps may hold the cores at once.
+
+    Built on first use rather than at import so the limit follows the settings,
+    and so the semaphore binds to whichever loop is actually running.
+    """
+    global _analysis_slots
+    if _analysis_slots is None:
+        _analysis_slots = asyncio.Semaphore(max(1, get_settings().MAX_CONCURRENT_ANALYSES))
+    return _analysis_slots
+
+
+def reset_analysis_gate() -> None:
+    global _analysis_slots
+    _analysis_slots = None
+
 
 class AnalysisService:
     def __init__(
@@ -67,18 +86,21 @@ class AnalysisService:
         strategy = RoutingStrategy(request.strategy.value)
         settings = get_settings()
 
-        started = time.perf_counter()
-        report, dependency = await asyncio.gather(
-            asyncio.to_thread(
-                analyse_resilience,
-                scenario,
-                strategy=strategy,
-                satellites=request.satellite_ids,
-                max_workers=settings.ANALYSIS_MAX_WORKERS,
-            ),
-            asyncio.to_thread(analyse_gateway_dependency, scenario, strategy=strategy),
-        )
-        elapsed = (time.perf_counter() - started) * 1000
+        await self.uow.release()
+
+        async with analysis_gate():
+            started = time.perf_counter()
+            report, dependency = await asyncio.gather(
+                asyncio.to_thread(
+                    analyse_resilience,
+                    scenario,
+                    strategy=strategy,
+                    satellites=request.satellite_ids,
+                    max_workers=settings.ANALYSIS_MAX_WORKERS,
+                ),
+                asyncio.to_thread(analyse_gateway_dependency, scenario, strategy=strategy),
+            )
+            elapsed = (time.perf_counter() - started) * 1000
 
         plane_of = {s["id"]: s["plane_id"] for s in scenario["design"]["satellites"]}
         impacts = sorted(report.impacts, key=lambda i: -i.worst_availability_drop)
@@ -127,16 +149,19 @@ class AnalysisService:
         strategy = RoutingStrategy(request.strategy.value)
         settings = get_settings()
 
-        started = time.perf_counter()
-        points = await asyncio.to_thread(
-            sweep_environment,
-            scenario,
-            parameter=request.parameter,
-            values=sorted(request.values),
-            strategy=strategy,
-            max_workers=settings.ANALYSIS_MAX_WORKERS,
-        )
-        elapsed = (time.perf_counter() - started) * 1000
+        await self.uow.release()
+
+        async with analysis_gate():
+            started = time.perf_counter()
+            points = await asyncio.to_thread(
+                sweep_environment,
+                scenario,
+                parameter=request.parameter,
+                values=sorted(request.values),
+                strategy=strategy,
+                max_workers=settings.ANALYSIS_MAX_WORKERS,
+            )
+            elapsed = (time.perf_counter() - started) * 1000
 
         return SensitivityResponse(
             parameter=request.parameter,
@@ -173,21 +198,22 @@ class AnalysisService:
         settings = get_settings()
 
         async def work(job: Job) -> OptimizeResult:
-            result = await asyncio.to_thread(
-                optimize,
-                scenario,
-                bounds=bounds,
-                strategy=strategy,
-                objective=objective,
-                method=SearchMethod(request.method),
-                coarse_steps=request.coarse_steps,
-                refine_rounds=request.refine_rounds,
-                axis_steps=request.axis_steps,
-                passes=request.passes,
-                starts=request.starts,
-                max_workers=settings.OPTIMIZER_MAX_WORKERS,
-                progress=job.note_progress,
-            )
+            async with analysis_gate():
+                result = await asyncio.to_thread(
+                    optimize,
+                    scenario,
+                    bounds=bounds,
+                    strategy=strategy,
+                    objective=objective,
+                    method=SearchMethod(request.method),
+                    coarse_steps=request.coarse_steps,
+                    refine_rounds=request.refine_rounds,
+                    axis_steps=request.axis_steps,
+                    passes=request.passes,
+                    starts=request.starts,
+                    max_workers=settings.OPTIMIZER_MAX_WORKERS,
+                    progress=job.note_progress,
+                )
             return _optimize_result(result, scenario)
 
         return _job_model(self.jobs.submit("optimize", work))

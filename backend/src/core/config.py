@@ -46,6 +46,17 @@ class Settings(BaseSettings):
     MAX_SIMULATION_STEPS: int = 5_000
     MAX_SATELLITES: int = 500
 
+    # A resilience or sensitivity sweep pins every core it is given for tens of
+    # seconds, and each request opens its own process pool. Letting an unbounded
+    # number run at once is what turned a 20 s sweep into an 832 s one in
+    # production: twenty pools on two cores starve each other, requests queue,
+    # the client retries, and the queue grows faster than it drains.
+    MAX_CONCURRENT_ANALYSES: int = 2
+
+    # Enough headroom that a slow analysis cannot starve the cheap endpoints.
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+
     # Worker counts for the fan-out analyses. `None` lets the pool decide.
     ANALYSIS_MAX_WORKERS: int | None = None
     OPTIMIZER_MAX_WORKERS: int | None = None
