@@ -87,6 +87,10 @@ service/     orchestration: resolve scenario → apply config → call engine �
 domain/      Pydantic models; this is the API contract expressed in code
 database/    SQLAlchemy tables + interfaces + UoW; redis as a pure cache
 engine/      pure calculation, no framework imports
+             geometry.py  vendored, never edited
+             scenario / routing / simulate / metrics   the mandatory path
+             analysis / optimizer                      criticality, sweeps, search
+             parallel.py                               how much machine a fan-out may take
 ```
 
 Dependencies point downward only. A service may import from `engine`, `domain`
@@ -121,13 +125,16 @@ does. Re-check these before assuming something needs to be asynchronous.
 
 | Operation | Cost |
 |---|---|
-| Full 720-instant simulation, 48 satellites, 3 clients | **~0.15 s** |
+| Full 720-instant simulation, 48 satellites, 3 clients | **~0.15–0.24 s** |
 | Edges in one snapshot | ~81 |
 | One snapshot as JSON | ~13 KB |
 | Whole-day ephemeris (positions only) | 1 MB → **324 KB gzipped** |
 | All 720 snapshots with edges | 8.6 MB — too big for one response |
 | 48-satellite criticality sweep | 6.7 s serial, **~2.3 s** across a process pool |
-| Optimizer, 730 candidates | ~25 s across a process pool |
+| Optimizer, one coordinate descent, 3 planes free | 158 candidates, **~17 s** |
+| Optimizer, full grid at 4 samples per axis | 4109 candidates, **~285 s** |
+| Parallel speed-up over 8 workers | only **~2x** — bound by memory traffic, not arithmetic |
+| Memory during a search | ~34 MB per worker, ~300 MB total |
 
 Consequences:
 
@@ -139,6 +146,11 @@ Consequences:
 - Route records are **not** persisted — regenerating costs 0.15 s, storing costs
   ~400 KB per run.
 - CPU work goes through `asyncio.to_thread`, never inline on the event loop.
+- **Cut candidates before adding cores.** Eight workers buy about 2x, so halving
+  the search is worth more than doubling the machine. `engine/parallel.py` caps
+  the pool at `cpu_count - 2` and pins numpy to one thread per worker; an
+  unbounded pool made the machine running the demo unusable and was *slower*.
+- Memory is never the constraint here. A deployment should be sized on cores.
 
 ---
 
