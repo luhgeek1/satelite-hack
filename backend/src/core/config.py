@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # Guard rails for scenarios the jury uploads: the official validator already
     # caps the horizon at 48 h, this caps the work a single request can cause.
     MAX_SCENARIO_BYTES: int = 8 * 1024 * 1024
-    MAX_SIMULATION_STEPS: int = 5_000
+    MAX_SIMULATION_STEPS: int = 8_640
     MAX_SATELLITES: int = 500
 
     # A resilience or sensitivity sweep pins every core it is given for tens of
