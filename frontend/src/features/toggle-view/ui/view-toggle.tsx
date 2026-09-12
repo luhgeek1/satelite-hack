@@ -1,13 +1,19 @@
 'use client';
 
-import { Globe as GlobeIcon, Map as MapIcon } from 'lucide-react';
+import { Globe as GlobeIcon } from 'lucide-react';
 import { useSession, type ViewMode } from '@/entities/session';
 import { cn } from '@/shared/lib';
 import { useI18n, type TranslationKey } from '@/shared/i18n';
+import { FlatMapIcon } from '@/shared/ui';
 
-const modes: Array<{ id: ViewMode; label: TranslationKey; title: TranslationKey; icon: typeof GlobeIcon }> = [
+const modes: Array<{
+  id: ViewMode;
+  label: TranslationKey;
+  title: TranslationKey;
+  icon: React.ComponentType<{ size?: number }>;
+}> = [
   { id: '3d', label: 'view.globe', title: 'view.globeTitle', icon: GlobeIcon },
-  { id: '2d', label: 'view.map', title: 'view.mapTitle', icon: MapIcon },
+  { id: '2d', label: 'view.map', title: 'view.mapTitle', icon: FlatMapIcon },
 ];
 
 export function ViewToggle({ style }: { style?: React.CSSProperties }) {

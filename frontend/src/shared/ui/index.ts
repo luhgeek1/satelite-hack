@@ -1,5 +1,6 @@
 export { BrandMark } from './brand-mark';
 export { Button, type ButtonProps } from './button';
+export { FlatMapIcon } from './flat-map-icon';
 export { ParamGroup } from './param-group';
 export { ScaleRow, ScaleCaption, SCALE_GRID } from './scale-row';
 export { MobileDrawer } from './mobile-drawer';
