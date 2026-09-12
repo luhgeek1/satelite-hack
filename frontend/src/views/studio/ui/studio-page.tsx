@@ -85,7 +85,7 @@ export function StudioPage() {
     config: state.config,
     strategy: state.strategy,
   };
-  const runInput = useDebouncedRunInput(liveInput);
+  const runInput = useDebouncedRunInput(liveInput, state.commitNonce);
   const settling = isSettling(liveInput, runInput);
 
   const simulation = useSimulation(runInput);

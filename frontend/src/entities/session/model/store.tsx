@@ -19,6 +19,8 @@ export interface SessionState {
   viewMode: ViewMode;
   tab: StudioTab;
   focusRequest: { id: string; nonce: number } | null;
+  /** Bumped when a control is released, so a run can start without waiting. */
+  commitNonce: number;
 }
 
 type Action =
@@ -26,6 +28,7 @@ type Action =
   | { type: 'setLaunchStage'; stage: 1 | 2 | 3 }
   | { type: 'setPlane'; planeId: string; raanDeg?: number; phaseDeg?: number }
   | { type: 'applyPlanes'; planes: Record<string, { raan_deg?: number; phase_deg?: number }> }
+  | { type: 'commitConfig' }
   | { type: 'addFailure'; failure: FailureDto }
   | { type: 'removeFailure'; satelliteId: string }
   | { type: 'clearFailures' }
@@ -53,6 +56,7 @@ const initialState: SessionState = {
   viewMode: '3d',
   tab: 'simulation',
   focusRequest: null,
+  commitNonce: 0,
 };
 
 function reducer(state: SessionState, action: Action): SessionState {
@@ -92,7 +96,14 @@ function reducer(state: SessionState, action: Action): SessionState {
       return {
         ...state,
         config: { ...state.config, planes: { ...state.config.planes, ...action.planes } },
+        commitNonce: state.commitNonce + 1,
       };
+
+    // Letting go of a slider is the end of a gesture, not a pause in it. The
+    // value is already in `config`; this only tells the run pipeline that no
+    // further change is coming, so it need not sit out another settle window.
+    case 'commitConfig':
+      return { ...state, commitNonce: state.commitNonce + 1 };
 
     case 'addFailure': {
       const failures = (state.config.failures ?? []).filter(
@@ -161,7 +172,13 @@ function reducer(state: SessionState, action: Action): SessionState {
     // deliberately not among the restored fields: a page that starts running
     // by itself is a surprise, not a convenience.
     case 'restore':
-      return { ...state, ...action.state, playing: false, focusRequest: null };
+      return {
+        ...state,
+        ...action.state,
+        playing: false,
+        focusRequest: null,
+        commitNonce: state.commitNonce,
+      };
 
     default:
       return state;

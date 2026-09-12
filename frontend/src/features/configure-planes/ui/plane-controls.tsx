@@ -41,6 +41,7 @@ export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
                   ticks={13}
                   majorEvery={3}
                   onChange={(value) => dispatch({ type: 'setPlane', planeId: plane.id, raanDeg: value })}
+                  onCommit={() => dispatch({ type: 'commitConfig' })}
                 />
                 <ScaleRow
                   id={`${plane.id}-phase`}
@@ -51,6 +52,7 @@ export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
                   ticks={10}
                   majorEvery={3}
                   onChange={(value) => dispatch({ type: 'setPlane', planeId: plane.id, phaseDeg: value })}
+                  onCommit={() => dispatch({ type: 'commitConfig' })}
                 />
               </div>
             </div>
