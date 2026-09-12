@@ -1,24 +1,3 @@
-"""Automatic configuration search.
-
-The engineer stays in charge: any plane parameter can be locked, and the search
-only moves what is left free. That is not a nicety — real constellation designs
-carry constraints this tool cannot see (launch windows, regulatory slots,
-agreements already signed), so a recommendation that ignores them is worthless.
-
-Two objectives are offered because the organisers and the case brief point
-different ways, and the difference is real. The case states the target "не менее
-90% для каждого наземного пункта" — per client — which argues for maximising the
-*worst* client. At the Q&A the organisers suggested an automatic recommendation
-could rank on the *mean* across clients. `WORST_FIRST` is the default since it
-matches the written target and cannot hide a village that fails; `MEAN_FIRST`
-is one field away for when the average is what the user wants to trade on.
-
-Either way the objective is lexicographic rather than a weighted sum: a weighting
-between availability, outage length and hop count would invent an exchange rate
-nobody asked for, and would quietly let a long outage buy a rounding error of
-availability.
-"""
-
 from __future__ import annotations
 
 import itertools
@@ -37,35 +16,17 @@ from .simulate import simulate
 
 
 class Objective(StrEnum):
-    """Which client aggregate leads the ranking."""
-
     WORST_FIRST = "worst_first"
     MEAN_FIRST = "mean_first"
 
 
 class SearchMethod(StrEnum):
-    """How the space is walked.
-
-    `GRID` enumerates every combination, which costs `steps ** axes` full-day
-    simulations: six free axes at four samples each is 4096 runs to sample RAAN
-    only at 0, 90, 180 and 270 degrees. It is thorough in the sense that it
-    cannot be trapped, and coarse in the sense that it steps straight over most
-    of the space it claims to cover.
-
-    `COORDINATE_DESCENT` moves one axis at a time with the rest held still, which
-    costs `starts * passes * axes * steps`. The same budget buys a far finer step
-    along each axis, and several independent starts guard against the local
-    optimum a single descent can settle into.
-    """
-
     COORDINATE_DESCENT = "coordinate_descent"
     GRID = "grid"
 
 
 @dataclass(frozen=True, slots=True)
 class PlaneBounds:
-    """Search space for one plane. `None` on a field means "locked, do not touch"."""
-
     plane_id: str
     raan_deg: tuple[float, float] | None = None
     phase_deg: tuple[float, float] | None = None
@@ -84,7 +45,6 @@ class Candidate:
     mean_hops: float
 
     def score(self, objective: Objective = None) -> tuple[float, float, int, float]:
-        """Lexicographic key, higher-is-better after sign flips."""
         objective = objective or Objective.WORST_FIRST
         leading, secondary = (
             (self.worst_availability, self.mean_availability)
@@ -119,12 +79,6 @@ def optimize(
     max_workers: int | None = None,
     progress: Callable[[int, int], None] | None = None,
 ) -> OptimizationResult:
-    """Search the free plane angles for a better configuration.
-
-    Both methods end with the same local refinement around whatever they found,
-    and both fall back to the baseline if they cannot beat it, so a search never
-    recommends a configuration worse than the one already flying.
-    """
     _install_scenario(scenario)
     baseline = _evaluate(({}, strategy))
     free = [b for b in bounds if not b.locked]
@@ -134,9 +88,6 @@ def optimize(
             baseline=baseline, best=baseline, explored=1, improved=False, objective=objective
         )
 
-    # Without the scenario's own angles a local step has no centre to move
-    # around whenever the search failed to beat the baseline, and the refinement
-    # would silently do nothing.
     defaults = {
         plane["id"]: PlaneOverride(plane["raan_deg"], plane["phase_deg"])
         for plane in scenario["design"]["planes"]
@@ -191,14 +142,6 @@ def optimize(
 
 @dataclass(slots=True)
 class _Budget:
-    """Shared progress counter.
-
-    A descent stops as soon as a pass stops improving, so the number of runs it
-    will actually make is not known when it starts. The planned figure is what
-    the caller is quoted, and the counter is clamped to it so a progress bar
-    never reports more than it promised.
-    """
-
     planned: int
     progress: Callable[[int, int], None] | None = None
     done: int = 0
@@ -210,7 +153,6 @@ class _Budget:
 
 
 def _axes(free: Sequence[PlaneBounds]) -> list[tuple[str, str, tuple[float, float]]]:
-    """Every angle the search is allowed to move, as (plane, attribute, span)."""
     return [
         (bound.plane_id, attribute, span)
         for bound in free
@@ -228,11 +170,6 @@ def planned_runs(
     starts: int,
     refine_rounds: int = 0,
 ) -> int:
-    """The quote the caller is given before committing. Never an underestimate.
-
-    Counts the baseline, the search itself and the local refinement that follows
-    it. A descent that stops improving early spends less, never more.
-    """
     if axis_count == 0:
         return 1
 
@@ -256,22 +193,11 @@ def _descend(
     starts: int,
     budget: _Budget,
 ) -> Candidate:
-    """Move one angle at a time, from several starting points.
-
-    Holding every other angle still turns one six-dimensional problem into six
-    one-dimensional ones, and a one-dimensional sweep can afford a fine step. The
-    catch is that a descent settles wherever it first stops improving, so the
-    search is repeated from independent starting points and the best is kept. The
-    starts are drawn from a fixed seed: the jury must get the same recommendation
-    from the same file twice.
-    """
     axes = _axes(free)
     rng = random.Random(20260101)
     best: Candidate | None = None
 
     for start_index in range(max(1, starts)):
-        # The first descent starts from the configuration already flying, which
-        # is the answer to beat and often already a good one.
         incumbent = (
             {}
             if start_index == 0
@@ -324,11 +250,6 @@ def _with_axis(
     attribute: str,
     value: float,
 ) -> dict[str, PlaneOverride]:
-    """The incumbent with one angle replaced, every other angle pinned.
-
-    Angles the incumbent never set are written out explicitly from the scenario,
-    so a sweep on one axis cannot quietly move another back to its default.
-    """
     updated = dict(planes)
     current = updated.get(plane_id, PlaneOverride())
     fallback = defaults.get(plane_id, PlaneOverride())
@@ -344,15 +265,6 @@ def _with_axis(
 
 
 class _Fanout:
-    """One process pool for the whole search.
-
-    A descent calls out once per axis per pass, dozens of times in a run. Each
-    `ProcessPoolExecutor` costs eight interpreter start-ups on a spawn platform,
-    so building one per sweep would cost more than the sweeps themselves. The
-    scenario rides in the initializer because it is the bulk of every payload and
-    never changes while the search runs.
-    """
-
     def __init__(self, scenario: dict[str, Any], max_workers: int | None) -> None:
         self._workers = resolve_workers(max_workers)
         self._scenario = scenario
@@ -399,14 +311,12 @@ _WORKER_SCENARIO: dict[str, Any] | None = None
 
 
 def _install_scenario(scenario: dict[str, Any]) -> None:
-    """Pool initializer: hold the scenario for the life of the worker."""
     global _WORKER_SCENARIO
     pin_worker_threads()
     _WORKER_SCENARIO = scenario
 
 
 def _evaluate(payload: tuple[dict[str, PlaneOverride], RoutingStrategy]) -> Candidate:
-    """Score one configuration. Module-level so the process pool can pickle it."""
     planes, strategy = payload
     scenario = _WORKER_SCENARIO
     if scenario is None:
@@ -446,7 +356,6 @@ def _refine_grid(
     steps: int,
     round_index: int,
 ) -> Iterable[dict[str, PlaneOverride]]:
-    """One axis at a time around the incumbent — cheap and good enough here."""
     shrink = 2 ** (round_index + 1)
 
     for bound in free:
@@ -514,12 +423,6 @@ def sweep_environment(
     strategy: RoutingStrategy = RoutingStrategy.MIN_HOPS,
     max_workers: int | None = None,
 ) -> list[SensitivityPoint]:
-    """Vary one environment parameter and report where the target starts to hold.
-
-    This is how the ISL-range finding is produced: intra-plane neighbours sit
-    2700.4 km apart at 16 satellites per plane, and the sweep shows availability
-    collapsing the moment the link budget falls below that chord.
-    """
     payloads = [(scenario, parameter, float(value), strategy) for value in values]
     workers = resolve_workers(max_workers)
 

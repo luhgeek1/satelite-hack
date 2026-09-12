@@ -1,10 +1,3 @@
-"""`src/engine/geometry.py` must stay byte-identical to the case archive.
-
-Our physics is the organisers' physics; the moment this test fails, either the
-copy drifted or the archive was updated, and both need a human decision rather
-than a silent divergence in the numbers we show the jury.
-"""
-
 import hashlib
 from pathlib import Path
 

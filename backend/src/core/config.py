@@ -1,11 +1,3 @@
-"""Application settings.
-
-Deliberately smaller than the template's: this service has no users, no uploads
-and no external ML, so the auth/storage/notification blocks were dropped rather
-than carried along switched off. Authentication is out of scope on purpose — the
-jury opens a URL and must be able to use the tool immediately.
-"""
-
 import logging
 from functools import lru_cache
 from pathlib import Path
@@ -35,22 +27,13 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:secret@localhost:5432/orbitguard"
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # Seeded from `SCENARIO_SEED_DIR` on startup so a fresh deployment always has
-    # the four official scenarios available without an import step.
     SCENARIO_SEED_DIR: str = str(BASE_DIR.parent / "data")
     SCENARIO_SEED_ENABLED: bool = True
 
-    # Guard rails for scenarios the jury uploads: the official validator already
-    # caps the horizon at 48 h, this caps the work a single request can cause.
     MAX_SCENARIO_BYTES: int = 8 * 1024 * 1024
     MAX_SIMULATION_STEPS: int = 5_000
     MAX_SATELLITES: int = 500
 
-    # A resilience or sensitivity sweep pins every core it is given for tens of
-    # seconds, and each request opens its own process pool. Letting an unbounded
-    # number run at once is what turned a 20 s sweep into an 832 s one in
-    # production: twenty pools on two cores starve each other, requests queue,
-    # the client retries, and the queue grows faster than it drains.
     MAX_CONCURRENT_ANALYSES: int = 2
 
     # Enough headroom that a slow analysis cannot starve the cheap endpoints.
@@ -68,7 +51,6 @@ class Settings(BaseSettings):
     @field_validator("ANALYSIS_MAX_WORKERS", "OPTIMIZER_MAX_WORKERS", mode="before")
     @classmethod
     def _blank_means_auto(cls, value: int | str | None) -> int | None:
-        """An empty entry in `.env` means "let the pool size itself", not zero."""
         if value is None or (isinstance(value, str) and not value.strip()):
             return None
         return value

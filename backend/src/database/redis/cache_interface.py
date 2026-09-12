@@ -1,10 +1,3 @@
-"""Best-effort cache for computed snapshots and ephemerides.
-
-Every miss — including "Redis is unreachable" — just means recomputing, which
-costs milliseconds. So nothing here raises: a cache that can take the service
-down is worse than no cache.
-"""
-
 from __future__ import annotations
 
 import logging

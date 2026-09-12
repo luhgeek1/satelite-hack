@@ -1,5 +1,3 @@
-"""Resilience, comparison, sensitivity and optimizer payloads."""
-
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -22,14 +20,6 @@ class ResilienceRequest(WireModel):
 
 
 class SatelliteImpactModel(WireModel):
-    """How much the network loses without this satellite.
-
-    `worst_availability_drop` is measured on the *worst-served* client, not the
-    average, because the 90% target is judged per client: a satellite whose loss
-    costs one village 9 points and the others nothing is critical, and an average
-    would bury it.
-    """
-
     satellite_id: str
     plane_id: str
     worst_availability_drop: float
@@ -40,13 +30,6 @@ class SatelliteImpactModel(WireModel):
 
 
 class GatewayDependencyModel(WireModel):
-    """How narrow the network's exit to the ground is.
-
-    Named by the organisers as one of the two things an engineer looks for first
-    (alongside long outages). With a single gateway the question is how many
-    satellites ever deliver to it and how much of the day rests on the busiest.
-    """
-
     gateway_id: str
     serving_satellites: list[str]
     busiest_satellite: str | None
@@ -66,8 +49,6 @@ class ResilienceResponse(WireModel):
 
 
 class SensitivityRequest(WireModel):
-    """Sweep one environment parameter to find where the target starts to hold."""
-
     scenario_id: str | None = None
     scenario: dict[str, Any] | None = None
     config: ConfigModel = Field(default_factory=ConfigModel)
@@ -94,14 +75,6 @@ class SensitivityResponse(WireModel):
 
 
 class PlaneBoundsModel(WireModel):
-    """Search space for one plane.
-
-    A `null` range means the parameter is **locked**: the engineer pins what the
-    real project has already fixed — a launch window, an agreed RAAN slot — and
-    the optimizer works around it. Without locks a recommendation is just a
-    number that ignores the constraints that actually bind.
-    """
-
     plane_id: str
     raan_deg: tuple[float, float] | None = None
     phase_deg: tuple[float, float] | None = None
@@ -154,8 +127,6 @@ class OptimizeResult(WireModel):
 
 
 class JobStatusModel(WireModel):
-    """Progress for the one operation slow enough to need it."""
-
     id: str
     kind: Literal["optimize"]
     status: Literal["queued", "running", "done", "failed"]
@@ -168,8 +139,6 @@ class JobStatusModel(WireModel):
 
 
 class VariantCreate(WireModel):
-    """A saved design the engineer can return to and compare."""
-
     name: str = Field(..., min_length=1, max_length=120)
     note: str | None = Field(None, max_length=1000)
     scenario_id: str | None = None
@@ -197,8 +166,6 @@ class VariantModel(WireModel):
 
 
 class ParameterDiff(WireModel):
-    """One parameter that differs between the compared variants."""
-
     path: str
     label: str
     values: list[float | int | str | None]
@@ -223,12 +190,6 @@ class CompareRequest(WireModel):
 
 
 class CompareResponse(WireModel):
-    """Side-by-side view: what changed, and what it bought.
-
-    `changed_parameters` is the case's explicit requirement that a comparison
-    shows the changed parameters, not only the resulting numbers.
-    """
-
     variants: list[VariantModel]
     changed_parameters: list[ParameterDiff]
     metrics: list[ComparedMetric]

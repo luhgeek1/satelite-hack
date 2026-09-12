@@ -1,11 +1,3 @@
-"""The simulation loop: propagate, build the graph, route, summarise.
-
-One full run over the official grid (720 instants, 48 satellites, 3 clients)
-takes ~0.15 s, so simulation is synchronous everywhere — there is no job queue
-behind `POST /simulations`. Only the optimizer, which runs hundreds of these,
-needs background execution.
-"""
-
 from __future__ import annotations
 
 import math
@@ -62,13 +54,6 @@ class Snapshot:
 
 @dataclass(slots=True)
 class SimulationResult:
-    """Everything one run produces.
-
-    `routes` holds every (instant, client) pair because the official export
-    format demands exactly that — one record per pair, empty path when there is
-    no route — so it is cheaper to keep them than to recompute at export time.
-    """
-
     effective_scenario: dict[str, Any]
     strategy: RoutingStrategy
     time_grid: tuple[int, ...]
@@ -100,12 +85,6 @@ def simulate(
     strategy: RoutingStrategy = RoutingStrategy.MIN_HOPS,
     keep_positions: bool = False,
 ) -> SimulationResult:
-    """Run a scenario over its whole time grid.
-
-    `keep_positions` is off by default: the optimizer runs this hundreds of times
-    and only ever reads the metrics, so holding 720x48 positions per candidate
-    would be pure waste.
-    """
     import time
 
     started = time.perf_counter()
@@ -126,8 +105,6 @@ def simulate(
     routes: dict[int, dict[str, RouteResult]] = {}
     positions: dict[int, tuple[SatelliteState, ...]] = {}
 
-    # Empty unless a site declares surroundings that raise its horizon, in
-    # which case the organisers' snapshot is filtered before routing sees it.
     horizons = prepare_horizons(scenario)
 
     for t_s in grid:
@@ -148,8 +125,6 @@ def simulate(
 
             in_view = any(n in active_ids for n, _ in graph.neighbours(client_id))
             visible[client_id].append(in_view)
-            # A satellite was above the scenario mask, but the site's own
-            # horizon hid every one of them: visibility lost to surroundings.
             masked[client_id].append(not in_view and bool(masked_now.get(client_id)))
             routed[client_id].append(result.available)
             hop_counts[client_id].append(result.hops)
@@ -191,12 +166,6 @@ def snapshot_at(
     *,
     strategy: RoutingStrategy = RoutingStrategy.MIN_HOPS,
 ) -> Snapshot:
-    """One instant, fully described — what the globe draws for a timeline position.
-
-    Serving these on demand rather than shipping all 720 up front keeps the
-    simulation response small: the full edge list for a day is ~8 MB, a single
-    instant is ~13 KB.
-    """
     snap, masked = apply_site_conditions(
         geometry.snapshot(scenario, t_s), prepare_horizons(scenario)
     )
@@ -266,12 +235,6 @@ def _satellite_states(snap: dict[str, Any], order: Sequence[str]) -> tuple[Satel
 
 
 def ecef_to_geodetic(x_km: float, y_km: float, z_km: float) -> tuple[float, float, float]:
-    """Earth-fixed cartesian to lat/lon/altitude.
-
-    The case models a spherical Earth, so this is the plain spherical conversion
-    rather than a WGS-84 one — using an ellipsoid here would disagree with the
-    elevation angles `geometry.py` computes.
-    """
     radius = math.sqrt(x_km * x_km + y_km * y_km + z_km * z_km)
     if radius == 0.0:
         return 0.0, 0.0, -EARTH_RADIUS_KM
@@ -285,11 +248,6 @@ def ephemeris(
     *,
     step_s: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Positions only, over the whole horizon — what the globe animates.
-
-    `step_s` may coarsen the official grid (the UI interpolates between samples);
-    it never refines it, so the samples always land on real calculation instants.
-    """
     env = scenario["environment"]
     base_step = env["step_s"]
     sample_step = base_step if step_s is None else max(base_step, (step_s // base_step) * base_step)

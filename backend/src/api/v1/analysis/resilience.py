@@ -1,5 +1,3 @@
-"""Resilience, sensitivity and the configuration optimizer."""
-
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
@@ -26,7 +24,6 @@ async def analyse_resilience(
     request: ResilienceRequest,
     svc: Annotated[AnalysisService, Depends(get_analysis_service)],
 ) -> ResilienceResponse:
-    """Runs one full simulation per satellite across a process pool (~2.3 s for 48)."""
     return await svc.resilience(request)
 
 
@@ -52,5 +49,4 @@ async def start_optimization(
     request: OptimizeRequest,
     svc: Annotated[AnalysisService, Depends(get_analysis_service)],
 ) -> JobStatusModel:
-    """Locked parameters are honoured: pass `null` for a range to pin it."""
     return await svc.start_optimization(request)

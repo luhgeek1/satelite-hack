@@ -1,5 +1,3 @@
-"""Configuration search: what it promises and what it delivers."""
-
 import pytest
 
 from engine.optimizer import (
@@ -14,8 +12,6 @@ pytestmark = pytest.mark.unit
 
 FREE_SPAN = dict(raan_deg=(0.0, 360.0), phase_deg=(0.0, 22.5))
 
-# Deliberately coarse: the suite has to stay in seconds, and every claim below
-# holds at these settings as well as at the ones the service ships.
 DESCENT = dict(
     method=SearchMethod.COORDINATE_DESCENT,
     axis_steps=6,
@@ -44,7 +40,6 @@ def test_descent_beats_the_flying_configuration(descent):
 
 
 def test_descent_is_reproducible(full_constellation, free_planes, descent):
-    """The jury must get the same recommendation from the same file twice."""
     again = optimize(full_constellation, bounds=free_planes, **DESCENT)
 
     assert again.best.planes == descent.best.planes
@@ -52,11 +47,6 @@ def test_descent_is_reproducible(full_constellation, free_planes, descent):
 
 
 def test_descent_beats_the_grid_for_fewer_runs(full_constellation, free_planes, descent):
-    """The cheap search is the default because it is also the better one.
-
-    Enumerating six axes can only afford two samples per angle at this budget,
-    which steps straight over the optimum a one-dimensional sweep walks into.
-    """
     grid = optimize(
         full_constellation,
         bounds=free_planes,

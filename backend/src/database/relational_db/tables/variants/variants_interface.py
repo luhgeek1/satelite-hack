@@ -1,5 +1,3 @@
-"""Data access for runs and saved variants."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -24,11 +22,6 @@ class SimulationRunInterface:
         return row
 
     async def upsert(self, run_id: str, **fields: Any) -> SimulationRunRow:
-        """Runs are keyed by a content hash, so an identical re-run just refreshes.
-
-        That makes `POST /simulations` idempotent: dragging a slider back to where
-        it was returns the same id instead of littering the table.
-        """
         existing = await self.session.get(SimulationRunRow, run_id)
         if existing is None:
             return await self.create(id=run_id, **fields)
@@ -38,11 +31,6 @@ class SimulationRunInterface:
         return existing
 
     async def prune(self, keep_ids: set[str], limit: int = 200) -> int:
-        """Drop unreferenced runs beyond `limit`, newest kept.
-
-        Runs accumulate fast during a demo; saved variants and anything in
-        `keep_ids` are never touched.
-        """
         stmt = (
             select(SimulationRunRow.id)
             .outerjoin(VariantRow, VariantRow.run_id == SimulationRunRow.id)
@@ -71,7 +59,6 @@ class VariantInterface:
         return (await self.session.scalars(stmt)).unique().one_or_none()
 
     async def get_many(self, variant_ids: list[str]) -> list[VariantRow]:
-        """Returned in the order asked for, so comparison columns stay predictable."""
         stmt = select(VariantRow).where(VariantRow.id.in_(variant_ids))
         rows = (await self.session.scalars(stmt)).unique().all()
         by_id = {row.id: row for row in rows}

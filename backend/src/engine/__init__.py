@@ -1,14 +1,3 @@
-"""Pure calculation core.
-
-Nothing in this package may import FastAPI, SQLAlchemy or anything else from the
-service layers: the engine has to stay runnable (and testable) on its own, which
-is what `tests/unit` relies on and what the jury can inspect in isolation.
-
-`geometry.py` is the organisers' module, vendored byte-for-byte — see
-`tests/unit/test_geometry_vendored.py`, which fails if it ever drifts from the
-copy shipped in the case archive.
-"""
-
 from .routing import NoRouteReason, RouteResult, RoutingStrategy
 from .scenario import (
     ConfigOverride,

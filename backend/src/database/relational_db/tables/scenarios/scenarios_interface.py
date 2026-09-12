@@ -1,5 +1,3 @@
-"""Data access for scenarios."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -16,7 +14,6 @@ class ScenarioInterface:
         self.session = session
 
     async def list(self) -> list[ScenarioRow]:
-        """Official scenarios first, then newest imports — the picker's order."""
         stmt = select(ScenarioRow).order_by(
             (ScenarioRow.source != "official"),
             ScenarioRow.id,
@@ -49,11 +46,6 @@ class ScenarioInterface:
     async def upsert_official(
         self, *, scenario_id: str, title: str, payload: dict[str, Any]
     ) -> None:
-        """Seed or refresh a bundled scenario without disturbing imports.
-
-        Used on startup, so a redeploy picks up a corrected case file while any
-        scenario the jury uploaded stays exactly as they left it.
-        """
         stmt = (
             insert(ScenarioRow)
             .values(id=scenario_id, title=title, payload=payload, source="official")
@@ -74,19 +66,11 @@ class ScenarioInterface:
         return (await self.session.scalar(stmt)) is not None
 
     async def rename(self, scenario_id: str, title: str) -> ScenarioRow | None:
-        """Rename an imported scenario or saved import — never an official one.
-
-        `seed_official` overwrites an official row's title from the case file
-        on every startup, so a rename there would silently vanish; the source
-        check here is what `delete` already does for the same reason.
-        """
         row = await self.session.get(ScenarioRow, scenario_id)
         if row is None or row.source == "official":
             return None
 
         row.title = title
-        # `payload` is plain JSONB (no mutable tracking), so the nested title
-        # must be replaced via a fresh dict, not mutated in place.
         row.payload = {**row.payload, "meta": {**row.payload["meta"], "title": title}}
         await self.session.flush()
         return row

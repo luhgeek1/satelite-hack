@@ -32,10 +32,6 @@ def get_engine(settings: Settings | None = None) -> AsyncEngine:
             echo=settings.SQL_ECHO,
             pool_size=settings.DB_POOL_SIZE,
             max_overflow=settings.DB_MAX_OVERFLOW,
-            # The database kills transactions left idle for two minutes, and Fly
-            # recycles idle TCP anyway, so a pooled connection can be dead by the
-            # time it is reused. Check it rather than hand a broken one to a
-            # request.
             pool_pre_ping=True,
             pool_recycle=1800,
         )
@@ -105,7 +101,6 @@ async def wait_for_db(timeout: int = 20, retry_interval: int = 2) -> None:
 
 
 async def get_uow() -> AsyncGenerator[UoW]:
-    """Yields Unit of Work instead of raw sessions."""
     session_factory = get_session_factory()
     async with session_factory() as session, UoW(session) as uow:
         yield uow

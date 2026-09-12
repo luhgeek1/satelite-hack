@@ -1,28 +1,3 @@
-"""Local conditions at a ground site: terrain, buildings, sea level.
-
-The case models every ground site as a point on a smooth sphere and applies one
-elevation mask to all of them. That mask describes the *terminal* — below it the
-link budget does not close — and says nothing about what stands around the
-antenna. A terminal on a tundra plain, one between five-storey blocks in
-Murmansk and one on a valley floor see very different amounts of sky, and the
-case owner named exactly this as the extension a real design tool needs.
-
-This module adds that layer without touching the organisers' geometry:
-
-* `geometry.snapshot()` already returns the elevation of every active satellite
-  from every site and the ground links it admits at the scenario mask;
-* each site may carry a `site_conditions` block — a named profile, a uniform
-  mask, an azimuth-dependent horizon profile, a height above the sphere;
-* the effective mask at a site is `max(scenario mask, local mask)`, so local
-  conditions can only *remove* links, never invent one the case would reject.
-  A site whose conditions raise nothing is neutral and is skipped entirely, so
-  the reference figures are untouched unless a site really is obstructed.
-
-Multipath and reflections are deliberately not modelled: they change link
-quality, not whether a geometric line of sight exists, and the case counts
-instants with a route, not bits delivered.
-"""
-
 from __future__ import annotations
 
 import math
@@ -45,14 +20,6 @@ ALTITUDE_MAX_M = 9000.0
 
 @dataclass(frozen=True, slots=True)
 class SiteProfile:
-    """A named starting point for a site's surroundings.
-
-    The mask values are typical, not measured at any real site: they exist so an
-    engineer can say "this terminal is in a city" and get a defensible number
-    without a survey. The rationale is shown in the interface next to the value
-    so nobody mistakes the default for a fact about their site.
-    """
-
     id: str
     mask_deg: float
     altitude_m: float
@@ -95,15 +62,6 @@ PROFILES: dict[str, SiteProfile] = {
 
 @dataclass(frozen=True, slots=True)
 class SiteConditions:
-    """What surrounds one ground site.
-
-    `mask_deg` is a uniform local horizon. `azimuth_mask` is an optional
-    piecewise-linear horizon profile as (azimuth, elevation) pairs in degrees,
-    azimuth clockwise from north; where both are given the higher applies.
-    `altitude_m` lifts the site off the sphere, which slightly changes every
-    elevation angle measured from it.
-    """
-
     profile: str
     mask_deg: float
     altitude_m: float = 0.0
@@ -132,7 +90,6 @@ class SiteConditions:
 
     @classmethod
     def from_dict(cls, raw: Any, *, field_path: str) -> SiteConditions:
-        """Parse and validate a `site_conditions` block, naming the offending field."""
         if not isinstance(raw, dict):
             raise ScenarioError("site_conditions must be an object", field=field_path)
 
@@ -191,16 +148,9 @@ class SiteConditions:
 
     @property
     def peak_mask_deg(self) -> float:
-        """The highest local horizon in any direction."""
         return max([self.mask_deg, *(e for _, e in self.azimuth_mask)])
 
     def is_neutral(self, scenario_mask_deg: float) -> bool:
-        """True when these conditions cannot remove a single link.
-
-        A neutral site is skipped outright, which is what keeps the twelve
-        reference figures byte-identical: the filter never even runs on a site
-        the case would treat as an open field.
-        """
         return self.altitude_m == 0.0 and self.peak_mask_deg <= scenario_mask_deg
 
 
@@ -215,14 +165,12 @@ def parse_site_conditions(
 
 
 def validate_site_conditions(scenario: dict[str, Any]) -> None:
-    """Check every site's block; the official validator ignores unknown keys."""
     for index, site in enumerate(scenario.get("ground_sites", [])):
         if isinstance(site, dict):
             parse_site_conditions(site, index=index)
 
 
 def active_site_conditions(scenario: dict[str, Any]) -> dict[str, SiteConditions]:
-    """Sites whose conditions actually raise the horizon somewhere."""
     scenario_mask = float(scenario["environment"]["min_elevation_deg"])
     active: dict[str, SiteConditions] = {}
     for site in scenario["ground_sites"]:
@@ -234,13 +182,6 @@ def active_site_conditions(scenario: dict[str, Any]) -> dict[str, SiteConditions
 
 @dataclass(frozen=True, slots=True)
 class SiteHorizon:
-    """One site's sky, precomputed once per run.
-
-    Holds the site position (lifted by its altitude), the local east/north/up
-    frame for azimuths, and the mask profile, so the per-instant test is a few
-    vector operations over all satellites at once.
-    """
-
     site_id: str
     conditions: SiteConditions
     scenario_mask_deg: float
@@ -257,8 +198,6 @@ class SiteHorizon:
     ) -> SiteHorizon:
         lat = math.radians(site["lat_deg"])
         lon = math.radians(site["lon_deg"])
-        # The same unit vector geometry.py uses (`ground_position / R`), so a
-        # site at zero altitude reproduces its elevation angles exactly.
         up = geometry.ground_position(site) / geometry.R
         east = np.array([-math.sin(lon), math.cos(lon), 0.0])
         north = np.array(
@@ -280,7 +219,6 @@ class SiteHorizon:
         )
 
     def look_angles(self, xyz: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Elevation and azimuth (degrees) of each satellite as seen from the site."""
         dif = xyz - self.position
         dist = np.linalg.norm(dif, axis=1)
         elevation = np.degrees(np.arcsin(np.clip(dif @ self.up / dist, -1.0, 1.0)))
@@ -295,13 +233,11 @@ class SiteHorizon:
         return mask
 
     def admits(self, xyz: np.ndarray) -> np.ndarray:
-        """Which satellites clear this site's local horizon."""
         elevation, azimuth = self.look_angles(xyz)
         return elevation >= self.effective_mask(azimuth)
 
 
 def prepare_horizons(scenario: dict[str, Any]) -> dict[str, SiteHorizon]:
-    """Horizons for every non-neutral site — empty for an unmodified scenario."""
     scenario_mask = float(scenario["environment"]["min_elevation_deg"])
     active = active_site_conditions(scenario)
     by_id = {site["id"]: site for site in scenario["ground_sites"]}
@@ -314,12 +250,6 @@ def prepare_horizons(scenario: dict[str, Any]) -> dict[str, SiteHorizon]:
 def apply_site_conditions(
     snap: dict[str, Any], horizons: dict[str, SiteHorizon]
 ) -> tuple[dict[str, Any], dict[str, list[str]]]:
-    """Drop the ground links a site's surroundings block.
-
-    Returns the filtered snapshot and, per site, the satellites that
-    `geometry.py` considered in view but the local horizon hides — the thing to
-    draw as "above the mask, behind the buildings".
-    """
     if not horizons:
         return snap, {}
 

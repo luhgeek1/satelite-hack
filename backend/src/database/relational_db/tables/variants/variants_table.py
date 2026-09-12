@@ -1,15 +1,3 @@
-"""Saved design variants and the runs behind them.
-
-A *run* is one execution of the engine; a *variant* is a run the engineer chose
-to keep and name. They are separate rows because most runs are throwaway — every
-slider drag makes one — while variants are the handful that go into the
-comparison the case asks for.
-
-Neither row stores the 2160 route records. Re-simulating takes ~0.15 s, so the
-effective scenario plus the summary metrics is all that is worth persisting;
-routes and snapshots are regenerated on demand and cached in Redis.
-"""
-
 from __future__ import annotations
 
 from typing import Any

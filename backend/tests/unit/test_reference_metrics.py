@@ -1,11 +1,3 @@
-"""The calculation is pinned to the organisers' own numbers.
-
-These four scenarios with their twelve metrics are the contract with the
-technical reviewers: if a refactor moves any of them, the refactor is wrong.
-Figures were produced independently from `geometry.py` with shortest-hop routing
-and agree with the reference set in the project brief to six decimal places.
-"""
-
 import pytest
 
 from engine import load_scenario, simulate
@@ -57,16 +49,11 @@ def test_full_constellation_meets_target(data_dir):
     "scenario_name", ["02_first_launch", "03_satellite_outages", "04_link_range"]
 )
 def test_degraded_scenarios_miss_target(data_dir, scenario_name):
-    """Every stress scenario fails the 90% target — that is the case's whole story."""
     result = simulate(load_scenario(data_dir / f"{scenario_name}.json"))
     assert not any(m.meets_target for m in result.metrics.values())
 
 
 def test_visibility_never_below_availability(data_dir):
-    """A route implies a visible satellite, so availability can never exceed visibility.
-
-    This is the "спутник над головой ещё не связь" invariant stated as an assertion.
-    """
     for scenario_name in REFERENCE:
         result = simulate(load_scenario(data_dir / f"{scenario_name}.json"))
         for metrics in result.metrics.values():
@@ -74,7 +61,6 @@ def test_visibility_never_below_availability(data_dir):
 
 
 def test_grid_is_left_closed(full_constellation):
-    """720 instants at 0…86280 — the right edge is excluded, per the case."""
     result = simulate(full_constellation)
     assert len(result.time_grid) == 720
     assert result.time_grid[0] == 0

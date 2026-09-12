@@ -1,5 +1,3 @@
-"""Resilience, sensitivity and the optimizer job."""
-
 import asyncio
 
 import pytest
@@ -31,11 +29,6 @@ async def test_resilience_ranks_satellites_and_reports_gateway_exposure(client):
 
 
 async def test_sensitivity_finds_the_isl_threshold(client):
-    """Below the 2700.4 km in-plane chord the mesh cannot form along an orbit.
-
-    Sweeping across that value is what turns "availability is low" into a
-    hardware requirement we can put in front of an engineer.
-    """
     response = await client.post(
         "/api/v1/analysis/sensitivity",
         json={
@@ -55,7 +48,6 @@ async def test_sensitivity_finds_the_isl_threshold(client):
 
 
 async def test_optimizer_runs_as_a_job_and_respects_locks(client):
-    """P1 is pinned, so the recommendation must never move it."""
     started = await client.post(
         "/api/v1/analysis/optimize",
         json={
@@ -97,13 +89,6 @@ async def test_optimizer_rejects_a_fully_locked_search(client):
 
 
 async def test_a_poll_for_another_machines_job_is_replayed_to_it(client, monkeypatch):
-    """The registry is per-process, so a second machine must not answer 404.
-
-    With more than one machine behind the load balancer roughly half the polls
-    land on the machine that is not running the search. Answering 404 there is
-    what made the progress bar stall at 1%. The owner is in the job id, and the
-    proxy is asked to move the request rather than the job state being shared.
-    """
     monkeypatch.setenv("FLY_MACHINE_ID", "cafe1234567890")
 
     response = await client.get("/api/v1/jobs/opt_beef0987654321_a1b2c3d4")
@@ -113,7 +98,6 @@ async def test_a_poll_for_another_machines_job_is_replayed_to_it(client, monkeyp
 
 
 async def test_a_poll_on_the_owning_machine_is_answered_there(client, monkeypatch):
-    """No replay when the poll already arrived at the machine named in the id."""
     monkeypatch.setenv("FLY_MACHINE_ID", "beef0987654321")
 
     response = await client.get("/api/v1/jobs/opt_beef0987654321_a1b2c3d4")
@@ -123,7 +107,6 @@ async def test_a_poll_on_the_owning_machine_is_answered_there(client, monkeypatc
 
 
 async def test_a_poll_the_proxy_already_moved_is_answered_not_bounced(client, monkeypatch):
-    """A job whose machine is gone has to 404 somewhere rather than loop."""
     monkeypatch.setenv("FLY_MACHINE_ID", "cafe1234567890")
 
     response = await client.get(
@@ -135,7 +118,6 @@ async def test_a_poll_the_proxy_already_moved_is_answered_not_bounced(client, mo
 
 
 async def test_a_job_id_without_an_owner_is_handled_locally(client, monkeypatch):
-    """Ids minted before the owner was encoded must still resolve, not replay."""
     monkeypatch.setenv("FLY_MACHINE_ID", "cafe1234567890")
 
     response = await client.get("/api/v1/jobs/opt_deadbeefcafe")
@@ -145,7 +127,6 @@ async def test_a_job_id_without_an_owner_is_handled_locally(client, monkeypatch)
 
 
 async def test_a_submitted_job_names_the_machine_that_owns_it(client, monkeypatch):
-    """The id has to carry the owner, or a poll cannot be routed back to it."""
     monkeypatch.setenv("FLY_MACHINE_ID", "cafe1234567890")
 
     response = await client.post(

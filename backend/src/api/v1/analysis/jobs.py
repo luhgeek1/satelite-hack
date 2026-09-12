@@ -1,14 +1,3 @@
-"""Job status for the optimizer.
-
-The registry lives in the process that started the search (see
-`service/analysis/jobs.py`), so with more than one machine behind the load
-balancer a poll lands on the owner only some of the time. Rather than move job
-state into a shared store for one job kind, the owner is encoded in the job id
-and a misdirected poll is handed back to Fly's proxy with a `fly-replay` header,
-which re-runs the request on the right machine. The client sees one ordinary
-response and never learns this happened.
-"""
-
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -19,17 +8,10 @@ from service.analysis.jobs import owner_of, this_machine
 
 router = APIRouter()
 
-# Set by the proxy on a request it has already moved. Without this guard a job
-# whose machine is gone would bounce between machines instead of 404ing.
 _REPLAYED = "fly-replay-src"
 
 
 def _replay_to_owner(request: Request, job_id: str) -> Response | None:
-    """Ask the proxy to re-run this request on the machine holding the job.
-
-    `None` means the request is already in the right place: we own the job, the
-    id names no owner, or the proxy has moved this request once already.
-    """
     if _REPLAYED in request.headers:
         return None
 
@@ -39,9 +21,6 @@ def _replay_to_owner(request: Request, job_id: str) -> Response | None:
 
     return Response(
         status_code=status.HTTP_204_NO_CONTENT,
-        # `prefer_instance` rather than `instance`: if that machine has been
-        # replaced the poll still gets answered — by a machine that will honestly
-        # say the job is gone — instead of failing at the proxy.
         headers={"fly-replay": f"prefer_instance={owner}"},
     )
 

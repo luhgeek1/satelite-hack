@@ -1,9 +1,3 @@
-"""Translate the wire configuration into the engine's override.
-
-One place for the mapping, because two services (simulations and analysis)
-apply the same panel state to a base scenario and must never disagree on how.
-"""
-
 from __future__ import annotations
 
 from typing import Any
@@ -54,7 +48,6 @@ def to_override(config: ConfigModel) -> ConfigOverride:
 
 
 def effective_scenario(base: dict[str, Any], config: ConfigModel) -> dict[str, Any]:
-    """Apply the panel state, turning an engine complaint into a 400 that names the field."""
     try:
         return apply_override(base, to_override(config))
     except ScenarioError as exc:

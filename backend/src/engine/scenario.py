@@ -1,13 +1,3 @@
-"""Scenario loading, validation and configuration overrides.
-
-The official schema (`cosmo-A-1.0`) is the single source of truth: a scenario is
-kept as the plain dict the organisers' `geometry.py` expects, never as a bespoke
-object graph. Overrides from the UI are applied by producing a *new* scenario
-dict — the "effective scenario" — which is both what we simulate and what we
-write into the export, so a result file always round-trips to the run that
-produced it.
-"""
-
 from __future__ import annotations
 
 import copy
@@ -48,23 +38,11 @@ class GatewayOutage:
 
 @dataclass(frozen=True, slots=True)
 class ConfigOverride:
-    """Everything the configuration panel can change about a scenario.
-
-    `failures` and `gateway_outages` replace the scenario's lists wholesale when
-    given (the UI owns the full list), which keeps "remove a failure" expressible
-    without a separate delete verb.
-    """
-
     launch_stage: int | None = None
     planes: dict[str, PlaneOverride] = field(default_factory=dict)
     failures: list[FailureWindow] | None = None
     gateway_outages: list[GatewayOutage] | None = None
-    # Local conditions per ground site: a value sets them, `None` clears the
-    # block the scenario file carried. Sites not named keep whatever they had.
     sites: dict[str, SiteConditions | None] = field(default_factory=dict)
-    # Environment knobs. Out of scope for variant comparison per the case, but
-    # needed for the sensitivity study (ISL range threshold) — every response
-    # that uses them echoes the changed environment back.
     isl_range_km: float | None = None
     min_elevation_deg: float | None = None
     altitude_km: float | None = None
@@ -92,7 +70,6 @@ class ConfigOverride:
 
 
 def load_scenario(path: str | Path) -> dict[str, Any]:
-    """Read and validate a scenario file."""
     try:
         raw = json.loads(Path(path).read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -102,13 +79,6 @@ def load_scenario(path: str | Path) -> dict[str, Any]:
 
 
 def validate_scenario(scenario: Any) -> None:
-    """Validate against the official rules, raising `ScenarioError`.
-
-    Delegates to the organisers' `geometry.validate` so that we accept exactly
-    what they accept, then adds the field-level reporting the case asks for
-    ("сервис указывает проблемное поле или объект") on top of the structural
-    checks, because `geometry.validate` raises bare messages.
-    """
     if not isinstance(scenario, dict):
         raise ScenarioError("Scenario must be a JSON object", field="<root>")
 
@@ -132,13 +102,8 @@ def validate_scenario(scenario: Any) -> None:
     except (TypeError, ValueError) as exc:
         raise ScenarioError(str(exc), field=_guess_field(str(exc))) from exc
 
-    # Our own extension block: the official validator ignores unknown keys,
-    # so a malformed one has to be caught here or it fails deep in a run.
     validate_site_conditions(scenario)
 
-    # geometry.validate accepts a design with no satellites in the selected
-    # stage; the simulation would then silently report 0% for everything, so
-    # flag it here where we can say something useful.
     design = scenario["design"]
     staged = [s for s in design["satellites"] if s["launch_batch"] <= design["launch_stage"]]
     if not staged:
@@ -173,11 +138,6 @@ def _guess_field(message: str) -> str | None:
 
 
 def apply_override(scenario: dict[str, Any], override: ConfigOverride) -> dict[str, Any]:
-    """Return a new scenario with the UI's changes applied.
-
-    The input is never mutated: variants are compared side by side, so a run must
-    not be able to disturb the baseline it was derived from.
-    """
     effective = copy.deepcopy(scenario)
 
     if override.launch_stage is not None:
@@ -235,7 +195,6 @@ def apply_override(scenario: dict[str, Any], override: ConfigOverride) -> dict[s
 
 
 def _wrap_degrees(value: float) -> float:
-    """Fold an angle into [0, 360) — the range the official validator enforces."""
     if not math.isfinite(value):
         raise ScenarioError(f"Angle must be finite, got {value!r}", field="design.planes")
     return float(value % 360.0)
@@ -250,7 +209,6 @@ def gateways(scenario: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def time_grid(scenario: dict[str, Any]) -> range:
-    """Calculation instants: 0, step, 2*step, … excluding the right edge."""
     env = scenario["environment"]
     return range(0, env["horizon_s"], env["step_s"])
 

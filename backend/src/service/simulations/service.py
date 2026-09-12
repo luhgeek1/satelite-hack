@@ -1,12 +1,3 @@
-"""Running simulations and everything derived from a run.
-
-Runs are content-addressed: the id is a hash of the effective scenario plus the
-routing strategy, so an identical configuration always maps to the same id. That
-makes `POST /simulations` idempotent (dragging a slider back returns the previous
-run rather than creating a duplicate) and lets snapshots be cached under a key
-that cannot go stale.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -90,8 +81,6 @@ class SimulationService:
         if existing is not None:
             return SimulationSummary.model_validate(existing.summary)
 
-        # The jury may upload a scenario far larger than the official four, and
-        # the write below re-acquires a connection on its own.
         await self.uow.release()
         result = await asyncio.to_thread(simulate, effective, strategy=strategy)
         summary = self._summarise(
@@ -123,7 +112,6 @@ class SimulationService:
         return SimulationSummary.model_validate((await self._require_run(run_id)).summary)
 
     async def snapshot(self, run_id: str, t_s: int) -> SnapshotResponse:
-        """One instant. Cached, because the timeline scrubs back and forth."""
         row = await self._require_run(run_id)
         scenario = row.effective_scenario
         t_s = self._snap_to_grid(scenario, t_s)
@@ -195,11 +183,6 @@ class SimulationService:
         )
 
     async def availability_series(self, run_id: str) -> list[AvailabilitySample]:
-        """Per-instant state for the timeline strip.
-
-        Three states rather than two — a client can have a satellite overhead and
-        still have no route, and that distinction is the case's central point.
-        """
         row = await self._require_run(run_id)
         key = f"avail:{run_id}"
         cached = await self.cache.get_json(key)
@@ -223,20 +206,11 @@ class SimulationService:
         return samples
 
     async def export(self, run_id: str) -> dict[str, Any]:
-        """The official `cosmo-A-result-1.0` document."""
         row = await self._require_run(run_id)
         result = await self._replay(row)
         return build_result(result)
 
     async def effective_scenario(self, run_id: str) -> dict[str, Any]:
-        """The scenario as actually run — re-importable, so a variant round-trips.
-
-        `apply_override` never touches `meta`, so the stored document still
-        carries the base scenario's id/title. Re-stamp the id to `run_id` here
-        so importing it back never collides with that base scenario — without
-        this, `ScenarioService.import_scenario` silently mints a `-2` suffix
-        instead of the round-trip the case asks for.
-        """
         scenario = (await self._require_run(run_id)).effective_scenario
         return {**scenario, "meta": {**scenario["meta"], "id": run_id}}
 
@@ -305,12 +279,6 @@ class SimulationService:
         return row
 
     async def _replay(self, row: SimulationRunRow) -> SimulationResult:
-        """Recompute a run to get at its routes.
-
-        Cheaper than storing them: the 2160 route records are ~400 KB per run,
-        while regenerating them costs ~0.15 s and keeps the database small enough
-        to stay boring.
-        """
         return await asyncio.to_thread(
             simulate, row.effective_scenario, strategy=RoutingStrategy(row.strategy)
         )
@@ -399,13 +367,10 @@ class SimulationService:
         )
 
 
-# Bumped whenever the stored summary gains a field, so a run persisted under the
-# previous shape is recomputed instead of being served with the field missing.
 SUMMARY_VERSION = b"summary-v2"
 
 
 def content_id(effective_scenario: dict[str, Any], strategy: RoutingStrategy) -> str:
-    """Stable id for a configuration: same inputs, same run."""
     blob = orjson.dumps(effective_scenario, option=orjson.OPT_SORT_KEYS)
     digest = hashlib.blake2b(blob, digest_size=10)
     digest.update(strategy.value.encode())
@@ -462,7 +427,6 @@ _PLANE_LABEL = {"raan_deg": "RAAN", "phase_deg": "Phase"}
 
 
 def _parameter_diff(rows: list[VariantRow]) -> list[ParameterDiff]:
-    """What actually differs between the variants — the case requires this explicitly."""
     scenarios = [row.run.effective_scenario for row in rows]
     diffs: list[ParameterDiff] = []
 
@@ -518,7 +482,6 @@ def _parameter_diff(rows: list[VariantRow]) -> list[ParameterDiff]:
 
 
 def _site_conditions_label(scenario: dict[str, Any], site_id: str) -> str:
-    """One readable token per site: the profile and the horizon it raises to."""
     conditions = active_site_conditions(scenario).get(site_id)
     if conditions is None:
         return "open"
@@ -588,11 +551,6 @@ def _per_client(summaries: list[SimulationSummary]) -> dict[str, list[float]]:
 
 
 def _recommend(variants: list[VariantModel], summaries: list[SimulationSummary]) -> str:
-    """A sentence the engineer can put in a report, not a bare winner flag.
-
-    Ranked on worst-client availability because that is what the target is
-    judged on; ties fall through to the longest outage.
-    """
     target = summaries[0].target_availability
     ranked = sorted(
         zip(variants, summaries, strict=True),

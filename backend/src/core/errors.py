@@ -1,5 +1,3 @@
-"""Domain errors, translated to RFC 9457 problem responses by `error_handling`."""
-
 from http import HTTPStatus
 from typing import Any
 
@@ -53,12 +51,6 @@ class PayloadTooLargeError(DomainError):
 
 
 class ScenarioValidationError(UnprocessableEntityError):
-    """A scenario file the engine refused.
-
-    Carries the offending field so the UI can say what to fix, which the case
-    requires of the import flow.
-    """
-
     error_code = "SCENARIO_INVALID"
     default_detail = "Scenario failed validation"
 

@@ -1,10 +1,3 @@
-"""Importing and validating scenario files.
-
-Both a JSON body and a multipart upload are accepted: the case expects the jury
-to load a file, and making them choose a transport would be a silly place to
-lose a point.
-"""
-
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status

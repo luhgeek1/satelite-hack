@@ -1,9 +1,3 @@
-"""The jury's path through the service, end to end.
-
-Mirrors the case's own acceptance scenarios: load, run, inspect a moment, break
-a satellite, compare, export.
-"""
-
 import pytest
 
 pytestmark = pytest.mark.integration
@@ -45,7 +39,6 @@ async def test_run_matches_reference_metrics(client):
 
 
 async def test_runs_are_idempotent(client):
-    """The same configuration must map to the same run, not pile up duplicates."""
     first = await client.post("/api/v1/simulations", json={"scenario_id": FULL})
     second = await client.post("/api/v1/simulations", json={"scenario_id": FULL})
     assert first.json()["id"] == second.json()["id"]
@@ -75,7 +68,6 @@ async def test_snapshot_and_timeline(client):
 
 
 async def test_configuration_changes_are_applied(client):
-    """Switching to the first launch stage must collapse availability."""
     response = await client.post(
         "/api/v1/simulations",
         json={"scenario_id": FULL, "config": {"launch_stage": 1}},
@@ -87,7 +79,6 @@ async def test_configuration_changes_are_applied(client):
 
 
 async def test_failure_injection_changes_routes(client):
-    """The case's "отказ аппарата" flow: break a satellite, availability drops."""
     baseline = (await client.post("/api/v1/simulations", json={"scenario_id": FULL})).json()
 
     degraded = (
@@ -122,7 +113,6 @@ async def test_export_is_the_official_format(client):
 
 
 async def test_effective_scenario_round_trips(client):
-    """An edited scenario must export and import again — the case asks for this."""
     run_id = (
         await client.post(
             "/api/v1/simulations",
@@ -135,8 +125,6 @@ async def test_effective_scenario_round_trips(client):
 
     scenario = (await client.get(f"/api/v1/simulations/{run_id}/scenario")).json()
     assert scenario["design"]["planes"][1]["raan_deg"] == pytest.approx(45.0)
-    # The download re-stamps meta.id to the run id, so re-importing it never
-    # collides with (and gets silently suffixed away from) the base scenario.
     assert scenario["meta"]["id"] == run_id
 
     reimport = await client.post("/api/v1/scenarios", json=scenario)
@@ -207,8 +195,6 @@ async def test_variants_and_comparison(client):
 
 
 async def test_variant_flags_environment_modified(client):
-    """Tuning `isl_range_km` is a sensitivity study, not a design variant — the
-    flag has to survive onto the saved variant so a comparison can say so."""
     baseline = await client.post("/api/v1/variants", json={"name": "Baseline", "scenario_id": FULL})
     tuned = await client.post(
         "/api/v1/variants",
@@ -230,7 +216,6 @@ async def test_variant_flags_environment_modified(client):
 
 
 async def test_site_conditions_raise_the_horizon_and_are_reported(client):
-    """A city around a terminal costs visibility, and every layer says so."""
     profiles = (await client.get("/api/v1/scenarios/site-profiles")).json()
     assert {p["id"] for p in profiles} >= {"open", "sea", "forest", "urban", "mountain"}
     urban = next(p for p in profiles if p["id"] == "urban")

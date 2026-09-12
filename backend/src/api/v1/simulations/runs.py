@@ -1,11 +1,3 @@
-"""Running a configuration and reading back what it produced.
-
-`POST /simulations` is synchronous — a full official run takes ~0.15 s, so making
-the UI poll a job would add latency and a failure mode for no benefit. The heavy
-artefacts (positions, link graph, per-instant routes) hang off the run as
-separate endpoints so the run response stays small.
-"""
-
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Response
@@ -57,8 +49,6 @@ async def get_snapshot(
     svc: Annotated[SimulationService, Depends(get_simulation_service)],
     t_s: Annotated[int, Query(ge=0, description="Seconds from the start of the run")] = 0,
 ) -> SnapshotResponse:
-    """`t_s` is snapped down to the nearest calculation instant, so a timeline
-    dragged to an arbitrary position still lands on real computed state."""
     return await svc.snapshot(run_id, t_s)
 
 
@@ -129,8 +119,6 @@ async def download_effective_scenario(
     run_id: str,
     svc: Annotated[SimulationService, Depends(get_simulation_service)],
 ) -> Response:
-    """The case asks that an edited scenario can be exported and loaded back;
-    this is that file, with every UI change already folded in."""
     payload: dict[str, Any] = await svc.effective_scenario(run_id)
     import orjson
 

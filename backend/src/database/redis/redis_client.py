@@ -1,11 +1,3 @@
-"""Redis connection handling.
-
-Redis is a cache here, never a source of truth: every value it holds can be
-recomputed from Postgres in well under a second. If it is down the service keeps
-working, just slower — see `CacheRepo`, which swallows connection errors on
-purpose.
-"""
-
 from __future__ import annotations
 
 import logging

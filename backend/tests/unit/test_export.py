@@ -1,5 +1,3 @@
-"""The export must be exactly what the case asks us to hand back."""
-
 import pytest
 
 from engine import load_scenario, simulate
@@ -19,7 +17,6 @@ def test_schema_version(exported):
 
 
 def test_one_record_per_instant_and_client(exported):
-    """720 instants x 3 clients, no gaps — the format demands every pair."""
     assert len(exported["routes"]) == 720 * 3
     pairs = {(r["t_s"], r["client_id"]) for r in exported["routes"]}
     assert len(pairs) == 720 * 3
@@ -34,14 +31,12 @@ def test_paths_run_from_client_to_gateway(exported):
 
 
 def test_missing_routes_are_empty_lists(exported):
-    """The case spells this out: no route means `path: []`, never null."""
     unroutable = [r for r in exported["routes"] if not r["path"]]
     assert unroutable, "this scenario is supposed to have outages"
     assert all(r["path"] == [] for r in unroutable)
 
 
 def test_effective_scenario_round_trips(exported):
-    """The embedded scenario must itself be loadable, so a result reproduces its run."""
     from engine.scenario import validate_scenario
 
     validate_scenario(exported["effective_scenario"])

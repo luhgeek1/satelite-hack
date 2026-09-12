@@ -1,9 +1,3 @@
-"""Initial schema: scenarios, simulation runs, saved variants.
-
-Revision ID: 0001_initial
-Revises:
-"""
-
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

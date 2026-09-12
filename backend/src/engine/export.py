@@ -1,14 +1,3 @@
-"""Official result export — `cosmo-A-result-1.0`.
-
-The jury reloads what we write, so this module follows the case letter by
-letter: one record per (instant, client) pair, `path` running from the client id
-to the gateway id, an empty list when there is no route, and the full effective
-scenario embedded so the file reproduces the run that made it.
-
-Anything of ours that the format does not define lives under `summary`, which
-the case explicitly permits ("К результату можно добавить сводные показатели").
-"""
-
 from __future__ import annotations
 
 from typing import Any
@@ -29,11 +18,6 @@ def build_result(result: SimulationResult, *, include_summary: bool = True) -> d
 
 
 def _routes(result: SimulationResult) -> list[dict[str, Any]]:
-    """Every (instant, client) pair, ordered by time then by client id.
-
-    Ordering is not required by the format but makes two exports diffable, which
-    is how we show that a configuration change moved a specific route.
-    """
     records = []
     for t_s in result.time_grid:
         step_routes = result.routes.get(t_s, {})

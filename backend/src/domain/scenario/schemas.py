@@ -1,13 +1,3 @@
-"""The official `cosmo-A-1.0` scenario, as Pydantic models.
-
-These mirror the case schema exactly so FastAPI documents and pre-validates an
-uploaded file, but they are *not* the validation authority: the engine still runs
-the organisers' `geometry.validate` on the dict, and that is what decides whether
-a scenario is acceptable. Keeping both means an obviously malformed upload gets a
-field-precise 422 without reaching the engine, while the engine stays the arbiter
-of the rules the case actually defines.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -97,22 +87,16 @@ class ScenarioModel(WireModel):
 
 
 class ScenarioRenameRequest(WireModel):
-    """Body of `PATCH /scenarios/{scenario_id}` — the only field a rename touches."""
-
     title: str = Field(..., min_length=1, max_length=256)
 
 
 class ValidationReport(WireModel):
-    """Result of a dry-run check, so the UI can report before it commits."""
-
     valid: bool
     error: str | None = None
     field: str | None = None
 
 
 class ScenarioSummary(WireModel):
-    """One row in the scenario picker."""
-
     id: str
     title: str
     source: Literal["official", "imported"]
@@ -129,7 +113,5 @@ class ScenarioSummary(WireModel):
 
 
 class ScenarioDetail(WireModel):
-    """Everything the configuration panel and globe need to draw an unrun scenario."""
-
     summary: ScenarioSummary
     scenario: dict[str, Any]

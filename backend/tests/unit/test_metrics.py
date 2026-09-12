@@ -1,5 +1,3 @@
-"""Outage accounting, including the edges of the horizon."""
-
 import pytest
 
 from engine.metrics import summarise_client
@@ -30,7 +28,6 @@ def test_availability_is_a_fraction_of_instants():
 
 
 def test_target_is_inclusive():
-    """Exactly 90% counts as meeting a 90% target."""
     assert summarise([True] * 9 + [False], target=0.9).meets_target
 
 
@@ -40,11 +37,6 @@ def test_max_outage_is_the_longest_run():
 
 
 def test_edge_outages_are_reported_separately():
-    """A gap still open when the horizon ends has an unknown true length.
-
-    It is excluded from `max_bounded_outage_s`, which is the figure that can
-    honestly be compared between variants.
-    """
     metrics = summarise([False, False, True, False, False, False, True, False])
     assert metrics.leading_outage_s == 2 * STEP
     assert metrics.trailing_outage_s == 1 * STEP

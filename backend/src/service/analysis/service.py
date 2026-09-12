@@ -1,5 +1,3 @@
-"""Resilience, sensitivity and configuration search."""
-
 from __future__ import annotations
 
 import asyncio
@@ -46,11 +44,6 @@ _analysis_slots: asyncio.Semaphore | None = None
 
 
 def analysis_gate() -> asyncio.Semaphore:
-    """Cap how many sweeps may hold the cores at once.
-
-    Built on first use rather than at import so the limit follows the settings,
-    and so the semaphore binds to whichever loop is actually running.
-    """
     global _analysis_slots
     if _analysis_slots is None:
         _analysis_slots = asyncio.Semaphore(max(1, get_settings().MAX_CONCURRENT_ANALYSES))
@@ -77,11 +70,6 @@ class AnalysisService:
         self.jobs = jobs
 
     async def resilience(self, request: ResilienceRequest) -> ResilienceResponse:
-        """Rank satellites by what the network loses without them.
-
-        ~2.3 s for 48 satellites across a process pool, so it runs inline rather
-        than as a job — the Resilience tab can simply await it.
-        """
         scenario = await self._effective(request.scenario_id, request.scenario, request.config)
         strategy = RoutingStrategy(request.strategy.value)
         settings = get_settings()
@@ -139,12 +127,6 @@ class AnalysisService:
         )
 
     async def sensitivity(self, request: SensitivityRequest) -> SensitivityResponse:
-        """Sweep one environment parameter and locate the threshold.
-
-        This is how the ISL finding is produced: with 16 satellites per plane the
-        in-plane neighbours sit 2700.4 km apart, and availability collapses the
-        moment the link range drops below that chord.
-        """
         scenario = await self._effective(request.scenario_id, request.scenario, request.config)
         strategy = RoutingStrategy(request.strategy.value)
         settings = get_settings()
@@ -179,11 +161,6 @@ class AnalysisService:
         )
 
     async def start_optimization(self, request: OptimizeRequest) -> JobStatusModel:
-        """Kick off a configuration search.
-
-        The only background operation in the service: a search evaluates hundreds
-        of full simulations, which is far too long to hold a request open.
-        """
         scenario = await self._effective(request.scenario_id, request.scenario, request.config)
         strategy = RoutingStrategy(request.strategy.value)
         bounds = _bounds(request.bounds, scenario)
@@ -299,12 +276,6 @@ def _optimize_result(result: Any, scenario: dict[str, Any]) -> OptimizeResult:
 
 
 def _verdict(result: Any, target: float) -> str:
-    """State the outcome plainly, including when the honest answer is "it cannot be done".
-
-    A search that finds nothing is a real engineering result — it says the given
-    architecture is already at its best under these constraints — and reporting
-    it as such is worth more than dressing up a rounding-error improvement.
-    """
     before = result.baseline.worst_availability
     after = result.best.worst_availability
     target_pct = target * 100

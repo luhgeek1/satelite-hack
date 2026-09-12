@@ -1,5 +1,3 @@
-"""Saved design variants and their comparison."""
-
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
@@ -20,7 +18,6 @@ async def create_variant(
     request: VariantCreate,
     svc: Annotated[SimulationService, Depends(get_simulation_service)],
 ) -> VariantModel:
-    """Runs the configuration if it has not been run yet, then keeps it under a name."""
     return await svc.save_variant(request)
 
 

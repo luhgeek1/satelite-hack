@@ -1,5 +1,3 @@
-"""Routing rules that the graph alone does not express."""
-
 import pytest
 
 from engine.routing import (
@@ -34,11 +32,6 @@ def test_finds_a_simple_route():
 
 
 def test_client_sites_never_relay():
-    """C1 can only reach the gateway by hopping through C2, so there is no route.
-
-    The snapshot happily contains client↔satellite edges in both directions; it is
-    routing's job to know that a village is not a repeater.
-    """
     edges = [
         ["C1", "S1", 800.0],
         ["S1", "C2", 800.0],
@@ -62,26 +55,18 @@ def test_reason_gateway_unavailable():
 
 
 def test_reason_no_gateway_contact():
-    """Satellites are meshed and visible, but none of them can see the gateway."""
     edges = [["C1", "S1", 800.0], ["S1", "S2", 1500.0]]
     result = find_route(graph(edges), "C1")
     assert result.reason is NoRouteReason.NO_GATEWAY_CONTACT
 
 
 def test_reason_network_partition():
-    """Both ends are healthy; the mesh between them is not connected."""
     edges = [["C1", "S1", 800.0], ["S2", "G1", 900.0]]
     result = find_route(graph(edges), "C1")
     assert result.reason is NoRouteReason.NETWORK_PARTITION
 
 
 def test_min_hops_and_min_distance_can_disagree():
-    """A long two-hop path versus a short three-hop one.
-
-    Availability is identical either way — a path exists — which is exactly the
-    point we make when showing that the routing metric is a design choice, not a
-    correctness question.
-    """
     edges = [
         ["C1", "S1", 100.0],
         ["S1", "G1", 2900.0],
@@ -99,7 +84,6 @@ def test_min_hops_and_min_distance_can_disagree():
 
 
 def test_routing_is_deterministic():
-    """Equal-cost alternatives must resolve the same way on every run."""
     edges = [
         ["C1", "S1", 800.0],
         ["C1", "S2", 800.0],

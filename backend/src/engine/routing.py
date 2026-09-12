@@ -1,18 +1,3 @@
-"""Route search across one network snapshot.
-
-A snapshot is a plain undirected graph whose nodes are ground sites and
-satellites. Two rules make it not-quite-a-textbook-graph, and both come straight
-from the case:
-
-* client ground sites are endpoints, never relays — a path may not hop through
-  another village to reach the gateway;
-* a path ends at *any* gateway that is currently up, so a scenario with several
-  gateways is served by whichever is reachable.
-
-When no path exists the case requires us to say which of four things went wrong,
-so `find_route` classifies the failure instead of just returning `None`.
-"""
-
 from __future__ import annotations
 
 import heapq
@@ -24,22 +9,11 @@ from typing import Any
 
 
 class RoutingStrategy(StrEnum):
-    """How to pick among the paths that exist.
-
-    `MIN_HOPS` is the default and the one the reference metrics were produced
-    with: fewest relays is the honest reading of "маршрут" for a store-and-
-    forward network, and it is stable under floating-point noise.
-    `MIN_DISTANCE` exists so the Compare tab can show that the choice of metric
-    changes the route but not the availability.
-    """
-
     MIN_HOPS = "min_hops"
     MIN_DISTANCE = "min_distance"
 
 
 class NoRouteReason(StrEnum):
-    """The four causes the case asks the interface to distinguish."""
-
     NO_VISIBLE_SATELLITE = "no_visible_satellite"
     NETWORK_PARTITION = "network_partition"
     NO_GATEWAY_CONTACT = "no_gateway_contact"
@@ -48,12 +22,6 @@ class NoRouteReason(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class RouteResult:
-    """One client's outcome at one instant.
-
-    `path` runs from the client id to the gateway id inclusive, so `hops` — the
-    number of edges — counts both ground links, as the case defines it.
-    """
-
     client_id: str
     path: tuple[str, ...]
     distance_km: float | None
@@ -74,13 +42,6 @@ class RouteResult:
 
 @dataclass(slots=True)
 class NetworkGraph:
-    """Adjacency for one instant, with the node roles routing needs.
-
-    Adjacency lists are sorted by (distance, neighbour id) so that a run is
-    reproducible: two engineers comparing variants must not see different routes
-    because a dict iterated differently.
-    """
-
     adjacency: dict[str, list[tuple[str, float]]]
     client_ids: frozenset[str]
     gateway_ids: frozenset[str]
@@ -99,11 +60,6 @@ def build_graph(
     online_gateway_ids: Iterable[str],
     satellite_ids: Iterable[str],
 ) -> NetworkGraph:
-    """Turn `geometry.snapshot()["edges"]` into a routable graph.
-
-    `snapshot` already drops links belonging to failed satellites and to gateways
-    that are in an outage window, so the edge list is taken at face value here.
-    """
     adjacency: dict[str, list[tuple[str, float]]] = {}
     for edge in edges:
         a, b, distance = edge[0], edge[1], float(edge[2])
@@ -127,7 +83,6 @@ def find_route(
     client_id: str,
     strategy: RoutingStrategy = RoutingStrategy.MIN_HOPS,
 ) -> RouteResult:
-    """Shortest path from `client_id` to any online gateway."""
     search = _bfs if strategy is RoutingStrategy.MIN_HOPS else _dijkstra
     path, distance = search(graph, client_id)
 
@@ -143,16 +98,10 @@ def find_route(
 
 
 def _expandable(graph: NetworkGraph, node: str, origin: str) -> bool:
-    """May the search continue *through* this node?
-
-    Only satellites relay. The origin client is where we started and gateways are
-    terminal, so neither is ever expanded.
-    """
     return node in graph.satellite_ids and node != origin
 
 
 def _bfs(graph: NetworkGraph, origin: str) -> tuple[tuple[str, ...], float | None]:
-    """Fewest hops. Neighbours are pre-sorted, so ties break on distance then id."""
     previous: dict[str, str | None] = {origin: None}
     queue: deque[str] = deque([origin])
 
@@ -171,7 +120,6 @@ def _bfs(graph: NetworkGraph, origin: str) -> tuple[tuple[str, ...], float | Non
 
 
 def _dijkstra(graph: NetworkGraph, origin: str) -> tuple[tuple[str, ...], float | None]:
-    """Shortest total link distance, tie-broken on node id for determinism."""
     previous: dict[str, str | None] = {origin: None}
     best: dict[str, float] = {origin: 0.0}
     heap: list[tuple[float, str]] = [(0.0, origin)]
@@ -222,12 +170,6 @@ def _reconstruct(
 
 
 def _classify_failure(graph: NetworkGraph, client_id: str) -> NoRouteReason:
-    """Say *why* there is no path, in the case's own four categories.
-
-    Checked from the client outwards, so the answer names the first thing that is
-    missing rather than the last: a village with no satellite overhead is told
-    exactly that, even though the gateway also happens to be unreachable.
-    """
     visible = [n for n, _ in graph.neighbours(client_id) if n in graph.satellite_ids]
     if not visible:
         return NoRouteReason.NO_VISIBLE_SATELLITE
@@ -242,11 +184,8 @@ def _classify_failure(graph: NetworkGraph, client_id: str) -> NoRouteReason:
     if not gateway_has_contact:
         return NoRouteReason.NO_GATEWAY_CONTACT
 
-    # Both ends are healthy in isolation, so the satellite mesh between them is
-    # what is broken.
     return NoRouteReason.NETWORK_PARTITION
 
 
 def visible_satellites(graph: NetworkGraph, client_id: str) -> list[str]:
-    """Satellites currently serving a ground site, nearest first."""
     return [n for n, _ in graph.neighbours(client_id) if n in graph.satellite_ids]

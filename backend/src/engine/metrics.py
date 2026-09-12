@@ -1,11 +1,3 @@
-"""Per-client result metrics, defined exactly as the case defines them.
-
-Fractions are counts of calculation instants over the total number of instants —
-not integrals over time — because the case fixes the grid and compares variants
-on it. Outages are measured in instants too and multiplied by `step_s` only when
-reported, which keeps the arithmetic exact.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -15,14 +7,6 @@ from .routing import NoRouteReason
 
 @dataclass(frozen=True, slots=True)
 class OutageWindow:
-    """A maximal run of instants with no route.
-
-    `leading`/`trailing` mark windows that touch the edges of the horizon. The
-    case asks for those to be accounted for separately, because a gap that is
-    still open when the simulation ends has an unknown true length and should not
-    be compared against gaps that opened and closed inside the window.
-    """
-
     client_id: str
     start_s: int
     end_s: int
@@ -47,8 +31,6 @@ class ClientMetrics:
     routed_steps: int
     visibility: float
     availability: float
-    # Instants a satellite cleared the scenario mask but the site's own
-    # surroundings hid every one: what local conditions cost in visibility.
     masked_steps: int
     masked_share: float
     max_outage_s: int
@@ -150,7 +132,6 @@ def _outage_windows(
 
 
 def _dominant_reason(reasons: list[NoRouteReason | None]) -> NoRouteReason | None:
-    """Label a window by its most frequent cause, ties broken by first appearance."""
     counts: dict[NoRouteReason, int] = {}
     for reason in reasons:
         if reason is not None:
@@ -161,7 +142,6 @@ def _dominant_reason(reasons: list[NoRouteReason | None]) -> NoRouteReason | Non
 
 
 def worst_availability(metrics: dict[str, ClientMetrics]) -> float:
-    """The number the 90% target is actually judged against."""
     return min((m.availability for m in metrics.values()), default=0.0)
 
 

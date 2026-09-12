@@ -1,11 +1,3 @@
-"""Local site conditions: terrain, buildings, altitude.
-
-The layer sits on top of the organisers' geometry and may only remove ground
-links. Every test here checks one of the properties that make it trustworthy:
-a neutral site changes nothing, a raised horizon only takes away, the loss is
-accounted for exactly, and the angles it measures are the organisers' own.
-"""
-
 import copy
 
 import numpy as np
@@ -34,7 +26,6 @@ def _site(scenario, site_id):
 
 
 def test_neutral_profiles_change_nothing(full_constellation):
-    """Open field and sea raise no horizon, so the reference figures stay byte-identical."""
     baseline = simulate(full_constellation)
     scenario = full_constellation
     for site in scenario["ground_sites"]:
@@ -51,7 +42,6 @@ def test_neutral_profiles_change_nothing(full_constellation):
 
 
 def test_a_higher_horizon_only_takes_away(full_constellation):
-    """Forest, city, valley: each profile sees less sky than the one before."""
     previous = simulate(full_constellation).metrics["C65"]
     for profile in ("forest", "urban", "mountain"):
         scenario = _with_conditions(full_constellation, "C65", SiteConditions.from_profile(profile))
@@ -66,7 +56,6 @@ def test_a_higher_horizon_only_takes_away(full_constellation):
 
 
 def test_masked_share_accounts_for_the_visibility_lost(full_constellation):
-    """Open-field visibility equals urban visibility plus the share the city hid."""
     baseline = simulate(full_constellation).metrics["C65"]
     urban = simulate(
         _with_conditions(full_constellation, "C65", SiteConditions.from_profile("urban"))
@@ -77,7 +66,6 @@ def test_masked_share_accounts_for_the_visibility_lost(full_constellation):
 
 
 def test_zero_altitude_reproduces_the_organisers_elevations(full_constellation):
-    """Our look angles are computed exactly the way geometry.py computes elevation."""
     scenario = _with_conditions(
         full_constellation, "C65", SiteConditions.from_profile("custom", mask_deg=40.0)
     )
@@ -91,7 +79,6 @@ def test_zero_altitude_reproduces_the_organisers_elevations(full_constellation):
 
 
 def test_altitude_moves_every_angle_only_slightly(full_constellation):
-    """A 2 km hill matters at the tenth of a degree, never more, at a 550 km orbit."""
     lifted = _with_conditions(
         full_constellation,
         "C65",
@@ -109,7 +96,6 @@ def test_altitude_moves_every_angle_only_slightly(full_constellation):
 
 
 def test_azimuth_mask_blocks_only_the_named_bearings(full_constellation):
-    """A wall to the north hides northern satellites and nothing else."""
     wall = ((270.0, 85.0), (89.0, 85.0), (90.0, 0.0), (269.0, 0.0))
     scenario = _with_conditions(
         full_constellation,
@@ -136,7 +122,6 @@ def test_azimuth_mask_blocks_only_the_named_bearings(full_constellation):
 
 
 def test_an_obstructed_gateway_shows_up_as_no_gateway_contact(full_constellation):
-    """Surroundings apply to the gateway too, and the no-route reason says so."""
     scenario = _with_conditions(
         full_constellation, "G_MUR", SiteConditions.from_profile("custom", mask_deg=80.0)
     )
@@ -161,7 +146,6 @@ def test_override_sets_and_clears_the_block(full_constellation):
 
 
 def test_effective_scenario_round_trips_through_validation(full_constellation):
-    """The block survives export and re-import: geometry.validate ignores it, ours checks it."""
     scenario = _with_conditions(
         full_constellation,
         "C72",
@@ -194,7 +178,6 @@ def test_validation_names_the_offending_field(full_constellation, block, field):
 
 
 def test_profiles_carry_a_rationale():
-    """Every default mask is explained, because none of them is a measurement."""
     for profile in PROFILES.values():
         assert profile.rationale
         assert 0 <= profile.mask_deg < 90

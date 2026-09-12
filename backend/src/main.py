@@ -1,11 +1,3 @@
-"""Application entry point.
-
-Deliberately lean compared with the template it grew from: no auth, no object
-storage, no scheduler, no message broker. The jury opens a URL and has to be able
-to use the tool immediately, so every moving part that could fail in front of
-them and buys no points was left out.
-"""
-
 import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -112,8 +104,6 @@ def create_app(
             logger.warning("Redis health check failed: %s", exc)
             dependencies["redis"] = "degraded"
 
-        # Redis is a cache; losing it slows the service down but does not break
-        # it, so it never turns the overall status red.
         critical_ok = dependencies.get("database") == "ok"
         return {
             "status": "ok"
@@ -142,7 +132,6 @@ def create_app(
 
 
 async def _seed_scenarios() -> None:
-    """Load the bundled case scenarios. Never fatal — an upload still works."""
     from database.redis import CacheRepo
     from database.redis import init_redis as _init_redis
     from database.relational_db import ScenarioInterface, UoW

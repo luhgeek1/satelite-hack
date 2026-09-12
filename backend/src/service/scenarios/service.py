@@ -1,5 +1,3 @@
-"""Scenario catalog: seeding, import, validation, retrieval."""
-
 from __future__ import annotations
 
 import logging
@@ -43,7 +41,6 @@ class ScenarioService:
         return row
 
     def validate(self, payload: Any) -> ValidationReport:
-        """Dry run. Never raises — the caller wants a verdict, not an exception."""
         try:
             check_scenario(payload)
         except ScenarioValidationError as exc:
@@ -53,12 +50,6 @@ class ScenarioService:
     async def import_scenario(
         self, payload: Any, *, scenario_id: str | None = None, overwrite: bool = False
     ) -> ScenarioSummary:
-        """Accept an uploaded scenario after validating it.
-
-        The id defaults to `meta.id` from the file, de-duplicated with a suffix,
-        so uploading the same file twice never silently replaces the first one
-        unless the caller asked for that.
-        """
         check_scenario(payload)
 
         requested = scenario_id or str(payload["meta"]["id"])
@@ -102,11 +93,6 @@ class ScenarioService:
         return summarise(renamed)
 
     async def seed_official(self) -> int:
-        """Load the bundled case scenarios on startup.
-
-        Failures are logged, not raised: a missing data directory must not stop
-        the service, because everything else still works with an uploaded file.
-        """
         settings = get_settings()
         if not settings.SCENARIO_SEED_ENABLED:
             return 0
@@ -140,7 +126,6 @@ class ScenarioService:
 
 
 def check_scenario(payload: Any) -> dict[str, Any]:
-    """Validate an arbitrary object as a scenario, raising an API-shaped error."""
     settings = get_settings()
 
     if not isinstance(payload, dict):

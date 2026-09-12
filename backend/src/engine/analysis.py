@@ -1,11 +1,3 @@
-"""Resilience analysis: which satellites actually carry the network.
-
-The headline number per satellite is its *availability impact* — how much the
-worst-served client loses if that satellite is gone for the whole horizon. That
-framing matters: ranking by average impact hides the case that the target is
-judged on, where one village falls below 90% while the others are fine.
-"""
-
 from __future__ import annotations
 
 import copy
@@ -23,8 +15,6 @@ from .simulate import simulate
 
 @dataclass(frozen=True, slots=True)
 class SatelliteImpact:
-    """What the network loses without one satellite."""
-
     satellite_id: str
     worst_availability_drop: float
     mean_availability_drop: float
@@ -42,7 +32,6 @@ class ResilienceReport:
 
     @property
     def critical(self) -> tuple[SatelliteImpact, ...]:
-        """Satellites whose loss alone drops a client below the target."""
         return tuple(i for i in self.impacts if i.breaks_target)
 
 
@@ -53,11 +42,6 @@ def analyse_resilience(
     satellites: Sequence[str] | None = None,
     max_workers: int | None = None,
 ) -> ResilienceReport:
-    """Knock out each satellite in turn and measure the damage.
-
-    48 knockouts take ~6.7 s single-threaded, which is why this fans out across
-    processes — each run is pure and shares nothing, so the split is free.
-    """
     baseline = simulate(scenario, strategy=strategy)
     base_worst = worst_availability(baseline.metrics)
     base_mean = mean_availability(baseline.metrics)
@@ -101,11 +85,6 @@ def analyse_resilience(
 
 
 def _live_satellites(scenario: dict[str, Any]) -> list[str]:
-    """Satellites that are staged and not already failed for the entire horizon.
-
-    Knocking out a satellite that never flies in this scenario would report a
-    zero impact that means "not deployed", not "not important".
-    """
     horizon = scenario["environment"]["horizon_s"]
     step = scenario["environment"]["step_s"]
     ever_active: set[str] = set()
@@ -117,10 +96,6 @@ def _live_satellites(scenario: dict[str, Any]) -> list[str]:
 def _knockout(
     payload: tuple[dict[str, Any], str, RoutingStrategy],
 ) -> tuple[str, float, float, dict[str, float]]:
-    """Simulate the scenario with one satellite down for the whole horizon.
-
-    Module-level so it can be pickled for the process pool.
-    """
     scenario, satellite_id, strategy = payload
     probe = copy.deepcopy(scenario)
     probe["failures"] = list(probe["failures"]) + [
@@ -140,12 +115,6 @@ def _knockout(
 
 
 def _score(impacts: list[SatelliteImpact]) -> list[SatelliteImpact]:
-    """Map impact onto the 0…100 scale the globe colours nodes by.
-
-    Scaled against the largest observed impact rather than an absolute constant:
-    in a healthy constellation every single loss is small, and an absolute scale
-    would paint all 48 satellites the same shade of grey and say nothing.
-    """
     worst = max((i.worst_availability_drop for i in impacts), default=0.0)
     if worst <= 0.0:
         return [SatelliteImpact(**{**_as_dict(i), "criticality": 0.0}) for i in impacts]
@@ -173,15 +142,6 @@ def _as_dict(impact: SatelliteImpact) -> dict[str, Any]:
 
 @dataclass(frozen=True, slots=True)
 class GatewayDependency:
-    """How exposed the network is at its single point of exit.
-
-    The organisers named "зависимость от шлюза" as one of the two things an
-    engineer looks for first, and with one gateway the interesting question is
-    not *which* gateway carries the traffic but *how narrow the doorway is*: how
-    many distinct satellites ever hand traffic down to it, and how much of the
-    day rests on the busiest one.
-    """
-
     gateway_id: str
     serving_satellites: tuple[str, ...]
     last_hop_share: dict[str, float]
@@ -196,7 +156,6 @@ def analyse_gateway_dependency(
     *,
     strategy: RoutingStrategy = RoutingStrategy.MIN_HOPS,
 ) -> list[GatewayDependency]:
-    """Measure the concentration of traffic at each gateway's last hop."""
     from collections import Counter
 
     from .scenario import gateways as gateway_sites

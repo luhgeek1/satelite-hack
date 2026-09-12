@@ -1,5 +1,3 @@
-"""Browsing the scenario catalog."""
-
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
@@ -17,7 +15,6 @@ router = APIRouter()
     summary="Named surroundings profiles for ground sites, with their default masks",
 )
 async def list_site_profiles() -> list[SiteProfileModel]:
-    """Static, but served rather than duplicated: the numbers live in the engine."""
     return [
         SiteProfileModel(
             id=profile.id,

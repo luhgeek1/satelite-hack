@@ -1,9 +1,3 @@
-"""Integration fixtures: the real app against throwaway Postgres and Redis.
-
-Bring the infrastructure up with `make test-up` (docker-compose.test.yml) before
-running these. They are marked `integration` so `pytest -m unit` stays infra-free.
-"""
-
 import os
 from pathlib import Path
 

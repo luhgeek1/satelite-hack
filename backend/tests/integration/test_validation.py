@@ -1,5 +1,3 @@
-"""Bad input must come back with a field the user can act on."""
-
 import copy
 
 import pytest

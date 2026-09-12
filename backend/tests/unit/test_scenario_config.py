@@ -1,5 +1,3 @@
-"""Scenario validation and the configuration overlay."""
-
 import copy
 
 import pytest
@@ -34,7 +32,6 @@ def test_rejects_horizon_not_divisible_by_step(full_constellation):
 
 
 def test_override_does_not_mutate_the_base(full_constellation):
-    """Variants are compared side by side; a run must not disturb its baseline."""
     before = copy.deepcopy(full_constellation)
     apply_override(full_constellation, ConfigOverride(launch_stage=1))
     assert full_constellation == before
@@ -52,7 +49,6 @@ def test_launch_stage_changes_the_result(full_constellation):
 
 
 def test_plane_angles_wrap_into_range(full_constellation):
-    """The official validator demands [0, 360), so a slider past the end folds over."""
     result = apply_override(
         full_constellation, ConfigOverride(planes={"P1": PlaneOverride(raan_deg=370.0)})
     )

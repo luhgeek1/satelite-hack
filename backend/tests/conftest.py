@@ -1,10 +1,3 @@
-"""Shared fixtures.
-
-The engine tests need no infrastructure at all — that is the point of keeping
-`src/engine` free of framework imports — so they load scenarios straight from
-the case data directory.
-"""
-
 from pathlib import Path
 
 import pytest
