@@ -58,6 +58,7 @@ jobs:
   #         ANALYSIS_MAX_WORKERS: "2"
   #         OPTIMIZER_MAX_WORKERS: "2"
   #       run: poetry run pytest -q
+  # try once
 
   deploy:
     needs: test
