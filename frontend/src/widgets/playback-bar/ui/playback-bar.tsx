@@ -10,6 +10,7 @@ import {
   type OutageTarget,
   type OutageWindow,
 } from '@/features/schedule-outage';
+import { playbackTickMs } from '@/features/timeline-playback';
 import { cn, formatClock, formatPercent } from '@/shared/lib';
 import { FeatureHint } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
@@ -310,6 +311,9 @@ function PlaybackBarView({
   };
 
   const cursor = horizonS ? (tS / horizonS) * 100 : 0;
+  // The cursor glides for exactly as long as a step lasts, so a slower speed
+  // reads as slower movement rather than as the same movement stuttering.
+  const glideMs = Math.min(260, Math.round(playbackTickMs(stepS, horizonS, speed)));
   const placeOf = (item: OutageWindow) => ({
     left: (item.startS / horizonS) * 100,
     width: ((item.endS - item.startS) / horizonS) * 100,
@@ -621,8 +625,11 @@ function PlaybackBarView({
 
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -top-1 bottom-0 w-[9px] -translate-x-1/2 transition-[left] duration-75"
-            style={{ left: `${cursor}%` }}
+            className="pointer-events-none absolute -top-1 bottom-0 w-[9px] -translate-x-1/2"
+            style={{
+              left: `${cursor}%`,
+              transition: `left ${playing ? glideMs : 75}ms linear`,
+            }}
           >
             {(['left-0', 'right-0'] as const).map((edge) => (
               <span

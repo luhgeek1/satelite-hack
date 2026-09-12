@@ -1,1 +1,1 @@
-export { usePlayback, snapToGrid } from './model/use-playback';
+export { usePlayback, playbackTickMs, snapToGrid } from './model/use-playback';

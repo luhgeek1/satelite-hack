@@ -14,6 +14,19 @@ const HORIZON_AT_1X_MS = 180_000;
 /** Below this the browser is redrawing faster than anyone can follow. */
 const MIN_TICK_MS = 60;
 
+/**
+ * How long one step of the timeline takes on the wall clock.
+ *
+ * The strip uses it to glide the cursor between ticks: at half speed the steps
+ * are twice as far apart, and without the glide the motion reads as the same
+ * pace stuttering rather than as a slower one.
+ */
+export function playbackTickMs(stepS: number, horizonS: number, speed: number) {
+  if (!stepS || !horizonS || !speed) return MIN_TICK_MS;
+  const steps = Math.max(1, horizonS / stepS);
+  return Math.max(MIN_TICK_MS, HORIZON_AT_1X_MS / steps / speed);
+}
+
 export function usePlayback(stepS: number, horizonS: number) {
   const { state, dispatch } = useSession();
 

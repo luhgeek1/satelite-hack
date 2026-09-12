@@ -203,57 +203,24 @@ export const Map2D: React.FC<Map2DProps> = ({
     writeStored(MAP_VIEW_KEY, position);
   }, [position]);
 
-  // Tweened so the footprint grows out of the satellite rather than popping in.
-  const [coverage, setCoverage] = useState<{ id: string | null; scale: number }>({
-    id: selectedSatellite ?? null,
-    scale: selectedSatellite ? 1 : 0
-  });
-  const coverageScaleRef = useRef(coverage.scale);
-  coverageScaleRef.current = coverage.scale;
+  // Shown at full size and faded in, rather than grown. A growing radius is a
+  // new circle on every frame of the reveal, and on this view that means
+  // re-rendering every country path with it — the pick stuttered for as long
+  // as the animation lasted. Two renders now do what sixty did.
+  const [revealed, setRevealed] = useState(false);
+  const revealing = selectedSatellite ?? (coverageGaps.length ? focusClientId : null);
 
   useEffect(() => {
-    const target = selectedSatellite ? 1 : 0;
-    const id = selectedSatellite ?? coverage.id;
-    // Same restart the globe needs: switching straight from one node to another
-    // leaves the scale at 1, and the new footprint would appear fully grown.
-    const restarting = Boolean(selectedSatellite) && coverage.id !== selectedSatellite;
-    const from = restarting ? 0 : coverageScaleRef.current;
-    if (from === target && !restarting) return;
-
-    let frame = 0;
-    const start = performance.now();
-    const step = (now: number) => {
-      const progress = Math.max(0, Math.min(1, (now - start) / COVERAGE_TWEEN_MS));
-      const eased = progress * (2 - progress);
-      setCoverage({ id, scale: from + (target - from) * eased });
-      if (progress < 1) frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSatellite]);
-
-  const gapFocus = coverageGaps.length ? focusClientId : null;
-  const [gapScale, setGapScale] = useState(0);
-
-  useEffect(() => {
-    if (!gapFocus) {
-      setGapScale(0);
+    if (!revealing) {
+      setRevealed(false);
       return;
     }
-
-    let frame = 0;
-    const start = performance.now();
-    const step = (now: number) => {
-      const progress = Math.max(0, Math.min(1, (now - start) / COVERAGE_TWEEN_MS));
-      setGapScale(progress * (2 - progress));
-      if (progress < 1) frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
+    setRevealed(false);
+    const frame = requestAnimationFrame(() => setRevealed(true));
     return () => cancelAnimationFrame(frame);
-  }, [gapFocus]);
+  }, [revealing]);
 
-  const coverageSat = coverage.scale > 0.001 ? satellites.find(s => s.id === coverage.id) : undefined;
+  const coverageSat = selectedSatellite ? satellites.find(s => s.id === selectedSatellite) : undefined;
   const coverageShape = coverageSat
     ? {
         type: 'FeatureCollection' as const,
@@ -263,7 +230,7 @@ export const Map2D: React.FC<Map2DProps> = ({
             properties: {},
             geometry: geoCircle()
               .center([coverageSat.lon, coverageSat.lat])
-              .radius(coverageDegrees * coverage.scale)()
+              .radius(coverageDegrees)()
           }
         ]
       }
@@ -299,10 +266,7 @@ export const Map2D: React.FC<Map2DProps> = ({
   // A footprint that swallows a pole projects as a band across the full width
   // of an equirectangular map, which reads as a huge zone rather than as a
   // circle that misses. Those are left to the globe, where they are a circle.
-  const drawableGaps =
-    gapScale > 0.001
-      ? coverageGaps.filter(gap => Math.abs(gap.lat) + coverageDegrees < 88)
-      : [];
+  const drawableGaps = coverageGaps.filter(gap => Math.abs(gap.lat) + coverageDegrees < 88);
 
   const gapShape = drawableGaps.length
     ? {
@@ -315,11 +279,51 @@ export const Map2D: React.FC<Map2DProps> = ({
             properties: { color: satellite ? satelliteColor(satellite) : '#ffffff' },
             geometry: geoCircle()
               .center([gap.lon, gap.lat])
-              .radius(coverageDegrees * gapScale)()
+              .radius(coverageDegrees)()
           };
         })
       }
     : null;
+
+  /**
+   * The backdrop, held as one element between renders.
+   *
+   * A hundred and eighty country outlines are most of what this view costs to
+   * render, and they change only with the palette and the zoom. Keeping the
+   * element itself identical lets React skip the whole subtree on every render
+   * that is about something else — picking a node, a playback tick, a window
+   * drawn on the strip.
+   */
+  const land = useMemo(
+    () => (
+      <>
+        <Graticule stroke={palette.graticule} strokeWidth={0.4 * k} />
+
+        <Geographies geography={geography}>
+          {({ geographies }: { geographies: any[] }) =>
+            geographies.map(geo => (
+              <Geography
+                key={geo.rsmKey}
+                geography={geo}
+                fill={palette.land ?? 'transparent'}
+                stroke={palette.rule}
+                strokeWidth={0.4 * k}
+                tabIndex={-1}
+                /* Land is a backdrop. Leaving it focusable meant a stray click
+                   put a focus ring around a whole country. */
+                style={{
+                  default: { outline: 'none', pointerEvents: 'none' },
+                  hover: { outline: 'none', pointerEvents: 'none' },
+                  pressed: { outline: 'none', pointerEvents: 'none' }
+                } as any}
+              />
+            ))
+          }
+        </Geographies>
+      </>
+    ),
+    [palette.graticule, palette.land, palette.rule, k],
+  );
 
   const routeEdges = useMemo(() => routeEdgeIndex(routes), [routes]);
 
@@ -473,29 +477,7 @@ export const Map2D: React.FC<Map2DProps> = ({
             </g>
           )}
 
-          <Graticule stroke={palette.graticule} strokeWidth={0.4 * k} />
-
-          <Geographies geography={geography}>
-            {({ geographies }: { geographies: any[] }) =>
-              geographies.map(geo => (
-                <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
-                  fill={palette.land ?? 'transparent'}
-                  stroke={palette.rule}
-                  strokeWidth={0.4 * k}
-                  tabIndex={-1}
-                  /* Land is a backdrop. Leaving it focusable meant a stray click
-                     put a focus ring around a whole country. */
-                  style={{
-                    default: { outline: 'none', pointerEvents: 'none' },
-                    hover: { outline: 'none', pointerEvents: 'none' },
-                    pressed: { outline: 'none', pointerEvents: 'none' }
-                  } as any}
-                />
-              ))
-            }
-          </Geographies>
+          {land}
 
           {gapShape && (
             <Geographies geography={gapShape}>
@@ -510,8 +492,13 @@ export const Map2D: React.FC<Map2DProps> = ({
                     stroke={geo.properties?.color ?? '#ffffff'}
                     strokeOpacity={palette.coverageStroke}
                     strokeWidth={0.6 * k}
+                    opacity={revealed ? 1 : 0}
                     style={{
-                      default: { outline: 'none', pointerEvents: 'none' },
+                      default: {
+                        outline: 'none',
+                        pointerEvents: 'none',
+                        transition: `opacity ${COVERAGE_TWEEN_MS}ms ease-out`,
+                      },
                       hover: { outline: 'none', pointerEvents: 'none' },
                       pressed: { outline: 'none', pointerEvents: 'none' }
                     } as any}
@@ -534,8 +521,13 @@ export const Map2D: React.FC<Map2DProps> = ({
                     stroke={satelliteColor(coverageSat)}
                     strokeOpacity={palette.coverageStroke}
                     strokeWidth={0.6 * k}
+                    opacity={revealed ? 1 : 0}
                     style={{
-                      default: { outline: 'none', pointerEvents: 'none' },
+                      default: {
+                        outline: 'none',
+                        pointerEvents: 'none',
+                        transition: `opacity ${COVERAGE_TWEEN_MS}ms ease-out`,
+                      },
                       hover: { outline: 'none', pointerEvents: 'none' },
                       pressed: { outline: 'none', pointerEvents: 'none' }
                     } as any}

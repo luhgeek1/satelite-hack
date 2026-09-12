@@ -50,7 +50,11 @@ type FailurePingDatum = { id: string; lat: number; lng: number };
 const NO_FAILURE_PINGS: FailurePingDatum[] = [];
 const NO_COVERAGE_GAPS: CoverageGap[] = [];
 
-/** Degrees of arc between surface subdivisions in a gap footprint's cap. */
+/**
+ * Degrees of arc between surface subdivisions in a footprint's cap. At the
+ * finest setting a cap costs about 2.5 ms a frame to tessellate and is
+ * indistinguishable from this one at the radius these are drawn at.
+ */
 const GAP_CAP_CURVATURE = 4;
 
 const toRadians = (degrees: number) => degrees * (Math.PI / 180);
@@ -290,62 +294,57 @@ export const Globe: React.FC<GlobeProps> = ({
     };
   }, []);
 
-  // The footprint grows in and collapses out over a short eased tween. It is
-  // driven here rather than through polygonsTransitionDuration so that it only
-  // animates on select/deselect, never on the position updates that arrive
-  // every frame while the timeline runs.
+  // The footprint fades in and out rather than growing. A grow is a geometry
+  // change, and a geometry change is a React render: the old tween re-rendered
+  // the whole globe on every one of its frames, rebuilt the cap at the finest
+  // curvature and re-created all forty-eight node datums with it. Picking a
+  // well-connected node was the worst case and it stuttered. The opacity is
+  // written straight onto the material instead, so a pick costs one render.
   const [coverageSatelliteId, setCoverageSatelliteId] = useState<string | null>(selectedSatellite ?? null);
-  const [coverageScale, setCoverageScale] = useState(selectedSatellite ? 1 : 0);
-  const coverageScaleRef = useRef(coverageScale);
-  coverageScaleRef.current = coverageScale;
-  const coverageSatelliteIdRef = useRef(coverageSatelliteId);
-  coverageSatelliteIdRef.current = coverageSatelliteId;
+  const coverageOpacityRef = useRef(selectedSatellite ? COVERAGE_CAP_OPACITY : 0);
 
   useEffect(() => {
-    const target = selectedSatellite ? 1 : 0;
-    // Moving the pick straight to another node has to restart the reveal. The
-    // scale is still 1 from the previous selection, so without this the new
-    // node jumps to full size and only the very first pick ever animates.
-    const restarting = Boolean(selectedSatellite) && coverageSatelliteIdRef.current !== selectedSatellite;
-
     if (selectedSatellite) setCoverageSatelliteId(selectedSatellite);
+
+    const target = selectedSatellite ? COVERAGE_CAP_OPACITY : 0;
+    const apply = (value: number) => {
+      coverageOpacityRef.current = value;
+      coverageCapMaterial.opacity = value;
+    };
 
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) {
-      setCoverageScale(target);
+      apply(target);
       if (!selectedSatellite) setCoverageSatelliteId(null);
       return;
     }
 
-    const from = restarting ? 0 : coverageScaleRef.current;
-    if (from === target) return;
-    if (restarting) setCoverageScale(0);
+    // Moving the pick straight to another node restarts the reveal, otherwise
+    // the new footprint arrives already faded in.
+    const from = selectedSatellite ? 0 : coverageOpacityRef.current;
+    apply(from);
 
     const start = performance.now();
     let frame = 0;
 
     const step = (now: number) => {
-      // rAF hands back the frame's own timestamp, which can predate the
-      // start captured just before it — an unclamped progress goes negative
-      // and the first frame renders a sub-zero radius.
+      // rAF hands back the frame's own timestamp, which can predate the start
+      // captured just before it; an unclamped progress goes negative.
       const t = Math.max(0, Math.min(1, (now - start) / COVERAGE_TWEEN_MS));
-      const eased = 1 - Math.pow(1 - t, 3);
-      setCoverageScale(from + (target - from) * eased);
+      apply(from + (target - from) * (1 - Math.pow(1 - t, 3)));
 
       if (t < 1) {
         frame = requestAnimationFrame(step);
       } else if (target === 0) {
+        // Only now is the polygon safe to unmount: until the fade is done it
+        // is still on screen.
         setCoverageSatelliteId(null);
       }
     };
 
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [selectedSatellite]);
-
-  useEffect(() => {
-    coverageCapMaterial.opacity = COVERAGE_CAP_OPACITY * coverageScale;
-  }, [coverageCapMaterial, coverageScale]);
+  }, [selectedSatellite, coverageCapMaterial]);
 
   const gapFocus = coverageGaps.length ? focusClientId : null;
 
@@ -735,9 +734,9 @@ export const Globe: React.FC<GlobeProps> = ({
       // which would hide which plane it belongs to.
       const emphasized = isFailed || isSelected;
 
-      // The growth rides the same tween as the coverage footprint, and only the
-      // picked node reads it — a layer-wide transition would animate all 48.
-      const grow = sat.id === coverageSatelliteId ? coverageScale : 0;
+      // Only the picked node reads this; a layer-wide transition would animate
+      // all forty-eight.
+      const grow = sat.id === selectedSatellite ? 1 : 0;
 
       return {
         ...sat,
@@ -749,7 +748,7 @@ export const Globe: React.FC<GlobeProps> = ({
         emphasized
       };
     });
-  }, [satellites, selectedSatellite, routeNodes, mode, playing, coverageSatelliteId, coverageScale]);
+  }, [satellites, selectedSatellite, routeNodes, mode, playing]);
 
   const coverageColor = pointsData.find(sat => sat.id === coverageSatelliteId)?.color ?? '#ffffff';
 
@@ -803,9 +802,9 @@ export const Globe: React.FC<GlobeProps> = ({
 
   const selectedCoverage = useMemo(() => {
     const satellite = satellites.find(sat => sat.id === coverageSatelliteId);
-    if (!satellite || coverageScale <= 0.001) return null;
+    if (!satellite) return null;
 
-    const boundary = coverageRing(satellite.lat, satellite.lon, contactRadiusKm * coverageScale);
+    const boundary = coverageRing(satellite.lat, satellite.lon, contactRadiusKm);
 
     return {
       geometry: {
@@ -814,9 +813,9 @@ export const Globe: React.FC<GlobeProps> = ({
       },
       borderPoints: boundary.map(point => [point.lat, point.lng, 0.008] as [number, number, number]),
       color: coverageColor,
-      borderOpacity: coverageScale
+      curvature: GAP_CAP_CURVATURE
     };
-  }, [satellites, coverageSatelliteId, coverageScale, contactRadiusKm, coverageColor]);
+  }, [satellites, coverageSatelliteId, contactRadiusKm, coverageColor]);
 
   const gapCoverage = useMemo(() => {
     return coverageGaps.map(gap => {
@@ -947,7 +946,7 @@ export const Globe: React.FC<GlobeProps> = ({
       ...gapPaths,
       {
         points: selectedCoverage.borderPoints,
-        color: `#${new THREE.Color(selectedCoverage.color).getHexString()}${Math.round(255 * 0.9 * selectedCoverage.borderOpacity).toString(16).padStart(2, '0')}`,
+        color: `#${new THREE.Color(selectedCoverage.color).getHexString()}e6`,
         stroke: 0.34,
         dashLength: 0.05,
         dashGap: 0.035,

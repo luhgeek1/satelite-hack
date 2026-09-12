@@ -86,12 +86,17 @@ export function Viewport({
   // rather than by clearing the selection, which would not change anything.
   const [dismissedSiteId, setDismissedSiteId] = useState<string | null>(null);
 
-  // The dismissal belongs to the terminal that was picked; focusing another
-  // one from the panel starts it over, rather than that terminal arriving
-  // already dismissed.
+  // Footprints answer a pick, not a focus. A terminal is focused even when
+  // nobody picked one — the first client stands in, so the routes have someone
+  // to draw — and that stand-in must not start explaining itself the moment
+  // the timeline runs into its outage.
+  const pickedSiteId = state.selectedClientId;
+
+  // The dismissal belongs to the terminal that was picked; picking another one
+  // starts it over, rather than that terminal arriving already dismissed.
   useEffect(() => {
     setDismissedSiteId(null);
-  }, [focusClientId]);
+  }, [pickedSiteId]);
 
   const selectSite = (siteId: string) => {
     // One pick at a time: a node's own footprint and a terminal's missing ones
@@ -99,7 +104,7 @@ export function Viewport({
     const nodePicked = Boolean(state.selectedSatelliteId);
     if (nodePicked) dispatch({ type: 'selectSatellite', satelliteId: null });
 
-    if (siteId !== focusClientId) {
+    if (siteId !== pickedSiteId) {
       setDismissedSiteId(null);
       dispatch({ type: 'selectClient', clientId: siteId });
       return;
@@ -118,11 +123,11 @@ export function Viewport({
   // fresh one every render would have them rebuild it every render.
   const gaps = useMemo(
     () =>
-      dismissedSiteId === focusClientId || state.selectedSatelliteId
+      dismissedSiteId === pickedSiteId || state.selectedSatelliteId || !pickedSiteId
         ? []
         : coverageGaps(
-            clients.find((client) => client.id === focusClientId),
-            routes.find((route) => route.clientId === focusClientId),
+            clients.find((client) => client.id === pickedSiteId),
+            routes.find((route) => route.clientId === pickedSiteId),
             satellites,
             contactRadiusKm,
           ),
@@ -131,7 +136,7 @@ export function Viewport({
       state.selectedSatelliteId,
       clients,
       routes,
-      focusClientId,
+      pickedSiteId,
       satellites,
       contactRadiusKm,
     ],
