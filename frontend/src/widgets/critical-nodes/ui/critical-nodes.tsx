@@ -202,8 +202,8 @@ export function CriticalNodes({
         </button>
 
         <p className="font-label text-[10px] leading-relaxed text-zinc-600">
-          Each point of the grid is a full 24-hour simulation, and every unlocked angle
-          multiplies the count. Lock a plane to drop two dimensions.
+          {SEARCH_DEPTHS[depth].hint}. Every configuration tried is a full 24-hour
+          simulation; lock an angle to take it out of the search.
         </p>
 
         {optimizer.start.isError && <ErrorNote error={optimizer.start.error} />}

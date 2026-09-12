@@ -118,8 +118,17 @@ class OptimizeRequest(WireModel):
         "or on the mean across clients (what the organisers suggested at the Q&A)",
     )
     bounds: list[PlaneBoundsModel] = Field(..., min_length=1)
-    coarse_steps: int = Field(6, ge=2, le=24)
-    refine_rounds: int = Field(2, ge=0, le=4)
+    method: Literal["coordinate_descent", "grid"] = Field(
+        "coordinate_descent",
+        description="Move one angle at a time from several starting points, or enumerate "
+        "the full grid. The grid costs coarse_steps ** free_axes full-day simulations "
+        "and samples each angle far more coarsely for the same budget",
+    )
+    coarse_steps: int = Field(6, ge=2, le=24, description="Grid: samples per axis")
+    refine_rounds: int = Field(2, ge=0, le=4, description="Local steps around the winner")
+    axis_steps: int = Field(12, ge=2, le=64, description="Descent: samples per axis sweep")
+    passes: int = Field(3, ge=1, le=8, description="Descent: sweeps over every axis")
+    starts: int = Field(3, ge=1, le=8, description="Descent: independent starting points")
 
 
 class CandidateModel(WireModel):

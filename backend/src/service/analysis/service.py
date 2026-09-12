@@ -28,7 +28,14 @@ from domain.analysis.schemas import CandidateModel
 from domain.scenario import ConfigModel
 from engine import ConfigOverride, FailureWindow, PlaneOverride, RoutingStrategy, apply_override
 from engine.analysis import analyse_gateway_dependency, analyse_resilience
-from engine.optimizer import Candidate, Objective, PlaneBounds, optimize, sweep_environment
+from engine.optimizer import (
+    Candidate,
+    Objective,
+    PlaneBounds,
+    SearchMethod,
+    optimize,
+    sweep_environment,
+)
 from engine.scenario import GatewayOutage, ScenarioError
 from service.analysis.jobs import Job, JobRegistry
 from service.scenarios.service import check_scenario
@@ -172,8 +179,12 @@ class AnalysisService:
                 bounds=bounds,
                 strategy=strategy,
                 objective=objective,
+                method=SearchMethod(request.method),
                 coarse_steps=request.coarse_steps,
                 refine_rounds=request.refine_rounds,
+                axis_steps=request.axis_steps,
+                passes=request.passes,
+                starts=request.starts,
                 max_workers=settings.OPTIMIZER_MAX_WORKERS,
                 progress=job.note_progress,
             )

@@ -275,8 +275,12 @@ export interface OptimizeRequest {
   strategy?: RoutingStrategy;
   objective?: 'worst_first' | 'mean_first';
   bounds: PlaneBounds[];
+  method?: 'coordinate_descent' | 'grid';
   coarse_steps?: number;
   refine_rounds?: number;
+  axis_steps?: number;
+  passes?: number;
+  starts?: number;
 }
 
 export interface OptimizeCandidate {

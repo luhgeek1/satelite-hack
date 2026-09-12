@@ -18,15 +18,60 @@ export interface PlaneLock {
 
 export type SearchDepth = 'quick' | 'standard' | 'thorough';
 
-export const SEARCH_DEPTHS: Record<SearchDepth, { label: string; coarseSteps: number; refineRounds: number }> = {
-  quick: { label: 'Quick', coarseSteps: 3, refineRounds: 2 },
-  standard: { label: 'Standard', coarseSteps: 4, refineRounds: 2 },
-  thorough: { label: 'Thorough', coarseSteps: 5, refineRounds: 2 },
+interface DepthPreset {
+  label: string;
+  hint: string;
+  method: 'coordinate_descent' | 'grid';
+  axisSteps: number;
+  passes: number;
+  starts: number;
+  coarseSteps: number;
+  refineRounds: number;
+}
+
+/**
+ * The two cheap presets sweep one angle at a time; the expensive one enumerates
+ * the whole grid. Exhaustive is offered last on purpose: at six free axes it
+ * costs an order of magnitude more and, because the same budget buys only four
+ * samples per angle, it has measured *worse* on the official scenario than the
+ * fine one-dimensional sweeps.
+ */
+export const SEARCH_DEPTHS: Record<SearchDepth, DepthPreset> = {
+  quick: {
+    label: 'Quick',
+    hint: 'One descent, 12 samples per angle',
+    method: 'coordinate_descent',
+    axisSteps: 12,
+    passes: 2,
+    starts: 1,
+    coarseSteps: 4,
+    refineRounds: 1,
+  },
+  standard: {
+    label: 'Standard',
+    hint: 'Three independent starts against a local optimum',
+    method: 'coordinate_descent',
+    axisSteps: 12,
+    passes: 3,
+    starts: 3,
+    coarseSteps: 4,
+    refineRounds: 2,
+  },
+  thorough: {
+    label: 'Exhaustive',
+    hint: 'Every combination on a coarse grid — slow, and rarely better',
+    method: 'grid',
+    axisSteps: 12,
+    passes: 3,
+    starts: 3,
+    coarseSteps: 4,
+    refineRounds: 1,
+  },
 };
 
-/** Measured on the official grid: one configuration is a full 24-hour run, and
- *  the fan-out only reaches about 2x over eight workers, so the wall clock is
- *  far closer to the serial cost than the core count suggests. */
+/** Measured on the official scenario: one configuration is a full 24-hour run,
+ *  and the fan-out only reaches about 2x over eight workers, so the wall clock
+ *  stays far closer to the serial cost than the core count suggests. */
 const SECONDS_PER_RUN = 0.11;
 
 export const estimateSeconds = (runs: number) => Math.round(runs * SECONDS_PER_RUN);
@@ -34,11 +79,18 @@ export const estimateSeconds = (runs: number) => Math.round(runs * SECONDS_PER_R
 export const freeAxes = (locks: PlaneLock[]) =>
   locks.reduce((count, lock) => count + (lock.raanLocked ? 0 : 1) + (lock.phaseLocked ? 0 : 1), 0);
 
-/** Every point of the coarse grid is a full 24-hour run, so the count is the
- *  honest unit of cost to put in front of the engineer before they commit. */
+/** Mirrors `planned_runs` in the engine: the count the search is allowed to
+ *  spend, so the quote on the button matches the total on the progress bar. */
 export const gridSize = (locks: PlaneLock[], depth: SearchDepth) => {
   const axes = freeAxes(locks);
-  return axes === 0 ? 0 : SEARCH_DEPTHS[depth].coarseSteps ** axes;
+  if (axes === 0) return 0;
+
+  const preset = SEARCH_DEPTHS[depth];
+  const refinement = preset.refineRounds * 2 * axes;
+
+  return preset.method === 'grid'
+    ? preset.coarseSteps ** axes + refinement + 1
+    : preset.starts * (1 + preset.passes * axes * preset.axisSteps) + refinement + 1;
 };
 
 const toBounds = (locks: PlaneLock[]): PlaneBounds[] =>
@@ -74,15 +126,19 @@ export function useOptimizer(input: RunInput) {
 
   const start = useMutation({
     mutationFn: ({ locks, depth }: { locks: PlaneLock[]; depth: SearchDepth }) => {
-      const { coarseSteps, refineRounds } = SEARCH_DEPTHS[depth];
+      const preset = SEARCH_DEPTHS[depth];
       const payload: OptimizeRequest = {
         scenario_id: input.scenarioId as string,
         config: normalizeConfig(input.config),
         strategy: input.strategy,
         objective: 'worst_first',
         bounds: toBounds(locks),
-        coarse_steps: coarseSteps,
-        refine_rounds: refineRounds,
+        method: preset.method,
+        coarse_steps: preset.coarseSteps,
+        refine_rounds: preset.refineRounds,
+        axis_steps: preset.axisSteps,
+        passes: preset.passes,
+        starts: preset.starts,
       };
       return analysisApi.optimize(payload);
     },

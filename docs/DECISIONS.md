@@ -112,6 +112,39 @@ against gaps that opened and closed inside the window would be dishonest.
 *Why:* the case fixes the grid and compares variants on it. 720 instants,
 right edge excluded.
 
+**C7. The optimizer walks one angle at a time, not the full grid.**
+*Why:* enumerating three planes x RAAN and phase costs `steps ** 6` full-day
+simulations, and the budget that makes it affordable also makes it coarse: four
+samples per axis tries RAAN only at 0, 90, 180 and 270 degrees. Coordinate
+descent holds every other angle still and sweeps one finely, which costs
+`starts * passes * axes * steps`. Measured on `01_full_constellation`, all three
+planes free:
+
+| Search | Worst availability | Longest outage | Runs | Wall clock |
+| --- | --- | --- | --- | --- |
+| Baseline (as flown) | 96.667% | 480 s | — | — |
+| Grid, 4 per axis | 97.361% | 360 s | 4109 | 285 s |
+| Descent, 12 per axis, 1 start | **98.333%** | **240 s** | **158** | **17 s** |
+| Descent, 12 per axis, 3 starts | 98.333% | 240 s | 532 | 58 s |
+
+The cheap search is the default because it is also the better one. The grid stays
+available as "Exhaustive" for anyone who wants the guarantee that nothing inside
+its resolution was skipped.
+
+*Caveat:* a descent settles wherever it stops improving, so it can miss an optimum
+across a ridge the grid would have sampled. That is what the independent starts
+are for, and they are drawn from a fixed seed — the jury must get the same
+recommendation from the same file twice.
+
+**C8. Fan-out leaves two cores free and pins numpy to one thread per worker.**
+*Why:* an unbounded pool took every core and made the machine running the demo
+unusable for minutes. Worse, numpy opens a thread pool inside each worker, so
+eight processes asked for eighty threads on ten cores: pinning took a 729-point
+search from 77 s to 54 s. Measured scaling is only about 2x over eight workers —
+the work is bound by memory traffic, not arithmetic — so cutting the number of
+runs matters far more than adding cores. Memory is not the constraint: about
+34 MB per worker, ~300 MB for a full search.
+
 ---
 
 ## D. Product
