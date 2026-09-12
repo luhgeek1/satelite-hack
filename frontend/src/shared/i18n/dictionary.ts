@@ -64,6 +64,8 @@ export const en = {
   'panel.configuration': 'Configuration',
 
   'health.title': 'Network health',
+  'health.hide': 'Put the network panel away',
+  'health.show': 'Bring the network panel back',
   'health.routes': 'Routes',
   'health.expandRoutes': 'Show the routes',
   'health.collapseRoutes': 'Hide the routes',
@@ -466,6 +468,8 @@ export const ru: Record<TranslationKey, string> = {
   'panel.configuration': 'Конфигурация',
 
   'health.title': 'Состояние сети',
+  'health.hide': 'Свернуть состояние сети',
+  'health.show': 'Показать состояние сети',
   'health.routes': 'Маршруты',
   'health.expandRoutes': 'Показать маршруты',
   'health.collapseRoutes': 'Скрыть маршруты',

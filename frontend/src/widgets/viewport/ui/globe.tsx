@@ -34,6 +34,17 @@ const EARTH_RADIUS_KM = 6371;
 const COVERAGE_TWEEN_MS = 220;
 /** Long enough to see which way the globe turned, short enough not to wait. */
 const FOCUS_FLIGHT_MS = 700;
+/**
+ * The time constant the satellites chase their own data with.
+ *
+ * Positions arrive with the snapshot for each instant, which is a network
+ * round trip, so during playback they land about four times a second and each
+ * one is tens of pixels from the last. Easing towards the new position instead
+ * of teleporting to it costs a beat of lag and buys continuous motion.
+ */
+const MOTION_EASE_MS = 90;
+/** How long a plate takes to travel to a new position while the day runs. */
+const PLATE_GLIDE_MS = 220;
 /** How long the container has to hold still before the globe reframes. */
 const RESIZE_SETTLE_MS = 180;
 const COVERAGE_CAP_OPACITY = 0.22;
@@ -794,6 +805,58 @@ export const Globe: React.FC<GlobeProps> = ({
       .filter((datum): datum is FailurePingDatum => datum !== null);
   }, [failurePings, satellites]);
 
+  // Nothing here goes through React: the loop reads where the layer has put
+  // each node, and writes back a position a little behind it. A React state
+  // per frame would re-render the globe sixty times a second.
+  useEffect(() => {
+    if (!playing) return;
+
+    const groups = satelliteGroups.current;
+    const targets = new Map<string, THREE.Vector3>();
+    const written = new Map<string, THREE.Vector3>();
+    let frame = 0;
+    let last = performance.now();
+
+    const step = (now: number) => {
+      const delta = Math.min(80, now - last);
+      last = now;
+      const alpha = 1 - Math.exp(-delta / MOTION_EASE_MS);
+
+      groups.forEach((group, id) => {
+        const previous = written.get(id);
+
+        // A position we did not write is one the layer has just set, which
+        // makes it the new target rather than something to ease away from.
+        if (!previous || !group.position.equals(previous)) {
+          targets.set(id, group.position.clone());
+          if (!previous) {
+            written.set(id, group.position.clone());
+            return;
+          }
+        }
+
+        const target = targets.get(id);
+        if (!target) return;
+
+        group.position.lerp(target, alpha);
+        written.set(id, group.position.clone());
+      });
+
+      frame = requestAnimationFrame(step);
+    };
+
+    frame = requestAnimationFrame(step);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      // Pausing lands every node on the instant the clock actually shows.
+      groups.forEach((group, id) => {
+        const target = targets.get(id);
+        if (target) group.position.copy(target);
+      });
+    };
+  }, [playing]);
+
   const highlightedPlane = useMemo(
     () => satellites.find(s => s.id === selectedSatellite)?.planeId ?? null,
     [satellites, selectedSatellite]
@@ -1311,7 +1374,7 @@ export const Globe: React.FC<GlobeProps> = ({
 
         htmlElementsData={isGlobeVisible ? htmlElementsData : []}
         htmlAltitude={(d: any) => d.alt ?? 0}
-        htmlTransitionDuration={0}
+        htmlTransitionDuration={playing ? PLATE_GLIDE_MS : 0}
         htmlElement={createHtmlElement}
       />
 

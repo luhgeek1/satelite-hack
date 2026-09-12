@@ -1,7 +1,16 @@
 'use client';
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, Check, Pencil, PanelRightClose, PanelRightOpen, ShieldAlert, X } from 'lucide-react';
+import {
+  Activity,
+  Check,
+  Pencil,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  ShieldAlert,
+  X,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AppHeader } from '@/widgets/app-header';
 import { CompareBoard } from '@/widgets/compare-board';
@@ -678,15 +687,50 @@ export function StudioPage() {
               />
 
               {state.tab === 'simulation' && (
-                <NetworkHealth
-                  clients={summary?.clients ?? []}
-                  traces={routeTraces}
-                  selectedClientId={focusClientId}
-                  onSelectClient={selectClient}
-                  stale={settling || simulation.isFetching || snapshot.isFetching}
-                  optimizing={optimizer.running || optimizer.start.isPending}
-                  onOptimize={startOptimizer}
-                />
+                <>
+                  {/* The card goes the way the sidebar goes, off its own edge,
+                      and leaves the same kind of handle behind. */}
+                  <AnimatePresence initial={false}>
+                    {!panels.healthHidden && (
+                      <motion.div
+                        key="health"
+                        initial={{ opacity: 0, x: -12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -16 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className="pointer-events-none absolute inset-0 z-10"
+                      >
+                        <NetworkHealth
+                          clients={summary?.clients ?? []}
+                          traces={routeTraces}
+                          selectedClientId={focusClientId}
+                          onSelectClient={selectClient}
+                          stale={settling || simulation.isFetching || snapshot.isFetching}
+                          optimizing={optimizer.running || optimizer.start.isPending}
+                          onOptimize={startOptimizer}
+                          onHide={panels.hideHealth}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {panels.healthHidden && (
+                      <motion.button
+                        type="button"
+                        onClick={panels.showHealth}
+                        aria-label={t('health.show')}
+                        title={t('health.show')}
+                        initial={{ opacity: 0, scale: 0.92, x: -10 }}
+                        animate={{ opacity: 1, scale: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.92, x: -10 }}
+                        className="absolute left-3 top-3 z-20 flex h-7 w-7 items-center justify-center border border-rule-strong bg-black/85 text-zinc-500 backdrop-blur transition-colors hover:border-zinc-600 hover:text-zinc-100 lg:left-6 lg:top-6"
+                      >
+                        <PanelLeftOpen size={16} />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </>
               )}
 
               {state.tab === 'resilience' && (

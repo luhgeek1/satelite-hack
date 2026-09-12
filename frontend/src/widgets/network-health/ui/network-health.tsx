@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Zap } from 'lucide-react';
+import { ChevronDown, PanelLeftClose, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { RouteChain, type RouteTrace } from '@/entities/simulation';
 import { cn } from '@/shared/lib';
@@ -20,6 +20,7 @@ interface NetworkHealthProps {
   stale: boolean;
   optimizing: boolean;
   onOptimize: () => void;
+  onHide: () => void;
 }
 
 export function NetworkHealth({
@@ -30,6 +31,7 @@ export function NetworkHealth({
   stale,
   optimizing,
   onOptimize,
+  onHide,
 }: NetworkHealthProps) {
   const { t, formatDuration } = useI18n();
   const [routesOpen, setRoutesOpen] = useState(false);
@@ -44,6 +46,15 @@ export function NetworkHealth({
         <span className={cn('h-2 w-2 shrink-0', cutOff ? 'bg-alarm' : 'bg-zinc-100')} />
         <span className="font-label text-[13px] text-zinc-300">{t('health.title')}</span>
         {stale && <span className="font-data text-[9px] tracking-[0.08em] text-zinc-600">SYNC</span>}
+        <button
+          type="button"
+          onClick={onHide}
+          aria-label={t('health.hide')}
+          title={t('health.hide')}
+          className="pointer-events-auto -mr-1 ml-auto flex h-5 w-5 shrink-0 items-center justify-center text-zinc-600 transition-colors hover:text-zinc-200 focus-visible:text-zinc-200 focus-visible:outline-none"
+        >
+          <PanelLeftClose size={14} />
+        </button>
       </div>
 
       <button

@@ -6,30 +6,38 @@ const STORAGE_KEY = 'orbitguard-panels-v1';
 
 export function useLocalPanels() {
   const [hidden, setHidden] = useState(false);
+  const [healthHidden, setHealthHidden] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setHidden(JSON.parse(raw).hidden === true);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      setHidden(saved.hidden === true);
+      setHealthHidden(saved.healthHidden === true);
     } catch {
       setHidden(false);
+      setHealthHidden(false);
     }
   }, []);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ hidden }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ hidden, healthHidden }));
     } catch {
       /* a viewer with site data blocked simply loses the preference */
     }
-  }, [hidden]);
+  }, [hidden, healthHidden]);
 
   return {
     hidden,
+    healthHidden,
     drawerOpen,
     hide: () => setHidden(true),
     show: () => setHidden(false),
+    hideHealth: () => setHealthHidden(true),
+    showHealth: () => setHealthHidden(false),
     openDrawer: () => setDrawerOpen(true),
     closeDrawer: () => setDrawerOpen(false),
   };
