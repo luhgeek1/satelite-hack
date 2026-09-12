@@ -32,12 +32,33 @@ export interface SatelliteDto {
   launch_batch: 1 | 2 | 3;
 }
 
+export type SiteProfileName = 'open' | 'sea' | 'forest' | 'urban' | 'mountain' | 'custom';
+
+/**
+ * What surrounds a ground site. The effective mask is the higher of the
+ * scenario's mask and the local one, so conditions only ever remove links.
+ */
+export interface SiteConditionsDto {
+  profile: SiteProfileName;
+  mask_deg?: number | null;
+  altitude_m?: number | null;
+  azimuth_mask?: [number, number][] | null;
+}
+
+export interface SiteProfile {
+  id: SiteProfileName;
+  mask_deg: number;
+  altitude_m: number;
+  rationale: string;
+}
+
 export interface GroundSiteDto {
   id: string;
   name: string;
   role: GroundSiteRole;
   lat_deg: number;
   lon_deg: number;
+  site_conditions?: SiteConditionsDto | null;
 }
 
 export interface FailureDto {
@@ -99,6 +120,8 @@ export interface SimulationConfig {
   planes?: Record<string, PlaneConfig>;
   failures?: FailureDto[];
   gateway_outages?: GatewayOutageDto[];
+  /** A value sets a site's surroundings; `null` clears the block its file carried. */
+  sites?: Record<string, SiteConditionsDto | null>;
   isl_range_km?: number;
   min_elevation_deg?: number;
   altitude_km?: number;
@@ -140,6 +163,9 @@ export interface ClientMetrics {
   max_hops: number | null;
   outage_reasons: Record<string, number>;
   outage_windows: OutageWindow[];
+  site_profile: SiteProfileName | null;
+  effective_mask_deg: number | null;
+  masked_share: number;
 }
 
 export interface SimulationSummary {
@@ -158,6 +184,7 @@ export interface SimulationSummary {
   clients: ClientMetrics[];
   config: SimulationConfig;
   environment_modified: boolean;
+  site_conditions_active: boolean;
   effective_scenario: ScenarioDocument;
   compute_ms: number;
 }
@@ -197,6 +224,8 @@ export interface SnapshotResponse {
   routes: RouteDto[];
   elevation_deg: Record<string, Record<string, number>>;
   offline_gateways: string[];
+  /** Per site: satellites above the scenario mask that its surroundings hide. */
+  masked_satellites: Record<string, string[]>;
   active_satellites: number;
   total_satellites: number;
 }

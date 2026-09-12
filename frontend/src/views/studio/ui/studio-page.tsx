@@ -147,7 +147,10 @@ export function StudioPage() {
     [satellites],
   );
 
-  const links = useMemo(() => buildLinkViews(snapshot.data?.edges), [snapshot.data]);
+  const links = useMemo(
+    () => buildLinkViews(snapshot.data?.edges, snapshot.data?.masked_satellites),
+    [snapshot.data],
+  );
   const sites = useMemo(() => groundSitesOf(scenario), [scenario]);
   const clients = useMemo(() => clientsOf(scenario), [scenario]);
   const gateways = useMemo(() => gatewaysOf(scenario), [scenario]);

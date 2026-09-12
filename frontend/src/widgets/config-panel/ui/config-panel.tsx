@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { Plus, RadioTower, RotateCcw, SatelliteDish } from 'lucide-react';
 import { DeploymentControl } from '@/features/configure-deployment';
 import { PlaneControls } from '@/features/configure-planes';
+import { SiteConditionsControl } from '@/features/configure-site';
 import { FailureForm } from '@/features/inject-failure';
 import { OutageList } from '@/features/inspect-outages';
 import { SaveVariantButton } from '@/features/manage-variants';
 import { useSession } from '@/entities/session';
 import type { SatelliteView } from '@/entities/satellite';
-import type { GroundSiteView } from '@/entities/ground-site';
+import { effectiveSiteConditions, type GroundSiteView } from '@/entities/ground-site';
 import { cn, formatClock, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { Button, ParamGroup } from '@/shared/ui';
@@ -67,6 +68,10 @@ export function ConfigPanel({
   const deployed = satellites.filter((satellite) => satellite.deployed);
   const gateways = sites.filter((site) => site.role === 'gateway');
   const clients = sites.filter((site) => site.role === 'client');
+  const obstructed = sites.filter((site) => {
+    const conditions = effectiveSiteConditions(site, state.config);
+    return conditions !== null && conditions.profile !== 'open';
+  }).length;
   const planeSummary = scenario.design.planes
     .map((plane) =>
       Math.round(state.config.planes?.[plane.id]?.raan_deg ?? plane.raan_deg)
@@ -247,7 +252,7 @@ export function ConfigPanel({
         <ParamGroup
           code="GND"
           title={t('config.sites')}
-          value={`${sites.length}`}
+          value={obstructed ? t('config.sitesObstructed', { count: sites.length, obstructed }) : `${sites.length}`}
           open={open.sites}
           onToggle={() => toggle('sites')}
         >
@@ -260,7 +265,10 @@ export function ConfigPanel({
               const className = cn(
                 'block w-full border p-2.5 text-left',
                 selected ? 'border-zinc-500 bg-white/[0.06]' : 'border-rule-strong bg-white/[0.02]',
-                isTerminal && 'transition-colors hover:border-zinc-500 focus-visible:outline focus-visible:outline-1 focus-visible:outline-zinc-300',
+              );
+              const headerClassName = cn(
+                'block w-full text-left',
+                isTerminal && 'transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-zinc-300',
               );
               const content = (
                 <>
@@ -288,19 +296,29 @@ export function ConfigPanel({
                 </>
               );
 
-              return isTerminal ? (
-                <button
-                  key={site.id}
-                  type="button"
-                  aria-pressed={selected}
-                  title={t('config.showRoute', { site: site.id })}
-                  onClick={() => dispatch({ type: 'selectClient', clientId: site.id })}
-                  className={className}
-                >
-                  {content}
-                </button>
-              ) : (
-                <div key={site.id} className={className}>{content}</div>
+              // The card holds inputs of its own, so the clickable part is the
+              // header, not the whole card: a button cannot contain a button.
+              return (
+                <div key={site.id} className={className}>
+                  {isTerminal ? (
+                    <button
+                      type="button"
+                      aria-pressed={selected}
+                      title={t('config.showRoute', { site: site.id })}
+                      onClick={() => dispatch({ type: 'selectClient', clientId: site.id })}
+                      className={headerClassName}
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <div className={headerClassName}>{content}</div>
+                  )}
+                  <SiteConditionsControl
+                    site={site}
+                    scenarioMaskDeg={scenario.environment.min_elevation_deg}
+                    metrics={metrics}
+                  />
+                </div>
               );
             })}
             {sites.length === 0 && (

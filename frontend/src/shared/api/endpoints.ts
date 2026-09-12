@@ -12,6 +12,7 @@ import type {
   ScenarioDocument,
   ScenarioSummary,
   SensitivityResponse,
+  SiteProfile,
   SimulationSummary,
   SnapshotResponse,
   ValidationReport,
@@ -28,6 +29,7 @@ export const scenariosApi = {
     request<ScenarioSummary>('/scenarios', { method: 'POST', body: document }),
   remove: (id: string) => request<void>(`/scenarios/${id}`, { method: 'DELETE' }),
   downloadUrl: (id: string) => downloadUrl(`/scenarios/${id}/download`),
+  siteProfiles: () => request<SiteProfile[]>('/scenarios/site-profiles'),
 };
 
 export const simulationsApi = {

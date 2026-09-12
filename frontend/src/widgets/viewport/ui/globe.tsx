@@ -693,6 +693,11 @@ export const Globe: React.FC<GlobeProps> = ({
       if (routeEdge) {
         color = routeEdge.focused ? routeEdge.color : `${routeEdge.color}b3`;
         stroke = routeEdge.focused ? 0.62 : 0.42;
+      } else if (link.kind === 'masked') {
+        // Above the terminal's mask, behind the site's own horizon: drawn so
+        // the eye can tell "no satellite" from "a satellite it cannot use".
+        color = 'rgba(251,113,133,0.55)';
+        stroke = 0.18;
       } else if (isFailed) {
         color = 'rgba(239,68,68,0.45)';
         stroke = 0.2;
@@ -719,8 +724,8 @@ export const Globe: React.FC<GlobeProps> = ({
         endAlt: targetIsSat ? SATELLITE_ALTITUDE : 0,
         color: [color, color],
         dashAnimateTime: routeEdge ? (routeEdge.focused ? 1000 : 2600) : 0,
-        dashLength: routeEdge ? 0.5 : 1,
-        dashGap: routeEdge ? 0.2 : 0,
+        dashLength: routeEdge ? 0.5 : link.kind === 'masked' ? 0.08 : 1,
+        dashGap: routeEdge ? 0.2 : link.kind === 'masked' ? 0.06 : 0,
         stroke
       };
     }).filter((arc): arc is NonNullable<typeof arc> => arc !== null);

@@ -9,6 +9,7 @@ export interface RunKey {
 export const queryKeys = {
   scenarios: ['scenarios'] as const,
   scenario: (id: string) => ['scenarios', id] as const,
+  siteProfiles: ['scenarios', 'site-profiles'] as const,
 
   simulation: (key: RunKey) => ['simulation', key] as const,
   snapshot: (runId: string, tS: number) => ['simulation', runId, 'snapshot', tS] as const,

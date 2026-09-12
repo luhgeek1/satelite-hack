@@ -16,7 +16,8 @@ export interface SatelliteView {
   color: string;
 }
 
-export type SatelliteLinkKind = SnapshotEdge['type'];
+/** `masked`: a ground link geometry admits but the site's surroundings hide. */
+export type SatelliteLinkKind = SnapshotEdge['type'] | 'masked';
 
 export interface LinkView {
   source: string;
@@ -69,13 +70,24 @@ export function buildSatelliteViews({
   });
 }
 
-export function buildLinkViews(edges: SnapshotEdge[] | undefined): LinkView[] {
-  return (edges ?? []).map((edge) => ({
+export function buildLinkViews(
+  edges: SnapshotEdge[] | undefined,
+  masked: Record<string, string[]> | undefined = undefined,
+): LinkView[] {
+  const links: LinkView[] = (edges ?? []).map((edge) => ({
     source: edge.source,
     target: edge.target,
     kind: edge.type,
     distanceKm: edge.distance_km,
   }));
+
+  for (const [siteId, satelliteIds] of Object.entries(masked ?? {})) {
+    for (const satelliteId of satelliteIds) {
+      links.push({ source: siteId, target: satelliteId, kind: 'masked', distanceKm: 0 });
+    }
+  }
+
+  return links;
 }
 
 export const neighboursOf = (links: LinkView[], satelliteId: string): string[] =>

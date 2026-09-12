@@ -54,6 +54,8 @@ interface Map2DProps {
 const geography = countries110m as any;
 
 const ALARM = '#e4483a';
+/** A ground link the site's own horizon hides: present in geometry, unusable on the ground. */
+const MASKED_LINK = '#fb7185';
 
 /**
  * Two grounds for the same chart. The schematic one belongs to the console
@@ -272,8 +274,9 @@ export const Map2D: React.FC<Map2DProps> = ({
     target: { lat: number; lon: number },
     route: { color: string; focused: boolean } | undefined,
     key: string,
+    masked = false,
   ) => {
-    const stroke = route ? route.color : palette.linkIdle;
+    const stroke = route ? route.color : masked ? MASKED_LINK : palette.linkIdle;
     const overImagery = Boolean(palette.casing);
     const strokeWidth = (route ? (route.focused ? 1.4 : 1) : overImagery ? 0.55 : 0.5) * k;
     const strokeOpacity = route
@@ -329,6 +332,7 @@ export const Map2D: React.FC<Map2DProps> = ({
             stroke={stroke}
             strokeWidth={strokeWidth}
             strokeOpacity={strokeOpacity}
+            strokeDasharray={masked ? `${2 * k} ${1.5 * k}` : undefined}
           />
         ))}
       </g>
@@ -465,7 +469,7 @@ export const Map2D: React.FC<Map2DProps> = ({
               Boolean((source as SatelliteView).failed) || Boolean((target as SatelliteView).failed);
             if (touchesFailedNode && isRoute) return null;
 
-            return renderLink(source, target, route, `link-${index}`);
+            return renderLink(source, target, route, `link-${index}`, link.kind === 'masked');
           })}
 
           {gateways.map(gateway => (

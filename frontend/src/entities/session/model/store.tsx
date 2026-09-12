@@ -2,7 +2,13 @@
 
 import * as React from 'react';
 import { isFiniteNumber, isRecord, readStored, writeStored } from '@/shared/lib';
-import type { FailureDto, RoutingStrategy, SimulationConfig } from '@/shared/api';
+import type {
+  FailureDto,
+  GatewayOutageDto,
+  RoutingStrategy,
+  SimulationConfig,
+  SiteConditionsDto,
+} from '@/shared/api';
 
 export type StudioTab = 'simulation' | 'resilience' | 'compare';
 export type ViewMode = '3d' | '2d';
@@ -32,6 +38,10 @@ type Action =
   | { type: 'addFailure'; failure: FailureDto }
   | { type: 'removeFailure'; satelliteId: string }
   | { type: 'clearFailures' }
+  | { type: 'addGatewayOutage'; outage: GatewayOutageDto }
+  | { type: 'removeGatewayOutage'; gatewayId: string }
+  | { type: 'setSiteConditions'; siteId: string; conditions: SiteConditionsDto | null }
+  | { type: 'resetSiteConditions'; siteId: string }
   | { type: 'setStrategy'; strategy: RoutingStrategy }
   | { type: 'seek'; tS: number }
   | { type: 'advance'; stepS: number; horizonS: number }
@@ -125,6 +135,44 @@ function reducer(state: SessionState, action: Action): SessionState {
 
     case 'clearFailures':
       return { ...state, config: { ...state.config, failures: [] } };
+
+    case 'addGatewayOutage': {
+      const outages = (state.config.gateway_outages ?? []).filter(
+        (outage) => outage.gateway_id !== action.outage.gateway_id,
+      );
+      return {
+        ...state,
+        config: { ...state.config, gateway_outages: [...outages, action.outage] },
+      };
+    }
+
+    case 'removeGatewayOutage':
+      return {
+        ...state,
+        config: {
+          ...state.config,
+          gateway_outages: (state.config.gateway_outages ?? []).filter(
+            (outage) => outage.gateway_id !== action.gatewayId,
+          ),
+        },
+      };
+
+    // `null` is a value here: it clears a block the scenario file carried.
+    case 'setSiteConditions':
+      return {
+        ...state,
+        config: {
+          ...state.config,
+          sites: { ...state.config.sites, [action.siteId]: action.conditions },
+        },
+      };
+
+    // Back to whatever the file says, which may itself be a block or nothing.
+    case 'resetSiteConditions': {
+      const sites = { ...state.config.sites };
+      delete sites[action.siteId];
+      return { ...state, config: { ...state.config, sites } };
+    }
 
     case 'setStrategy':
       return { ...state, strategy: action.strategy };
