@@ -9,3 +9,17 @@ export {
   type LaunchStageInfo,
 } from './model/types';
 export { phasePeriodDeg } from './model/phase-period';
+export {
+  firstFreeStage,
+  freeLocks,
+  isPlaneLocked,
+  locksForStage,
+  planeCommitStage,
+  planeRaanDeg,
+  planesAtStage,
+  raanSpread,
+  satellitesAtStage,
+  setPlaneLocked,
+  type PlaneLock,
+  type RaanSpread,
+} from './model/deployment';
