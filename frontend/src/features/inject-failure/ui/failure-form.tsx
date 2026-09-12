@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { formatClock } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
+import { SatelliteCombobox } from './satellite-combobox';
 import type { SatelliteView } from '@/entities/satellite';
 import type { FailureRequest } from '../model/use-failure-mutation';
 
@@ -61,22 +62,12 @@ export function FailureForm({
       <label htmlFor="failure-target" className="block font-label text-[11px] text-zinc-400">
         {t('failure.which')}
       </label>
-      <select
+      <SatelliteCombobox
         id="failure-target"
-        autoFocus
+        candidates={candidates}
         value={satelliteId}
-        onChange={(event) => setSatelliteId(event.target.value)}
-        className="param-select w-full border border-rule-strong bg-black py-1.5 pl-2 pr-6 font-data text-[11px] text-zinc-200 focus:border-zinc-500 focus:outline-none"
-      >
-        <option value="" disabled>
-          {t('failure.pick')}
-        </option>
-        {candidates.map((satellite) => (
-          <option key={satellite.id} value={satellite.id}>
-            {satellite.id} {satellite.planeId}
-          </option>
-        ))}
-      </select>
+        onChange={setSatelliteId}
+      />
 
       <div className="flex border border-rule-strong">
         {spans.map((option) => (

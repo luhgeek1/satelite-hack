@@ -116,6 +116,10 @@ export const en = {
 
   'failure.which': 'Which satellite fails?',
   'failure.pick': 'Select a node',
+  'failure.search': 'Type or pick a node',
+  'failure.noMatch': 'No node matches “{query}”',
+  'failure.matches': '{count} of {total}',
+  'failure.clear': 'Clear',
   'failure.wholeDay': 'Whole day',
   'failure.fromNow': 'From {time}',
   'failure.window': 'Window',
@@ -368,6 +372,10 @@ export const ru: Record<TranslationKey, string> = {
 
   'failure.which': 'Какой спутник откажет?',
   'failure.pick': 'Выберите узел',
+  'failure.search': 'Введите или выберите узел',
+  'failure.noMatch': 'Ничего не найдено по «{query}»',
+  'failure.matches': '{count} из {total}',
+  'failure.clear': 'Очистить',
   'failure.wholeDay': 'Весь день',
   'failure.fromNow': 'С {time}',
   'failure.window': 'Окно',
