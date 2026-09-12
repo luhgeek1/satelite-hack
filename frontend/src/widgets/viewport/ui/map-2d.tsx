@@ -180,7 +180,14 @@ export const Map2D: React.FC<Map2DProps> = ({
   const [position, setPosition] = useState<MapView>(
     () => readStored(MAP_VIEW_KEY, isMapView) ?? DEFAULT_MAP_VIEW
   );
+  const [liveZoom, setLiveZoom] = useState(() => position.zoom);
   const [relief, setRelief] = useState(() => readStored(MAP_RELIEF_KEY, isBoolean) ?? false);
+
+  // The buttons and the recentre set the zoom outright rather than through a
+  // gesture, so the live figure follows them too.
+  useEffect(() => {
+    setLiveZoom(position.zoom);
+  }, [position.zoom]);
   const palette = relief ? RELIEF_MAP : SCHEMATIC_MAP;
 
   useEffect(() => {
@@ -248,7 +255,12 @@ export const Map2D: React.FC<Map2DProps> = ({
   // Markers live inside the zoom transform, so everything drawn in map units
   // has to be divided by the zoom to hold a constant size on screen. Without
   // this a satellite becomes a blob at 4x and the route line a ribbon.
-  const k = 1 / position.zoom;
+  //
+  // It has to be the live figure rather than the settled one: d3-zoom moves
+  // the transform on every frame of a gesture while onMoveEnd only reports
+  // where it stopped, so dividing by the settled zoom left the marks swelling
+  // with the map for the length of a wheel spin and snapping back at the end.
+  const k = 1 / liveZoom;
 
   const satelliteColor = (sat: SatelliteView) => {
     if (sat.failed) return ALARM;
@@ -377,6 +389,7 @@ export const Map2D: React.FC<Map2DProps> = ({
         <ZoomableGroup
           center={position.coordinates}
           zoom={position.zoom}
+          onMove={(props) => setLiveZoom(props.zoom ?? 1)}
           onMoveEnd={(props) => handleMoveEnd({ coordinates: props.coordinates ?? [0, 0], zoom: props.zoom ?? 1 })}
           minZoom={1}
           maxZoom={8}

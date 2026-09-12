@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from '@/entities/session';
-import { ScaleRow } from '@/shared/ui';
+import { ScaleCaption, ScaleRow, SCALE_GRID } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
 import type { ScenarioDocument } from '@/shared/api';
 
@@ -14,60 +14,76 @@ import type { ScenarioDocument } from '@/shared/api';
 const ANGLE_STEP_DEG = 0.1;
 const ANGLE_MAX_DEG = 360 - ANGLE_STEP_DEG;
 
+/** Quarters of the turn: the stops an operator names, and where the majors fall. */
+const ANGLE_STOPS = [0, 90, 180, 270];
+const ANGLE_TICKS = 13;
+const ANGLE_MAJOR_EVERY = 3;
+
+const SCALES = [
+  { key: 'raan' as const, label: 'RAAN' },
+  { key: 'phase' as const, label: 'PHASE' },
+];
+
 interface PlaneControlsProps {
   scenario: ScenarioDocument;
   colors: Record<string, string>;
 }
 
+/**
+ * Two scales, every plane on each.
+ *
+ * Grouped by parameter rather than by plane: the question an operator asks of
+ * this block is how far one plane sits from another, and stacking the tracks
+ * of a parameter under a single ruler answers it by alignment instead of by
+ * reading a column of numbers. The quarter marks are labelled, so each ruler
+ * also says what it counts in.
+ */
 export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
 
   return (
     <>
-      <div className="space-y-3">
-        {scenario.design.planes.map((plane) => {
-          const override = state.config.planes?.[plane.id];
-          const raan = override?.raan_deg ?? plane.raan_deg;
-          const phase = override?.phase_deg ?? plane.phase_deg;
-          const count = scenario.design.satellites.filter((sat) => sat.plane_id === plane.id).length;
+      <div className="space-y-3.5">
+        {SCALES.map((scale) => (
+          <div key={scale.key} className={SCALE_GRID}>
+            <ScaleCaption label={scale.label} stops={ANGLE_STOPS} max={ANGLE_MAX_DEG} />
 
-          return (
-            <div key={plane.id}>
-              <div className="flex items-center gap-2 border-b border-rule pb-1">
-                <span className="h-2.5 w-0.5" style={{ background: colors[plane.id] }} />
-                <span className="font-data text-[11px] text-zinc-200">{plane.id}</span>
-                <span className="ml-auto font-data text-[10px] tabular-nums text-zinc-500">{t('config.satellitesInPlane', { count })}</span>
-              </div>
+            {scenario.design.planes.map((plane) => {
+              const override = state.config.planes?.[plane.id];
+              const value =
+                scale.key === 'raan'
+                  ? (override?.raan_deg ?? plane.raan_deg)
+                  : (override?.phase_deg ?? plane.phase_deg);
 
-              <div className="mt-1.5 space-y-1">
+              return (
                 <ScaleRow
-                  id={`${plane.id}-raan`}
-                  label="RAAN"
-                  value={raan}
+                  key={plane.id}
+                  id={`${plane.id}-${scale.key}`}
+                  label={plane.id}
+                  accent={colors[plane.id]}
+                  value={value}
                   max={ANGLE_MAX_DEG}
                   step={ANGLE_STEP_DEG}
-                  ticks={13}
-                  majorEvery={3}
-                  onChange={(value) => dispatch({ type: 'setPlane', planeId: plane.id, raanDeg: value })}
+                  ticks={ANGLE_TICKS}
+                  majorEvery={ANGLE_MAJOR_EVERY}
+                  onChange={(next) =>
+                    dispatch(
+                      scale.key === 'raan'
+                        ? { type: 'setPlane', planeId: plane.id, raanDeg: next }
+                        : { type: 'setPlane', planeId: plane.id, phaseDeg: next },
+                    )
+                  }
                   onCommit={() => dispatch({ type: 'commitConfig' })}
                 />
-                <ScaleRow
-                  id={`${plane.id}-phase`}
-                  label="PHASE"
-                  value={phase}
-                  max={ANGLE_MAX_DEG}
-                  step={ANGLE_STEP_DEG}
-                  ticks={13}
-                  majorEvery={3}
-                  onChange={(value) => dispatch({ type: 'setPlane', planeId: plane.id, phaseDeg: value })}
-                  onCommit={() => dispatch({ type: 'commitConfig' })}
-                />
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       </div>
+
+      {/* The ruler shows the span; what it cannot show is that nothing else
+          constrains the pair, and that the reading takes typing. */}
       <p className="mt-2.5 font-label text-[11px] leading-relaxed text-zinc-500">
         {t('config.planesHint')}
         <span className="mt-1 block">{t('config.typeHint')}</span>

@@ -1,13 +1,62 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Pencil } from 'lucide-react';
 import { cn, formatDegrees } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
+
+/**
+ * The grid the scale and its caption share. Stated once so a caption stop and
+ * the cursor it names cannot drift apart.
+ */
+export const SCALE_GRID = 'grid grid-cols-[2.9rem_minmax(0,1fr)_3.4rem] items-center gap-x-2';
+
+/** The slider thumb is 11px wide, so its travel is inset by half of it. */
+const TRAVEL_INSET = 5;
+
+interface ScaleCaptionProps {
+  label: string;
+  /** The values an operator names — a third of a turn, a quarter, the end. */
+  stops: number[];
+  max: number;
+}
+
+/**
+ * One ruler for the tracks below it. A scale that states where it starts, what
+ * it counts in and where it ends needs no sentence underneath explaining the
+ * same thing in prose.
+ */
+export function ScaleCaption({ label, stops, max }: ScaleCaptionProps) {
+  return (
+    <>
+      <span className="font-data text-[10px] tracking-[0.06em] text-zinc-500">{label}</span>
+      <div className="relative h-3.5" aria-hidden="true">
+        {stops.map((stop, index) => {
+          const last = index === stops.length - 1;
+          return (
+            <span
+              key={stop}
+              className="absolute top-0 whitespace-nowrap font-data text-[9px] tabular-nums text-zinc-600"
+              style={{
+                left: `calc(${TRAVEL_INSET}px + ${stop / max} * (100% - ${TRAVEL_INSET * 2}px))`,
+                transform: index === 0 ? 'none' : last ? 'translateX(-100%)' : 'translateX(-50%)',
+              }}
+            >
+              {stop}
+              {last && <span className="text-zinc-700">&deg;</span>}
+            </span>
+          );
+        })}
+      </div>
+      <span />
+    </>
+  );
+}
 
 interface ScaleRowProps {
   id: string;
   label: string;
+  /** Identity colour of whatever the row measures, drawn as a spine. */
+  accent?: string;
   value: number;
   max: number;
   step: number;
@@ -18,9 +67,17 @@ interface ScaleRowProps {
   onCommit?: (value: number) => void;
 }
 
+/**
+ * A slide rule on one line: who is being set, the travel, and the reading.
+ *
+ * The reading is a readout rather than a form field — a bordered box with a
+ * pencil in it shouted louder than the control it belongs to, six times over.
+ * It still takes typing; the rule under it appears when the pointer is on it.
+ */
 export function ScaleRow({
   id,
   label,
+  accent,
   value,
   max,
   step,
@@ -54,15 +111,16 @@ export function ScaleRow({
   };
 
   return (
-    <div className={cn('flex items-center gap-2.5', disabled && 'opacity-50')}>
+    <>
       <label
         htmlFor={id}
-        className="w-[3.5rem] flex-shrink-0 whitespace-nowrap font-data text-[10px] tracking-[0.06em] text-zinc-500"
+        className={cn('flex items-center gap-1.5', disabled && 'opacity-50', !disabled && 'cursor-ew-resize')}
       >
-        {label}
+        {accent && <span className="h-2.5 w-0.5 flex-shrink-0" style={{ background: accent }} />}
+        <span className="font-data text-[11px] text-zinc-300">{label}</span>
       </label>
 
-      <div className="relative h-[15px] min-w-0 flex-1">
+      <div className={cn('relative h-[15px] min-w-0', disabled && 'opacity-50')}>
         <div
           className="pointer-events-none absolute inset-x-[5px] top-1/2 flex items-start justify-between"
           aria-hidden="true"
@@ -93,12 +151,11 @@ export function ScaleRow({
 
       <label
         className={cn(
-          'relative flex h-6 w-[4.75rem] flex-shrink-0 items-center border border-rule-strong bg-white/[0.03] text-zinc-500 transition-colors',
-          !disabled && 'cursor-text hover:border-zinc-500 hover:bg-white/[0.06] focus-within:border-zinc-300 focus-within:bg-white/[0.08] focus-within:text-zinc-200',
+          'group relative flex items-baseline justify-end',
+          disabled ? 'opacity-50' : 'cursor-text',
         )}
         title={t('config.editScale', { label, max, step })}
       >
-        <Pencil size={10} className="pointer-events-none absolute left-1.5" aria-hidden="true" />
         <input
           id={`${id}-value`}
           type="text"
@@ -118,10 +175,11 @@ export function ScaleRow({
               event.currentTarget.blur();
             }
           }}
-          className="h-full w-full min-w-0 bg-transparent pl-5 pr-3 text-right font-data text-[11px] tabular-nums text-zinc-200 outline-none disabled:cursor-not-allowed"
+          className="min-w-0 flex-1 bg-transparent text-right font-data text-[11px] tabular-nums text-zinc-200 outline-none transition-colors group-hover:text-white focus:text-white disabled:cursor-not-allowed"
         />
-        <span className="pointer-events-none absolute right-1 font-data text-[11px]" aria-hidden="true">°</span>
+        <span className="flex-shrink-0 font-data text-[11px] text-zinc-600">&deg;</span>
+        <span className="pointer-events-none absolute -bottom-0.5 left-0 right-0 h-px bg-transparent transition-colors group-hover:bg-rule-strong group-focus-within:bg-zinc-400" />
       </label>
-    </div>
+    </>
   );
 }
