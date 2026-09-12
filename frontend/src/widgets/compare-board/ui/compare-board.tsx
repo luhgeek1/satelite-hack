@@ -9,7 +9,7 @@ import { EmptyState, ErrorNote } from '@/shared/ui';
 import { TARGET_AVAILABILITY_FALLBACK } from '@/shared/config';
 import type { Variant } from '@/shared/api';
 import { siteRows } from '../model/scale';
-import { pickWinner, sitesBelowTarget } from '../model/verdict';
+import { pickWinner, recommendation } from '../model/verdict';
 import { ChangedParameters } from './changed-parameters';
 import { MetricStrip } from './metric-strip';
 import { SiteComparison } from './site-comparison';
@@ -74,7 +74,11 @@ export function CompareBoard() {
   }, [resolved, scenarios.data]);
 
   const names: [string, string] = [resolved[0]?.name ?? 'A', resolved[1]?.name ?? 'B'];
-  const winner = comparison.data ? pickWinner(comparison.data.metrics) : null;
+  const reco = useMemo(() => {
+    if (!comparison.data) return null;
+    const winner = pickWinner(comparison.data.metrics);
+    return recommendation(comparison.data.variants, winner, sites, target);
+  }, [comparison.data, sites, target]);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black p-3 sm:p-4 lg:p-6">
@@ -112,12 +116,7 @@ export function CompareBoard() {
 
         {comparison.data && (
           <>
-            <VerdictNote
-              winner={winner}
-              names={names}
-              below={sitesBelowTarget(sites, winner ?? 1, target)}
-              recommendation={comparison.data.recommendation}
-            />
+            {reco && <VerdictNote recommendation={reco} />}
 
             <MetricStrip metrics={comparison.data.metrics} clientCount={sites.length} />
 

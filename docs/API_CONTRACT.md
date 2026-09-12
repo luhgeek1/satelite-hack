@@ -393,6 +393,10 @@ and keeps it.
 was changed**, not only what it produced. `higher_is_better` lets one renderer
 colour every metric row without a per-key lookup table.
 
+Each `VariantModel` carries its own `environment_modified: bool` — the same flag
+a run reports — so a comparison can say a variant is a sensitivity study rather
+than a design variant without re-deriving it from `config`.
+
 ---
 
 ## 7. Analysis

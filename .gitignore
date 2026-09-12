@@ -197,3 +197,4 @@ backend/.venv/
 
 .DS_Store
 /case/exports
+/backend/test_data

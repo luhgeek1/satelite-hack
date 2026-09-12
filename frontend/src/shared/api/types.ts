@@ -365,6 +365,7 @@ export interface Variant {
   meets_target: boolean;
   max_bounded_outage_s: number;
   availability_by_client: Record<string, number>;
+  environment_modified: boolean;
 }
 
 export interface ParameterDiff {
