@@ -47,12 +47,12 @@ export function NetworkHealth({
         onClick={() => setRoutesOpen((value) => !value)}
         aria-expanded={routesOpen}
         title={routesOpen ? t('health.collapseRoutes') : t('health.expandRoutes')}
-        className="pointer-events-auto mt-3 flex w-full items-center gap-2 border-t border-rule pt-2.5 text-left transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
+        className="pointer-events-auto mt-2.5 flex w-full items-center gap-2 text-left transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
       >
-        <span className="font-label text-[12px] text-zinc-400">{t('health.routes')}</span>
-        <span className="font-data text-[10px] tabular-nums text-zinc-600">{clients.length}</span>
+        <span className="font-label text-[11px] text-zinc-400">{t('health.routes')}</span>
+        <span className="font-data text-[9px] tabular-nums text-zinc-600">{clients.length}</span>
         <ChevronDown
-          size={13}
+          size={12}
           className={cn('ml-auto shrink-0 text-zinc-600 transition-transform duration-200', !routesOpen && '-rotate-90')}
         />
       </button>
@@ -125,9 +125,7 @@ export function NetworkHealth({
         )}
       </AnimatePresence>
 
-      <div className="my-3 border-t border-rule" />
-
-      <div className="flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
+      <div className="mt-3 flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
         <span className="font-label text-[13px] text-zinc-400">{t('health.maxOutage')}</span>
         <span className="text-zinc-100">{formatDuration(longestOutage)}</span>
       </div>

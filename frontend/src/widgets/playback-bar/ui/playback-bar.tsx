@@ -55,14 +55,13 @@ export function PlaybackBar({
   const cursor = horizonS ? (tS / horizonS) * 100 : 0;
 
   /**
-   * A held route is the whole bar, lit. Losing one eats into it, and the
-   * deeper the loss the closer the band gets to the black behind the strip:
-   * a gap in the day reads as a gap, and severity is how much light is gone.
+   * A day that holds a route is the quiet state; what the eye should catch is
+   * where it breaks, and the brighter the band the worse the break.
    */
   const legend = [
-    { key: 'playback.routed' as const, tone: 'bg-zinc-100' },
+    { key: 'playback.routed' as const, tone: 'bg-zinc-700' },
     { key: 'playback.noRoute' as const, tone: 'bg-zinc-400' },
-    { key: 'playback.noSatellite' as const, tone: 'bg-zinc-700' },
+    { key: 'playback.noSatellite' as const, tone: 'bg-zinc-100' },
   ];
 
   return (
@@ -217,7 +216,7 @@ export function PlaybackBar({
                 className="relative h-2.5 cursor-pointer touch-none overflow-hidden"
                 style={{ gridColumn: 2, gridRow: index + 2 }}
               >
-                <div className="absolute inset-0 bg-zinc-100" />
+                <div className="absolute inset-0 bg-zinc-700" />
                 {rows.map((band, bandIndex) => (
                   <div
                     key={`${band.state}-${bandIndex}`}
@@ -228,7 +227,7 @@ export function PlaybackBar({
                     }`}
                     className={cn(
                       'absolute inset-y-0',
-                      band.state === 'no_satellite' ? 'bg-zinc-700' : 'bg-zinc-400',
+                      band.state === 'no_satellite' ? 'bg-zinc-100' : 'bg-zinc-400',
                     )}
                     style={{
                       left: `${band.startFraction * 100}%`,
