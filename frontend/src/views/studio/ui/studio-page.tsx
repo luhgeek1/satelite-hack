@@ -24,6 +24,8 @@ import { Viewport, type OrbitTrack } from '@/widgets/viewport';
 import { ViewToggle } from '@/features/toggle-view';
 import { TourOverlay, useTour } from '@/features/guided-tour';
 import {
+  estimateSeconds,
+  gridSize,
   toPlaneOverrides,
   useOptimizer,
   OptimizerProgress,
@@ -630,6 +632,17 @@ export function StudioPage() {
     );
   }
 
+  // What planning the launch on screen would cost at each depth. Quoted before
+  // the button is pressed, in full days simulated and in minutes on the server.
+  const planningLocks = locksForPlanning(scenario, state.committedStages, launchStage);
+  const findCosts = {
+    quick: { runs: gridSize(planningLocks, 'quick'), seconds: estimateSeconds(gridSize(planningLocks, 'quick')) },
+    standard: {
+      runs: gridSize(planningLocks, 'standard'),
+      seconds: estimateSeconds(gridSize(planningLocks, 'standard')),
+    },
+  };
+
   const configBody = (
     <ConfigPanel
       scenario={scenario}
@@ -651,6 +664,9 @@ export function StudioPage() {
       planning={optimizer.running || optimizer.start.isPending}
       onPlanFrom={planFromStage}
       onOpenDeploymentPlan={() => setPlanOpen(true)}
+      depth={depth}
+      onDepthChange={setDepth}
+      findCosts={findCosts}
     />
   );
 
@@ -720,8 +736,6 @@ export function StudioPage() {
                           selectedClientId={focusClientId}
                           onSelectClient={selectClient}
                           stale={settling || simulation.isFetching || snapshot.isFetching}
-                          optimizing={optimizer.running || optimizer.start.isPending}
-                          onOptimize={startOptimizer}
                           onHide={panels.hideHealth}
                         />
                       </motion.div>
@@ -921,7 +935,11 @@ export function StudioPage() {
                 onDismiss={dismissOptimizer}
               />
             ) : (
-              <OptimizerProgress status={optimizer.status} remainingS={optimizer.remainingS} />
+              <OptimizerProgress
+                status={optimizer.status}
+                remainingS={optimizer.remainingS}
+                onStop={optimizer.stop}
+              />
             )}
           </motion.div>
         )}

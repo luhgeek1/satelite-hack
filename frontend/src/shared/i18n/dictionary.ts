@@ -70,9 +70,9 @@ export const en = {
   'health.expandRoutes': 'Show the routes',
   'health.collapseRoutes': 'Hide the routes',
   'health.target': 'Target',
-  'health.maxOutage': 'Max outage',
-  'health.offline': 'Offline now',
-  'health.none': 'none',
+  'health.maxOutage': 'Longest outage',
+  'health.offline': 'Without a route now',
+  'health.none': 'everyone connected',
   'health.hops': '{count} hops → {gateway}',
   'health.gateway': 'gateway',
   'health.noRoute': 'no route · {reason}',
@@ -155,6 +155,12 @@ export const en = {
   'deploy.findHint':
     'Holds what is fixed, chooses this launch and the later ones together, and scores the finished constellation.',
   'deploy.fix': 'Fix this launch',
+  'deploy.depthLabel': 'How hard to search',
+  'deploy.depthQuick': 'Quick',
+  'deploy.depthStandard': 'Thorough',
+  'deploy.depthQuickHint': 'One descent from the current angles, 12 samples per angle.',
+  'deploy.depthStandardHint': 'Three independent starts so a local optimum cannot stop it. Takes several minutes on the server.',
+  'deploy.findCost': '{runs} full days · ~{wait}',
   'deploy.fixHint': 'Nothing moves these rings afterwards — not a search, not a scale.',
   'deploy.release': 'Withdraw',
   'deploy.releaseHint':
@@ -416,7 +422,8 @@ export const en = {
   'sensitivity.sweep': 'Sweep {parameter}',
   'sensitivity.sweeping': 'Sweeping…',
 
-  'optimizer.title': 'Optimizer',
+  'optimizer.title': 'Angle search',
+  'optimizer.stop': 'Stop the search',
   'optimizer.tipTitle': 'Plane search',
   'optimizer.tipText':
     'Searches the planes for a RAAN and phase that leave the worst-served site with fewer outages. What it finds can be applied in one click, or saved as a variant to compare.',
@@ -551,9 +558,9 @@ export const ru: Record<TranslationKey, string> = {
   'health.expandRoutes': 'Показать маршруты',
   'health.collapseRoutes': 'Скрыть маршруты',
   'health.target': 'Цель',
-  'health.maxOutage': 'Макс. простой',
-  'health.offline': 'Сейчас не в строю',
-  'health.none': 'нет',
+  'health.maxOutage': 'Самый долгий перерыв',
+  'health.offline': 'Без связи сейчас',
+  'health.none': 'все на связи',
   'health.hops': '{count} перех. → {gateway}',
   'health.gateway': 'шлюз',
   'health.noRoute': 'нет маршрута · {reason}',
@@ -636,6 +643,12 @@ export const ru: Record<TranslationKey, string> = {
   'deploy.findHint':
     'Держит зафиксированное, выбирает эту очередь и последующие вместе и оценивает по полной группировке.',
   'deploy.fix': 'Зафиксировать',
+  'deploy.depthLabel': 'Насколько тщательно искать',
+  'deploy.depthQuick': 'Быстро',
+  'deploy.depthStandard': 'Тщательно',
+  'deploy.depthQuickHint': 'Один спуск от текущих углов, 12 проб на угол.',
+  'deploy.depthStandardHint': 'Три независимых старта, чтобы не застрять в локальном оптимуме. На сервере занимает несколько минут.',
+  'deploy.findCost': '{runs} полных суток · ~{wait}',
   'deploy.fixHint': 'После этого кольца очереди не двигает ничто: ни поиск, ни шкала.',
   'deploy.release': 'Снять фиксацию',
   'deploy.releaseHint':
@@ -897,7 +910,8 @@ export const ru: Record<TranslationKey, string> = {
   'sensitivity.sweep': 'Прогнать {parameter}',
   'sensitivity.sweeping': 'Прогон…',
 
-  'optimizer.title': 'Оптимизатор',
+  'optimizer.title': 'Подбор углов',
+  'optimizer.stop': 'Остановить подбор',
   'optimizer.tipTitle': 'Подбор плоскостей',
   'optimizer.tipText':
     'Ищет наклон и фазу плоскостей, при которых у самого проблемного объекта меньше простоев. Найденное можно применить одним нажатием или сохранить вариантом для сравнения.',

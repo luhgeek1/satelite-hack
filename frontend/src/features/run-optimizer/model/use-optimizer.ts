@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   analysisApi,
@@ -15,10 +15,10 @@ import { freeLocks, phasePeriodDeg, type PlaneLock } from '@/entities/scenario';
 
 export { freeLocks, type PlaneLock };
 
-export type SearchDepth = 'quick' | 'standard' | 'thorough';
+export type SearchDepth = 'quick' | 'standard';
 
 interface DepthPreset {
-  method: 'coordinate_descent' | 'grid';
+  method: 'coordinate_descent';
   axisSteps: number;
   passes: number;
   starts: number;
@@ -27,11 +27,9 @@ interface DepthPreset {
 }
 
 /**
- * The two cheap presets sweep one angle at a time; the expensive one enumerates
- * the whole grid. Exhaustive is offered last on purpose: at six free axes it
- * costs an order of magnitude more and, because the same budget buys only four
- * samples per angle, it has measured *worse* on the official scenario than the
- * fine one-dimensional sweeps.
+ * Two descents, one cheap and one careful. The exhaustive grid used to be the
+ * third option; the service refuses it now (half an hour of the production
+ * machine, and it scored worse than the descent), so it is not offered.
  */
 export const SEARCH_DEPTHS: Record<SearchDepth, DepthPreset> = {
   quick: {
@@ -50,20 +48,12 @@ export const SEARCH_DEPTHS: Record<SearchDepth, DepthPreset> = {
     coarseSteps: 4,
     refineRounds: 2,
   },
-  thorough: {
-    method: 'grid',
-    axisSteps: 12,
-    passes: 3,
-    starts: 3,
-    coarseSteps: 4,
-    refineRounds: 1,
-  },
 };
 
-/** Measured on the official scenario: one configuration is a full 24-hour run,
- *  and the fan-out only reaches about 2x over eight workers, so the wall clock
- *  stays far closer to the serial cost than the core count suggests. */
-const SECONDS_PER_RUN = 0.11;
+/** Measured on the production machine (two dedicated cores): a quick six-axis
+ *  search of 158 runs took 72 s. Quoting the laptop's figure promised a quarter
+ *  of the real wait, and a wait longer than promised reads as a hang. */
+const SECONDS_PER_RUN = 0.45;
 
 export const estimateSeconds = (runs: number) => Math.round(runs * SECONDS_PER_RUN);
 
@@ -79,9 +69,7 @@ export const gridSize = (locks: PlaneLock[], depth: SearchDepth) => {
   const preset = SEARCH_DEPTHS[depth];
   const refinement = preset.refineRounds * 2 * axes;
 
-  return preset.method === 'grid'
-    ? preset.coarseSteps ** axes + refinement + 1
-    : preset.starts * (1 + preset.passes * axes * preset.axisSteps) + refinement + 1;
+  return preset.starts * (1 + preset.passes * axes * preset.axisSteps) + refinement + 1;
 };
 
 /**
@@ -145,16 +133,21 @@ export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undef
   // stage that were on screen — not against the file, so anything that reads
   // the result has to compare it against this and not against the file either.
   const [searched, setSearched] = useState<RunInput | null>(null);
+  // Stop pressed before the service has even answered with a job id: the job is
+  // cancelled the moment the id arrives instead of being adopted.
+  const abandoned = useRef(false);
 
   const start = useMutation({
     // What was actually searched, which is not always what is on screen:
     // planning a launch scores the finished constellation.
-    onMutate: ({ config }: SearchRequest) =>
+    onMutate: ({ config }: SearchRequest) => {
+      abandoned.current = false;
       setSearched({
         scenarioId: input.scenarioId,
         config: normalizeConfig(config ?? input.config),
         strategy: input.strategy,
-      }),
+      });
+    },
 
     mutationFn: ({ locks, depth, config }: SearchRequest) => {
       const preset = SEARCH_DEPTHS[depth];
@@ -174,6 +167,11 @@ export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undef
       return analysisApi.optimize(payload);
     },
     onSuccess: (job) => {
+      if (abandoned.current) {
+        abandoned.current = false;
+        void analysisApi.cancelJob(job.id);
+        return;
+      }
       setJobId(job.id);
       setStartedAt(Date.now());
     },
@@ -185,8 +183,15 @@ export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undef
     enabled: Boolean(jobId),
     refetchInterval: (query) => {
       const state = query.state.data?.status;
-      return state === 'done' || state === 'failed' ? false : 700;
+      return state === 'done' || state === 'failed' || state === 'cancelled' ? false : 700;
     },
+  });
+
+  // Stopping is a request, not a teardown: the search notices after its
+  // current configuration and hands the cores back. The card goes at once —
+  // the person pressing Stop has already moved on — and the job is let go.
+  const cancel = useMutation({
+    mutationFn: (id: string) => analysisApi.cancelJob(id),
   });
 
   const result = useQuery({
@@ -204,17 +209,26 @@ export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undef
       ? Math.round(((elapsedMs / explored) * (total - explored)) / 1000)
       : null;
 
+  const dismiss = () => {
+    setJobId(null);
+    setStartedAt(null);
+    setSearched(null);
+  };
+
+  const running = status.data?.status === 'queued' || status.data?.status === 'running';
+
   return {
     start,
     status: status.data,
     result: result.data,
     searched,
     remainingS,
-    running: status.data?.status === 'queued' || status.data?.status === 'running',
-    dismiss: () => {
-      setJobId(null);
-      setStartedAt(null);
-      setSearched(null);
+    running,
+    stop: () => {
+      if (jobId) cancel.mutate(jobId);
+      else if (start.isPending) abandoned.current = true;
+      dismiss();
     },
+    dismiss,
   };
 }

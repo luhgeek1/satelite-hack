@@ -1,6 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
+import { Sparkles, Square } from 'lucide-react';
 import { formatWait } from '@/shared/lib';
 import { IndeterminateBar } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
@@ -16,9 +17,12 @@ import type { JobStatus } from '@/shared/api';
 export function OptimizerProgress({
   status,
   remainingS,
+  onStop,
 }: {
   status: JobStatus | undefined;
   remainingS: number | null;
+  /** Hands the cores back: the search stops after its current configuration. */
+  onStop: () => void;
 }) {
   const { t } = useI18n();
   const queued = !status || status.status === 'queued' || !status.total;
@@ -27,7 +31,10 @@ export function OptimizerProgress({
   return (
     <div className="flex w-[19rem] max-w-[calc(100vw-1.5rem)] flex-col border border-rule-strong bg-black/90 backdrop-blur">
       <div className="flex items-baseline justify-between gap-3 border-b border-rule px-3 py-2">
-        <span className="font-label text-[12px] text-zinc-300">{t('optimizer.title')}</span>
+        <span className="flex items-center gap-1.5 font-label text-[12px] text-zinc-300">
+          <Sparkles size={12} className="text-zinc-400" aria-hidden="true" />
+          {t('optimizer.title')}
+        </span>
         <span className="flex items-baseline gap-2">
           {remainingS !== null && (
             <span className="font-data text-[10px] tabular-nums text-zinc-500">
@@ -89,6 +96,15 @@ export function OptimizerProgress({
             </motion.span>
           </AnimatePresence>
         </div>
+
+        <button
+          type="button"
+          onClick={onStop}
+          className="mt-2.5 flex w-full items-center justify-center gap-1.5 border border-rule-strong py-1.5 font-label text-[11px] text-zinc-400 transition-colors hover:border-alarm/60 hover:text-alarm focus-visible:border-alarm/60 focus-visible:text-alarm focus-visible:outline-none"
+        >
+          <Square size={9} fill="currentColor" aria-hidden="true" />
+          {t('optimizer.stop')}
+        </button>
       </div>
     </div>
   );

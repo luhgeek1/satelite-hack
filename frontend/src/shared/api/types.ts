@@ -333,7 +333,7 @@ export interface OptimizeResult {
 export interface JobStatus {
   id: string;
   kind: 'optimize';
-  status: 'queued' | 'running' | 'done' | 'failed';
+  status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
   progress: number;
   explored: number;
   total: number;

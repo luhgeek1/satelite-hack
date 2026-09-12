@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import { Plus, RadioTower, RotateCcw, SatelliteDish } from 'lucide-react';
-import { DeploymentControl } from '@/features/configure-deployment';
+import {
+  DeploymentControl,
+  type FindCost,
+  type SearchDepth,
+} from '@/features/configure-deployment';
 import { PlaneControls } from '@/features/configure-planes';
 import { SiteConditionsControl } from '@/features/configure-site';
 import { FailureForm } from '@/features/inject-failure';
@@ -44,6 +48,9 @@ interface ConfigPanelProps {
   planning: boolean;
   onPlanFrom: (stage: number) => void;
   onOpenDeploymentPlan: () => void;
+  depth: SearchDepth;
+  onDepthChange: (depth: SearchDepth) => void;
+  findCosts: Record<SearchDepth, FindCost>;
 }
 
 export function ConfigPanel({
@@ -66,6 +73,9 @@ export function ConfigPanel({
   planning,
   onPlanFrom,
   onOpenDeploymentPlan,
+  depth,
+  onDepthChange,
+  findCosts,
 }: ConfigPanelProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
@@ -120,6 +130,9 @@ export function ConfigPanel({
               planning={planning}
               onPlanFrom={onPlanFrom}
               onOpenPlan={onOpenDeploymentPlan}
+              depth={depth}
+              onDepthChange={onDepthChange}
+              findCosts={findCosts}
               guide={
                 <TourTrigger tour="deployment" label="tour.deployment" className="mt-px" />
               }

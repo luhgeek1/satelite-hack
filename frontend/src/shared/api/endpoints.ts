@@ -63,6 +63,7 @@ export const analysisApi = {
   optimize: (payload: OptimizeRequest) =>
     request<JobStatus>('/analysis/optimize', { method: 'POST', body: payload }),
   job: (jobId: string) => request<JobStatus>(`/jobs/${jobId}`),
+  cancelJob: (jobId: string) => request<JobStatus>(`/jobs/${jobId}`, { method: 'DELETE' }),
   jobResult: (jobId: string) => request<OptimizeResult>(`/jobs/${jobId}/result`),
 };
 
