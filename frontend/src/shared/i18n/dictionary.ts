@@ -186,6 +186,57 @@ export const en = {
   'deploy.ringLater': 'designed at launch {stage}',
   'deploy.ringGo': 'Go to launch {stage}',
 
+  'tour.label': 'Guided tour',
+  'tour.next': 'Next',
+  'tour.back': 'Back',
+  'tour.done': 'Done',
+  'tour.skip': 'Skip',
+  'tour.replay': 'Show me around',
+  'tour.deployment': 'How deployment works',
+
+  'tour.globeTitle': 'The constellation at one instant',
+  'tour.globeText':
+    'Satellites, the links between them and the route each ground terminal is using right now.',
+  'tour.healthTitle': 'The number being graded',
+  'tour.healthText':
+    'Connectivity over the day for every terminal. The worst one is the score, and red means it misses the target.',
+  'tour.timeTitle': 'A day, at a glance',
+  'tour.timeText':
+    'The strip is 24 hours: the marks are the minutes with no route. Drag the handle or press play to watch them happen.',
+  'tour.windowTitle': 'Break something on purpose',
+  'tour.windowText':
+    'Turn this on, drag a span across the strip, and switch off a satellite or a gateway inside it to see what the network does.',
+  'tour.deployTitle': 'Three launches, one design',
+  'tour.deployText':
+    'Sixteen satellites per launch, three months apart. A ring keeps the angles it launched with, so the campaign is planned one launch at a time.',
+  'tour.planesTitle': 'The two angles',
+  'tour.planesText':
+    'RAAN spaces the rings around the Earth; phase spaces the satellites inside a ring. Everything else follows from these six numbers.',
+  'tour.saveTitle': 'Keep a design',
+  'tour.saveText':
+    'Save what is on screen as a variant, then put two variants side by side on the Compare tab.',
+  'tour.helpTitle': 'That is the tour',
+  'tour.helpText': 'The lamp brings it back, and the one in deployment explains the campaign in detail.',
+
+  'tour.dTableTitle': 'Three moments, not three settings',
+  'tour.dTableText':
+    'Each row is a moment in the campaign: which rings are up by then, and what the network delivers. The row is the switch.',
+  'tour.dStepTitle': 'The launch you are working on',
+  'tour.dStepText':
+    'The selected launch is either a draft or a decision. What it is, and what to do about it, is said here.',
+  'tour.dFindTitle': 'Let the search choose',
+  'tour.dFindText':
+    'It holds every fixed launch, picks this one and the later ones together, and scores the finished constellation — never this stage alone.',
+  'tour.dFixTitle': 'Fix what you decided',
+  'tour.dFixText':
+    'A fixed launch is held against every search and every scale, survives a reload, and is freed only by Withdraw.',
+  'tour.dRingsTitle': 'Why a scale will not move',
+  'tour.dRingsText':
+    'A ring of a fixed launch is locked; a ring that flies later is designed on its own launch, one click away in this legend.',
+  'tour.dPanelTitle': 'The whole campaign',
+  'tour.dPanelText':
+    'The same three launches with a day of connectivity each, the angles they hold, and how evenly the rings are spread.',
+
   'config.deployment': 'Deployment',
   'config.deploymentHint': 'Stage {stage} of {total}, {planes} orbital planes.',
   'config.deployAria': 'Deploy {count} satellites',
@@ -615,6 +666,57 @@ export const ru: Record<TranslationKey, string> = {
   'deploy.ringDesigning': 'настраивается',
   'deploy.ringLater': 'настраивается на очереди {stage}',
   'deploy.ringGo': 'Перейти к очереди {stage}',
+
+  'tour.label': 'Обзорный тур',
+  'tour.next': 'Далее',
+  'tour.back': 'Назад',
+  'tour.done': 'Готово',
+  'tour.skip': 'Пропустить',
+  'tour.replay': 'Показать, как всё устроено',
+  'tour.deployment': 'Как устроено развёртывание',
+
+  'tour.globeTitle': 'Группировка в один момент',
+  'tour.globeText':
+    'Спутники, связи между ними и маршрут, которым каждый наземный пункт пользуется прямо сейчас.',
+  'tour.healthTitle': 'Оценка, по которой судят',
+  'tour.healthText':
+    'Связность за сутки по каждому пункту. Худший из них и есть результат, красный — не дотягивает до цели.',
+  'tour.timeTitle': 'Сутки одним взглядом',
+  'tour.timeText':
+    'Полоса — это 24 часа: отметки на ней те минуты, когда маршрута не было. Тяните бегунок или включите воспроизведение.',
+  'tour.windowTitle': 'Сломать нарочно',
+  'tour.windowText':
+    'Включите режим, обведите интервал на полосе и выключите в нём спутник или шлюз — увидите, как сеть это переживёт.',
+  'tour.deployTitle': 'Три запуска, один проект',
+  'tour.deployText':
+    'По 16 аппаратов, раз в три месяца. Кольцо навсегда сохраняет углы, с которыми взлетело, поэтому кампания планируется по очереди.',
+  'tour.planesTitle': 'Два угла',
+  'tour.planesText':
+    'RAAN разводит кольца вокруг Земли, фаза — аппараты внутри кольца. Всё остальное вытекает из этих шести чисел.',
+  'tour.saveTitle': 'Сохранить проект',
+  'tour.saveText':
+    'Сохраните то, что на экране, вариантом, а потом поставьте два варианта рядом на вкладке «Сравнение».',
+  'tour.helpTitle': 'Это весь тур',
+  'tour.helpText': 'Лампочка вернёт его, а лампочка в развёртывании подробно разберёт кампанию.',
+
+  'tour.dTableTitle': 'Три момента, а не три набора настроек',
+  'tour.dTableText':
+    'Каждая строка — момент кампании: какие кольца к нему уже на орбите и что сеть в этот момент даёт. Строка и есть переключатель.',
+  'tour.dStepTitle': 'Очередь, с которой вы работаете',
+  'tour.dStepText':
+    'Выбранная очередь — либо черновик, либо принятое решение. Что именно и что с этим делать, написано здесь.',
+  'tour.dFindTitle': 'Пусть углы выберет поиск',
+  'tour.dFindText':
+    'Он держит все зафиксированные очереди, подбирает эту и последующие вместе и оценивает полную группировку — никогда одну очередь отдельно.',
+  'tour.dFixTitle': 'Зафиксировать решение',
+  'tour.dFixText':
+    'Зафиксированная очередь удерживается против любого поиска и любой шкалы, переживает перезагрузку и снимается только кнопкой «Снять фиксацию».',
+  'tour.dRingsTitle': 'Почему шкала не двигается',
+  'tour.dRingsText':
+    'Кольцо зафиксированной очереди заблокировано, а кольцо будущей настраивается на своей очереди — один клик по этой легенде.',
+  'tour.dPanelTitle': 'Вся кампания сразу',
+  'tour.dPanelText':
+    'Те же три очереди, но с сутками связности на каждую, удерживаемыми углами и разносом колец.',
 
   'config.deployment': 'Развёртывание',
   'config.deploymentHint': 'Этап {stage} из {total}, орбитальных плоскостей: {planes}.',

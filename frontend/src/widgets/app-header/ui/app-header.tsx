@@ -2,6 +2,7 @@
 
 import { Activity, BarChart3, ShieldAlert } from 'lucide-react';
 import { ScenarioPicker } from '@/features/select-scenario';
+import { TourTrigger } from '@/features/guided-tour';
 import { useSession, type StudioTab } from '@/entities/session';
 import { cn } from '@/shared/lib';
 import { BrandMark } from '@/shared/ui';
@@ -61,6 +62,14 @@ export function AppHeader() {
 
       <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
         <ScenarioPicker />
+
+        <TourTrigger
+          tour="studio"
+          label="tour.replay"
+          anchor="help"
+          size={15}
+          className="h-7 w-7 border border-rule-strong hover:border-zinc-600"
+        />
 
         {/* Two words, not a dropdown: there are only ever two, and a menu would
             hide the one the reader is looking for behind a click. */}

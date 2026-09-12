@@ -6,6 +6,7 @@ import { launchStages, planesAtStage, satellitesAtStage } from '@/entities/scena
 import { useStageRuns, type RunInput } from '@/entities/simulation';
 import { cn, formatDegrees, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
+import type { ReactNode } from 'react';
 import type { ScenarioDocument, SimulationSummary } from '@/shared/api';
 
 /** Three months between launches, which is what turns a stage into a date. */
@@ -18,6 +19,9 @@ interface DeploymentControlProps {
   planning: boolean;
   onPlanFrom: (stage: number) => void;
   onOpenPlan: () => void;
+  /** Whatever offers the longer explanation — handed in, so this feature does
+   *  not have to know that a guided tour exists. */
+  guide?: ReactNode;
 }
 
 /**
@@ -42,6 +46,7 @@ export function DeploymentControl({
   planning,
   onPlanFrom,
   onOpenPlan,
+  guide,
 }: DeploymentControlProps) {
   const { state, dispatch } = useSession();
   const { t, formatDuration } = useI18n();
@@ -53,9 +58,10 @@ export function DeploymentControl({
 
   return (
     <>
-      <p className="mb-2 font-label text-[11px] leading-relaxed text-zinc-500">
-        {t('deploy.intro')}
-      </p>
+      <div className="mb-2 flex items-start gap-2">
+        <p className="font-label text-[11px] leading-relaxed text-zinc-500">{t('deploy.intro')}</p>
+        {guide}
+      </div>
 
       <div className="border border-rule-strong" data-tour="deploy-table">
         <div className="grid grid-cols-[auto_1fr_auto_auto] items-baseline gap-x-2 border-b border-rule px-2 py-1 font-data text-[9px] tracking-[0.08em] text-zinc-600">
@@ -97,6 +103,7 @@ export function DeploymentControl({
       <button
         type="button"
         onClick={onOpenPlan}
+        data-tour="deploy-open"
         className="mt-2 flex w-full items-center justify-center gap-1 border border-rule px-2 py-1.5 font-label text-[11px] text-zinc-500 transition-colors hover:border-rule-strong hover:text-zinc-200 focus-visible:border-zinc-400 focus-visible:outline-none"
       >
         {t('deploy.open')}

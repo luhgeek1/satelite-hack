@@ -48,8 +48,6 @@ const HOUR_MARKS = [0, 6, 12, 18, 24];
 /** Half the picker's width, so it can be centred and still clamped inside. */
 const PICKER_HALF = '9.75rem';
 
-/** Whether the window tool has introduced itself on this browser already. */
-const HINT_SEEN_KEY = 'orbitguard-window-hint-v1';
 
 type DragKind = { kind: 'new' } | { kind: 'edge'; edge: 'start' | 'end' } | { kind: 'move' };
 type Drag = DragKind & {
@@ -380,13 +378,13 @@ function PlaybackBarView({
         <div className="hidden h-5 w-px flex-shrink-0 bg-rule-strong sm:block" />
 
         <FeatureHint
-          storageKey={HINT_SEEN_KEY}
           title={t('window.tipTitle')}
           text={t('window.hint')}
           className="flex-shrink-0"
         >
           <button
             type="button"
+            data-tour="window-tool"
             onClick={() => setSelectMode((current) => !current)}
             aria-pressed={selectMode}
             className={cn(

@@ -22,6 +22,7 @@ import { SatelliteDetails } from '@/widgets/satellite-details';
 import { DeploymentPlan } from '@/widgets/deployment-plan';
 import { Viewport, type OrbitTrack } from '@/widgets/viewport';
 import { ViewToggle } from '@/features/toggle-view';
+import { TourOverlay, useTour } from '@/features/guided-tour';
 import {
   toPlaneOverrides,
   useOptimizer,
@@ -87,6 +88,7 @@ export function StudioPage() {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
   const scenarios = useScenarios();
+  const { autoStart } = useTour();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const renameScenario = useRenameScenario();
   const [renameDraft, setRenameDraft] = useState<string | null>(null);
@@ -130,6 +132,16 @@ export function StudioPage() {
 
   const scenarioQuery = useScenario(state.scenarioId);
   const scenario = scenarioQuery.data?.scenario;
+
+  // Only once the studio has something in it: a tour that lights up an empty
+  // frame explains nothing, and every step points at a real element.
+  const offered = useRef(false);
+
+  useEffect(() => {
+    if (!scenario || offered.current) return;
+    offered.current = true;
+    autoStart();
+  }, [scenario, autoStart]);
   const geometry = scenario ? readGeometry(scenario) : null;
   const colors = useMemo(() => planeColorMap(scenario), [scenario]);
   const activeSummary = scenarios.data?.find((item) => item.id === state.scenarioId);
@@ -667,7 +679,7 @@ export function StudioPage() {
       ) : (
         <div className="relative flex min-h-0 flex-1 overflow-hidden">
           <motion.div layout transition={SPRING} className="flex min-w-0 flex-1 flex-col bg-black">
-            <div className="relative min-h-0 flex-1">
+            <div className="relative min-h-0 flex-1" data-tour="globe">
               <Viewport
                 satellites={visibleSatellites}
                 links={state.tab === 'simulation' ? links : []}
@@ -772,7 +784,7 @@ export function StudioPage() {
             {state.tab === 'simulation' && (
               // The strip keeps step with the data column: one scale for the
               // two frames around the map, so neither reads as the odd one.
-              <div ref={playbackRef} style={{ zoom: panel.scale }}>
+              <div ref={playbackRef} data-tour="timeline" style={{ zoom: panel.scale }}>
               <PlaybackBar
                 tS={tS}
                 horizonS={horizonS}
@@ -914,6 +926,8 @@ export function StudioPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <TourOverlay />
     </div>
   );
 }
