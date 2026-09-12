@@ -5,6 +5,7 @@ import { Lock, LockOpen, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SensitivityPanel } from '@/features/analyze-sensitivity';
 import {
+  estimateSeconds,
   gridSize,
   SEARCH_DEPTHS,
   useOptimizer,
@@ -36,7 +37,7 @@ export function CriticalNodes({
 }: CriticalNodesProps) {
   const { state, dispatch } = useSession();
   const optimizer = useOptimizer(runInput);
-  const [depth, setDepth] = useState<SearchDepth>('standard');
+  const [depth, setDepth] = useState<SearchDepth>('quick');
   const [locks, setLocks] = useState<PlaneLock[]>(
     scenario.design.planes.map((plane) => ({
       planeId: plane.id,
@@ -197,13 +198,14 @@ export function CriticalNodes({
         >
           <span>Optimize configuration</span>
           <span className="font-data text-[10px] tabular-nums text-zinc-500 transition-colors group-hover:text-black/55">
-            {gridSize(locks, depth).toLocaleString('en-US')} runs
+            {gridSize(locks, depth).toLocaleString('en-US')} runs ·{' '}
+            {formatDuration(estimateSeconds(gridSize(locks, depth)))}
           </span>
         </button>
 
         <p className="font-label text-[10px] leading-relaxed text-zinc-600">
-          Each point of the grid is a full 24-hour simulation. Lock a plane to drop two
-          dimensions and cut the search by an order of magnitude.
+          Each point of the grid is a full 24-hour simulation, and every unlocked angle
+          multiplies the count. Lock a plane to drop two dimensions.
         </p>
 
         {optimizer.start.isError && <ErrorNote error={optimizer.start.error} />}

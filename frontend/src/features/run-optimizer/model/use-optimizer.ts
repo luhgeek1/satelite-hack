@@ -24,6 +24,13 @@ export const SEARCH_DEPTHS: Record<SearchDepth, { label: string; coarseSteps: nu
   thorough: { label: 'Thorough', coarseSteps: 5, refineRounds: 2 },
 };
 
+/** Measured on the official grid: one configuration is a full 24-hour run, and
+ *  the fan-out scales at about 1.7x over eight workers because the simulation is
+ *  bound by memory rather than by arithmetic. */
+const SECONDS_PER_RUN = 0.11;
+
+export const estimateSeconds = (runs: number) => Math.round(runs * SECONDS_PER_RUN);
+
 export const freeAxes = (locks: PlaneLock[]) =>
   locks.reduce((count, lock) => count + (lock.raanLocked ? 0 : 1) + (lock.phaseLocked ? 0 : 1), 0);
 

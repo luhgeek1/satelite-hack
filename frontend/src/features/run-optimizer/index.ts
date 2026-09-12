@@ -1,6 +1,7 @@
 export {
   useOptimizer,
   gridSize,
+  estimateSeconds,
   freeAxes,
   SEARCH_DEPTHS,
   type PlaneLock,
