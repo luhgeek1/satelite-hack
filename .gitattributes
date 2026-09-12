@@ -1,0 +1,4 @@
+# entry.sh is executed inside the Linux image. A Windows checkout with
+# core.autocrlf=true turns its shebang into `/usr/bin/env bash\r`, and the
+# backend container then restarts forever on exit 127.
+*.sh text eol=lf
