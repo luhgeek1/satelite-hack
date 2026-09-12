@@ -23,7 +23,6 @@ import { DeploymentPlan } from '@/widgets/deployment-plan';
 import { Viewport, type OrbitTrack } from '@/widgets/viewport';
 import { ViewToggle } from '@/features/toggle-view';
 import {
-  freeLocks,
   toPlaneOverrides,
   useOptimizer,
   OptimizerProgress,
@@ -36,9 +35,10 @@ import type { OutageNode, OutageTarget, OutageWindow } from '@/features/schedule
 import { impactIndex, useResilience } from '@/features/analyze-resilience';
 import { snapToGrid, usePlayback } from '@/features/timeline-playback';
 import {
-  firstFreeStage,
+  firstOpenStage,
   launchStages,
-  locksForStage,
+  locksForPlanning,
+  locksFromCommitted,
   planeColorMap,
   planeCommitStage,
   readGeometry,
@@ -253,7 +253,7 @@ export function StudioPage() {
       if (!scenario) return;
       const stages = launchStages(scenario);
       const lastStage = stages[stages.length - 1]?.stage ?? 3;
-      const staged = locksForStage(scenario, stage);
+      const staged = locksForPlanning(scenario, state.committedStages, stage);
 
       setOptimizerApplied(false);
       setPlanOpen(false);
@@ -265,7 +265,7 @@ export function StudioPage() {
         config: { ...state.config, launch_stage: lastStage as 1 | 2 | 3 },
       });
     },
-    [scenario, depth, optimizer.start, state.config],
+    [scenario, depth, optimizer.start, state.config, state.committedStages],
   );
 
   const dismissOptimizer = useCallback(() => {
@@ -362,11 +362,17 @@ export function StudioPage() {
       t,
     ],
   );
-  const planeIds = scenario?.design.planes.map((plane) => plane.id).join(',') ?? '';
+  // What the campaign holds. The resilience tab may then hold more by hand —
+  // an agreed slot, a plane nobody wants touched — so the search reads the
+  // local copy, and settling a launch resets it to what the campaign says.
+  const campaignLocks = useMemo(
+    () => (scenario ? locksFromCommitted(scenario, state.committedStages) : []),
+    [scenario, state.committedStages],
+  );
 
   useEffect(() => {
-    setLocks(planeIds ? freeLocks(planeIds.split(',')) : []);
-  }, [planeIds]);
+    setLocks(campaignLocks);
+  }, [campaignLocks]);
 
   const launchStage = state.config.launch_stage ?? scenario?.design.launch_stage ?? 3;
   const failedIds = useMemo(() => allFailedIds(state.config), [state.config]);
@@ -632,7 +638,7 @@ export function StudioPage() {
       baseline={baseline}
       runInput={runInput}
       planning={optimizer.running || optimizer.start.isPending}
-      nextFreeStage={scenario ? firstFreeStage(scenario, locks) : 1}
+      nextFreeStage={firstOpenStage(scenario, state.committedStages)}
       locks={locks}
       onLocksChange={setLocks}
       onPlanFrom={planFromStage}

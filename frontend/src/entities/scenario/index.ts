@@ -16,10 +16,12 @@ export {
 } from './model/types';
 export { phasePeriodDeg } from './model/phase-period';
 export {
-  firstFreeStage,
+  firstOpenStage,
   freeLocks,
   isPlaneLocked,
-  locksForStage,
+  isRingSettled,
+  locksForPlanning,
+  locksFromCommitted,
   planeCommitStage,
   planeRaanDeg,
   planesAtStage,

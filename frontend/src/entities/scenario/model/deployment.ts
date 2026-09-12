@@ -1,4 +1,5 @@
 import type { PlaneConfig, ScenarioDocument, SimulationConfig } from '@/shared/api';
+import { launchStages } from './types';
 
 /** A half turn: a plane covers its ascending and descending passes alike, so two
  *  planes 180 degrees apart in RAAN trace the same ground swath. */
@@ -118,22 +119,43 @@ export function raanSpread(scenario: ScenarioDocument, config: SimulationConfig)
 }
 
 /**
- * Hold every launch that has already flown, free the rest.
+ * Hold every launch that is settled, free the rest.
  *
- * This is what planning a launch means: the angles of what is in orbit cannot
- * be revisited, and this launch and the ones after it are chosen together.
+ * Two different things settle a ring. One is the campaign: by the time a later
+ * launch is designed, the earlier ones have flown and their angles cannot be
+ * revisited. The other is the engineer saying so — a launch marked as fixed is
+ * a decision taken, and nothing may move it until the decision is withdrawn.
  */
-export const locksForStage = (scenario: ScenarioDocument, stage: number): PlaneLock[] =>
+export const locksForPlanning = (
+  scenario: ScenarioDocument,
+  committed: number[],
+  stage: number,
+): PlaneLock[] =>
   scenario.design.planes.map((plane) => {
-    const flown = planeCommitStage(scenario, plane.id) < stage;
-    return { planeId: plane.id, raanLocked: flown, phaseLocked: flown };
+    const commitStage = planeCommitStage(scenario, plane.id);
+    const held = commitStage < stage || committed.includes(commitStage);
+    return { planeId: plane.id, raanLocked: held, phaseLocked: held };
   });
 
-/** The first launch whose rings are still free to be designed. */
-export const firstFreeStage = (scenario: ScenarioDocument, locks: PlaneLock[]): number => {
-  const free = scenario.design.planes
-    .filter((plane) => !isPlaneLocked(locks, plane.id))
-    .map((plane) => planeCommitStage(scenario, plane.id));
+/** What the campaign holds right now, with no launch being planned. */
+export const locksFromCommitted = (
+  scenario: ScenarioDocument,
+  committed: number[],
+): PlaneLock[] =>
+  scenario.design.planes.map((plane) => {
+    const held = committed.includes(planeCommitStage(scenario, plane.id));
+    return { planeId: plane.id, raanLocked: held, phaseLocked: held };
+  });
 
-  return free.length ? Math.min(...free) : 1;
+/** The first launch still open for design, or the last one when all are fixed. */
+export const firstOpenStage = (scenario: ScenarioDocument, committed: number[]): number => {
+  const stages = launchStages(scenario).map((info) => info.stage);
+  return stages.find((stage) => !committed.includes(stage)) ?? stages[stages.length - 1] ?? 1;
 };
+
+/** Whether this ring's angles may still be moved, by a search or by hand. */
+export const isRingSettled = (
+  scenario: ScenarioDocument,
+  committed: number[],
+  planeId: string,
+): boolean => committed.includes(planeCommitStage(scenario, planeId));
