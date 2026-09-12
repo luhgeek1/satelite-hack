@@ -9,7 +9,7 @@ import countries110m from 'world-atlas/countries-110m.json';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import { criticalityLevel } from '@/shared/lib';
-import { COVERAGE_RADIUS_KM } from '@/shared/config';
+import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
 
 const EARTH_RADIUS_KM_EXPORT = 6371;
 
@@ -22,6 +22,8 @@ interface Map2DProps {
   onSatelliteClick?: (sat: SatelliteView) => void;
   selectedSatellite?: string | null;
   mode?: 'simulation' | 'resilience';
+  /** Ground-contact radius derived from the scenario's elevation mask. */
+  contactRadiusKm?: number;
 }
 
 /** Bundled rather than fetched, so the map also draws with no network. */
@@ -32,7 +34,7 @@ const RULE = '#2e2e34';
 const LAND_FILL = '#131316';
 
 /** The same footprint the globe draws, in the degrees d3 wants. */
-const COVERAGE_DEGREES = (COVERAGE_RADIUS_KM / EARTH_RADIUS_KM_EXPORT) * (180 / Math.PI);
+
 /** Matches the globe's coverage reveal, so the two views feel like one tool. */
 const COVERAGE_TWEEN_MS = 220;
 
@@ -50,8 +52,10 @@ export const Map2D: React.FC<Map2DProps> = ({
   activeRoute = [],
   onSatelliteClick,
   selectedSatellite,
-  mode = 'simulation'
+  mode = 'simulation',
+  contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM
 }) => {
+  const coverageDegrees = (contactRadiusKm / EARTH_RADIUS_KM_EXPORT) * (180 / Math.PI);
   const [tooltip, setTooltip] = useState<{ content: React.ReactNode; x: number; y: number } | null>(null);
   const [position, setPosition] = useState({ coordinates: [0, 0] as [number, number], zoom: 1 });
   const centredOnRef = useRef<string | null>(null);
@@ -113,7 +117,7 @@ export const Map2D: React.FC<Map2DProps> = ({
             properties: {},
             geometry: geoCircle()
               .center([coverageSat.lon, coverageSat.lat])
-              .radius(COVERAGE_DEGREES * coverage.scale)()
+              .radius(coverageDegrees * coverage.scale)()
           }
         ]
       }

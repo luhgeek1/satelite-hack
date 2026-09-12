@@ -32,6 +32,41 @@ export function orbitTrack(
   });
 }
 
+export const EARTH_RADIUS_KM = 6371;
+
+/**
+ * Radius on the ground inside which a satellite clears the elevation mask.
+ *
+ * This is not a beam width — the case has no antenna model. A ground link
+ * exists when the satellite sits at least `min_elevation_deg` above the local
+ * horizon, and for a spherical Earth that condition is exactly a circle
+ * centred on the sub-satellite point. Deriving it from the scenario's own two
+ * numbers keeps the drawn circle meaning the same thing the engine tests.
+ *
+ * At the case values (550 km, 10 deg) this is 1664 km.
+ */
+export function contactRadiusKm(altitudeKm: number, minElevationDeg: number): number {
+  const orbitRadius = EARTH_RADIUS_KM + altitudeKm;
+  const elevation = toRadians(minElevationDeg);
+  const centralAngle =
+    Math.acos((EARTH_RADIUS_KM * Math.cos(elevation)) / orbitRadius) - elevation;
+
+  return EARTH_RADIUS_KM * centralAngle;
+}
+
+/**
+ * Straight-line distance to a satellite sitting exactly on the elevation mask —
+ * the longest ground link the scenario allows. Distinct from `isl_range_km`,
+ * which limits satellite-to-satellite hops and is given outright.
+ */
+export function maxSlantRangeKm(altitudeKm: number, minElevationDeg: number): number {
+  const orbitRadius = EARTH_RADIUS_KM + altitudeKm;
+  const elevation = toRadians(minElevationDeg);
+  const horizontal = EARTH_RADIUS_KM * Math.cos(elevation);
+
+  return Math.sqrt(orbitRadius * orbitRadius - horizontal * horizontal) - EARTH_RADIUS_KM * Math.sin(elevation);
+}
+
 const EARTH_SIDEREAL_DAY_S = 86164.09054;
 
 export const earthRotationDeg = (tS: number, earthAngle0Deg: number) =>

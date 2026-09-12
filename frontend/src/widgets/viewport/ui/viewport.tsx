@@ -27,6 +27,7 @@ interface ViewportProps {
   activeRoute: string[];
   orbits: OrbitTrack[];
   mode?: 'simulation' | 'resilience';
+  contactRadiusKm: number;
 }
 
 export function Viewport({
@@ -37,6 +38,7 @@ export function Viewport({
   activeRoute,
   orbits,
   mode = 'simulation',
+  contactRadiusKm,
 }: ViewportProps) {
   const { state, dispatch } = useSession();
   const [webglBroken, setWebglBroken] = useState(false);
@@ -60,6 +62,7 @@ export function Viewport({
       onSatelliteClick={select}
       selectedSatellite={state.selectedSatelliteId}
       mode={mode}
+      contactRadiusKm={contactRadiusKm}
     />
   );
 
@@ -89,6 +92,7 @@ export function Viewport({
               selectedSatellite={state.selectedSatelliteId}
               focusOn={state.focusRequest}
               mode={mode}
+              contactRadiusKm={contactRadiusKm}
             />
           </GlobeBoundary>
         ) : (

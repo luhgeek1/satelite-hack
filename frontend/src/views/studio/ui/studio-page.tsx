@@ -28,6 +28,7 @@ import { buildLinkViews, buildSatelliteViews } from '@/entities/satellite';
 import { clientsOf, gatewaysOf, groundSitesOf } from '@/entities/ground-site';
 import {
   cn,
+  contactRadiusKm,
   criticalityLevel,
   earthRotationDeg,
   orbitTrack,
@@ -140,6 +141,12 @@ export function StudioPage() {
         ),
       }));
   }, [scenario, geometry, tS, launchStage, colors, state.config.planes]);
+
+  const contactRadius = useMemo(
+    () =>
+      geometry ? contactRadiusKm(geometry.altitudeKm, geometry.minElevationDeg) : 0,
+    [geometry],
+  );
 
   const bands = useMemo(
     () => outageBands(availability.data, horizonS, stepS),
@@ -290,6 +297,7 @@ export function StudioPage() {
                 activeRoute={state.tab === 'simulation' ? activeRoute : []}
                 orbits={state.tab === 'simulation' ? orbits : []}
                 mode={state.tab === 'resilience' ? 'resilience' : 'simulation'}
+                contactRadiusKm={contactRadius}
               />
 
               <ViewToggle

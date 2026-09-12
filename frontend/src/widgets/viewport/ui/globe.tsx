@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import { criticalityLevel } from '@/shared/lib';
-import { COVERAGE_RADIUS_KM } from '@/shared/config';
+import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
 
 export type OrbitTrack = {
   planeId: string;
@@ -161,6 +161,8 @@ interface GlobeProps {
   mode?: 'simulation' | 'resilience';
   /** A request to turn the globe to a satellite; the nonce re-fires a repeat pick. */
   focusOn?: { id: string; nonce: number } | null;
+  /** Ground-contact radius derived from the scenario's elevation mask. */
+  contactRadiusKm?: number;
 }
 
 export const Globe: React.FC<GlobeProps> = ({
@@ -177,7 +179,8 @@ export const Globe: React.FC<GlobeProps> = ({
   onSatelliteClick,
   selectedSatellite,
   mode = 'simulation',
-  focusOn = null
+  focusOn = null,
+  contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<any>(undefined);
@@ -548,7 +551,7 @@ export const Globe: React.FC<GlobeProps> = ({
     const satellite = satellites.find(sat => sat.id === coverageSatelliteId);
     if (!satellite || coverageScale <= 0.001) return null;
 
-    const boundary = coverageRing(satellite.lat, satellite.lon, COVERAGE_RADIUS_KM * coverageScale);
+    const boundary = coverageRing(satellite.lat, satellite.lon, contactRadiusKm * coverageScale);
 
     return {
       geometry: {
