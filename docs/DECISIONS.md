@@ -381,6 +381,41 @@ prominent inside the simulation tab serves the same end at a lower cost.
 *What a saved variant means, as a result:* the whole campaign. The angles in it
 apply to every stage, so a variant is a plan and not a snapshot.
 
+**D16. A launch is a draft or a decision, and the session keeps which.** Locks
+were a per-plane switch held in component state on the resilience tab: invisible
+from the deployment group, lost on reload, and read by a "plan from launch N"
+button that therefore always said launch 1 (nothing locked ⇒ the first free
+launch is the first one). The campaign is now planned the way it happens — one
+launch settled at a time. `committedStages` lives in the persisted session; a
+fixed launch is held against every search and against the scales, and only an
+explicit *Withdraw* frees it. Planning launch N holds every fixed launch *and*
+every launch before N, because by the time N is designed those have flown.
+Fixing launch 1 does not discard what a search proposed for launches 2–3: those
+stay as a draft and are the starting point of the next step.
+*Which scales move:* a ring of a fixed launch is locked (drawn with a lock); a
+ring that flies after the launch on screen is disabled because it is not in the
+picture, and its legend row jumps to its own launch. Merely dimming them, as
+before, is how a stray drag moved a ring nobody was looking at.
+*Why keep two angles per plane in the resilience tab:* it serves constraints the
+campaign cannot see — an agreed slot, one angle fixed by contract. It starts
+from whatever the campaign holds and may hold more.
+*Why the scales stay grouped by parameter, not by plane:* the question the
+block answers is how far rings sit from each other, and one ruler per angle
+answers it by alignment (see the spread dial, which reads the same relation).
+
+**D17. A guided tour replaces the first-visit bubbles.** Three controls used to
+introduce themselves unprompted, at different moments and in no order. The
+criterion is a reviewer with minutes and no training (A-series, "пройти основные
+сценарии"), so the studio now opens with an eight-step tour: one element lit,
+the rest dimmed and unclickable, one sentence each — globe, network health,
+day strip, the interval tool, deployment, planes, saving a variant, and the lamp
+that replays it. The deployment group has its own six-step tour behind its own
+lamp, because its question is different: what to do with three launches. Steps
+point at `data-tour` anchors and are skipped when their element is absent (a
+collapsed panel, a phone), so the tour never points at an empty corner. The
+remaining hints are hover-only. Marked as seen when it opens, not when it ends:
+being met by the same overlay on every reload is worse than missing a step.
+
 ## E. Findings worth presenting
 
 **E1. The ISL threshold is 2700.44 km, and it is a cliff, not a slope.**
