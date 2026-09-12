@@ -26,7 +26,7 @@ export const formatWait = (seconds: number) => {
 export const formatPercent = (fraction: number, digits = 1) => `${(fraction * 100).toFixed(digits)}%`;
 
 export const formatPoints = (delta: number, digits = 1) =>
-  `${delta >= 0 ? '+' : '−'}${Math.abs(delta * 100).toFixed(digits)} pp`;
+  `${delta > 0 ? '+' : delta < 0 ? '−' : '±'}${Math.abs(delta * 100).toFixed(digits)} pp`;
 
 export const formatDegrees = (value: number) => value.toFixed(1).padStart(5, '0');
 

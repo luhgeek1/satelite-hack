@@ -13,10 +13,10 @@ import {
 } from 'recharts';
 import { useComparison, useVariants } from '@/entities/variant';
 import { useSession } from '@/entities/session';
-import { cn, formatPercent, formatPoints } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { EmptyState, ErrorNote } from '@/shared/ui';
-import type { ComparedMetric, Variant } from '@/shared/api';
+import type { Variant } from '@/shared/api';
+import { MetricStrip } from './metric-strip';
 import { VariantColumn } from './variant-column';
 
 const SERIES_INK = ['#6b6b72', '#d9d9de'];
@@ -94,11 +94,10 @@ export function CompareBoard() {
 
         {comparison.data && (
           <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-              {comparison.data.metrics.slice(0, 3).map((metric) => (
-                <MetricTile key={metric.key} metric={metric} />
-              ))}
-            </div>
+            <MetricStrip
+              metrics={comparison.data.metrics}
+              clientCount={Object.keys(comparison.data.per_client_availability).length}
+            />
 
             {comparison.data.changed_parameters.length > 0 && (
               <div className="border border-rule-strong">
@@ -202,56 +201,6 @@ export function CompareBoard() {
             </div>
           </>
         )}
-      </div>
-    </div>
-  );
-}
-
-function MetricTile({ metric }: { metric: ComparedMetric }) {
-  const { t, formatDuration } = useI18n();
-  const [before, after] = metric.values;
-  const format = (value: number | null) => {
-    if (value === null) return '—';
-    if (metric.unit === 'fraction') return formatPercent(value);
-    if (metric.unit === 'seconds') return formatDuration(value);
-    if (metric.unit === 'hops') return value.toFixed(2);
-    return String(value);
-  };
-
-  const delta =
-    before === null || after === null
-      ? null
-      : metric.unit === 'fraction'
-        ? formatPoints(after - before)
-        : `${after - before >= 0 ? '+' : '−'}${Math.abs(after - before).toFixed(metric.unit === 'hops' ? 2 : 0)}`;
-
-  const improved =
-    before === null || after === null
-      ? null
-      : metric.higher_is_better
-        ? after > before
-        : after < before;
-
-  return (
-    <div className="flex flex-col border border-rule-strong">
-      <div className="flex-1 px-3 pb-4 pt-3">
-        <div className="font-label text-[12px] text-zinc-400">{metric.label}</div>
-        <div className="mt-2 font-data text-[26px] leading-none tabular-nums text-zinc-100">
-          {format(after)}
-        </div>
-      </div>
-      <div className="flex items-baseline justify-between gap-2 border-t border-rule px-3 py-2">
-        <span className="font-data text-[11px] tabular-nums text-zinc-500">
-          <span className="text-zinc-600">{t('compare.was')}</span> {format(before)}
-        </span>
-        <span
-          className={cn(
-            'font-data text-[11px] tabular-nums',
-            improved === null ? 'text-zinc-500' : improved ? 'text-zinc-200' : 'text-alarm',
-          )}
-        >
-          {delta ?? '—'}
-        </span>
       </div>
     </div>
   );
