@@ -256,6 +256,7 @@ export interface SatelliteImpact {
   per_client_drop: Record<string, number>;
   breaks_target: boolean;
   criticality: number;
+  per_client_outage_growth_s: Record<string, number>;
 }
 
 export interface GatewayDependency {

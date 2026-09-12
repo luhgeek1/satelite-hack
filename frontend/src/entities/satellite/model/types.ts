@@ -1,4 +1,5 @@
 import type { SatelliteImpact, SatelliteState, ScenarioDocument, SnapshotEdge } from '@/shared/api';
+import { criticalityFromImpact } from '@/shared/lib';
 
 export interface SatelliteView {
   id: string;
@@ -63,7 +64,7 @@ export function buildSatelliteViews({
       active: state?.active ?? false,
       failed: failedIds.has(sat.id),
       deployed,
-      criticality: impact?.criticality ?? 0,
+      criticality: impact ? criticalityFromImpact(impact.worst_availability_drop, impact.breaks_target) : 0,
       availabilityImpact: impact?.worst_availability_drop ?? 0,
       color: colors[sat.plane_id] ?? '#71717a',
     };
