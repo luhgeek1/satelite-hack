@@ -26,7 +26,14 @@ import {
 } from '@/entities/simulation';
 import { buildLinkViews, buildSatelliteViews } from '@/entities/satellite';
 import { clientsOf, gatewaysOf, groundSitesOf } from '@/entities/ground-site';
-import { cn, criticalityLevel, earthRotationDeg, orbitTrack, useMediaQuery } from '@/shared/lib';
+import {
+  cn,
+  criticalityLevel,
+  earthRotationDeg,
+  orbitTrack,
+  useDisableBrowserZoom,
+  useMediaQuery,
+} from '@/shared/lib';
 import { EmptyState, ErrorNote, MobileDrawer } from '@/shared/ui';
 import { simulationsApi } from '@/shared/api';
 import { useLocalPanels } from '../model/use-local-panels';
@@ -37,6 +44,8 @@ export function StudioPage() {
   const { state, dispatch } = useSession();
   const scenarios = useScenarios();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+
+  useDisableBrowserZoom();
   const panels = useLocalPanels();
 
   useEffect(() => {
