@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { cn, formatClock, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
@@ -27,7 +27,7 @@ const SPEEDS = [1, 4, 16];
 /** Every sixth hour gets a label; the ruler is read, not measured. */
 const HOUR_MARKS = [0, 6, 12, 18, 24];
 
-export function PlaybackBar({
+function PlaybackBarView({
   tS,
   horizonS,
   stepS,
@@ -44,6 +44,19 @@ export function PlaybackBar({
 }: PlaybackBarProps) {
   const { t } = useI18n();
   const tracks = useRef<HTMLDivElement>(null);
+
+  // Grouped once rather than scanned per row: the strip redraws on every
+  // playback tick, and a filter per site over the whole day is work the
+  // cursor should not be paying for.
+  const bandsByClient = useMemo(() => {
+    const grouped = new Map<string, OutageBand[]>();
+    for (const band of bands) {
+      const rows = grouped.get(band.clientId);
+      if (rows) rows.push(band);
+      else grouped.set(band.clientId, [band]);
+    }
+    return grouped;
+  }, [bands]);
 
   const seekFromClientX = (clientX: number) => {
     const rect = tracks.current?.getBoundingClientRect();
@@ -184,7 +197,7 @@ export function PlaybackBar({
 
         {clients.map((client, index) => {
           const focused = client.client_id === focusClientId;
-          const rows = bands.filter((band) => band.clientId === client.client_id);
+          const rows = bandsByClient.get(client.client_id) ?? [];
 
           return (
             <div key={client.client_id} className="contents">
@@ -253,3 +266,10 @@ export function PlaybackBar({
     </div>
   );
 }
+
+/**
+ * The strip reads the settled run, not the control being moved: while a plane
+ * is dragged its props do not change, and it should not re-render with the
+ * rest of the studio. Memoised so a drag costs the day's bands nothing.
+ */
+export const PlaybackBar = memo(PlaybackBarView);

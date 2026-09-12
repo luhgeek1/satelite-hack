@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Activity, PanelRightClose, PanelRightOpen, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AppHeader } from '@/widgets/app-header';
@@ -50,10 +50,13 @@ import {
 } from '@/shared/lib';
 import { EmptyState, ErrorNote, MobileDrawer } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
-import { simulationsApi } from '@/shared/api';
+import { simulationsApi, type ClientMetrics } from '@/shared/api';
 import { useLocalPanels } from '../model/use-local-panels';
 
 const SPRING = { type: 'spring', stiffness: 360, damping: 36, mass: 0.9 } as const;
+
+/** Stable identity, so a run without a summary does not re-render the strip. */
+const NO_CLIENTS: ClientMetrics[] = [];
 
 export function StudioPage() {
   const { state, dispatch } = useSession();
@@ -160,6 +163,12 @@ export function StudioPage() {
     [snapshot.data, clients, focusClientId],
   );
 
+  // The rings are the most expensive thing a slider touches: every move rebuilds
+  // a path per plane inside the globe. Deferring the value lets React drop the
+  // intermediate positions when it cannot keep up, so the control itself and the
+  // strip underneath stay at pointer speed while the rings follow a beat behind.
+  const planeOverrides = useDeferredValue(state.config.planes);
+
   const orbits = useMemo<OrbitTrack[]>(() => {
     if (!scenario || !geometry) return [];
     const rotation = earthRotationDeg(tS, geometry.earthAngle0Deg);
@@ -175,11 +184,11 @@ export function StudioPage() {
         color: colors[plane.id],
         points: orbitTrack(
           geometry.inclinationDeg,
-          state.config.planes?.[plane.id]?.raan_deg ?? plane.raan_deg,
+          planeOverrides?.[plane.id]?.raan_deg ?? plane.raan_deg,
           rotation,
         ),
       }));
-  }, [scenario, geometry, tS, launchStage, colors, state.config.planes]);
+  }, [scenario, geometry, tS, launchStage, colors, planeOverrides]);
 
   const contactRadius = useMemo(
     () =>
@@ -194,6 +203,11 @@ export function StudioPage() {
 
   const selectedSatellite = satellites.find(
     (satellite) => satellite.id === state.selectedSatelliteId,
+  );
+
+  const selectClient = useCallback(
+    (clientId: string) => dispatch({ type: 'selectClient', clientId }),
+    [dispatch],
   );
 
   const exportHref = summary ? simulationsApi.exportUrl(summary.id) : null;
@@ -354,7 +368,7 @@ export function StudioPage() {
                   clients={summary?.clients ?? []}
                   traces={routeTraces}
                   selectedClientId={focusClientId}
-                  onSelectClient={(clientId) => dispatch({ type: 'selectClient', clientId })}
+                  onSelectClient={selectClient}
                   stale={settling || simulation.isFetching || snapshot.isFetching}
                   optimizing={optimizer.running || optimizer.start.isPending}
                   onOptimize={() => optimizer.start.mutate({ locks, depth })}
@@ -403,13 +417,13 @@ export function StudioPage() {
                 playing={playback.playing}
                 speed={playback.speed}
                 bands={bands}
-                clients={summary?.clients ?? []}
+                clients={summary?.clients ?? NO_CLIENTS}
                 target={summary?.target_availability ?? geometry.targetAvailability}
                 focusClientId={focusClientId}
                 onToggle={playback.toggle}
                 onSpeed={playback.setSpeed}
                 onSeek={playback.seek}
-                onSelectClient={(clientId) => dispatch({ type: 'selectClient', clientId })}
+                onSelectClient={selectClient}
               />
             )}
           </motion.div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useSession } from '@/entities/session';
 
 /**
@@ -35,13 +35,23 @@ export function usePlayback(stepS: number, horizonS: number) {
     return () => window.clearInterval(timer);
   }, [state.playing, state.speed, stepS, horizonS, dispatch]);
 
+  // The controls are handed to a memoised strip, so they have to keep their
+  // identity across a render the strip does not care about — a plane being
+  // dragged, for one.
+  const toggle = useCallback(
+    () => dispatch({ type: 'setPlaying', playing: !state.playing }),
+    [dispatch, state.playing],
+  );
+  const setSpeed = useCallback((speed: number) => dispatch({ type: 'setSpeed', speed }), [dispatch]);
+  const seek = useCallback((tS: number) => dispatch({ type: 'seek', tS }), [dispatch]);
+
   return {
     playing: state.playing,
     speed: state.speed,
     tS: state.tS,
-    toggle: () => dispatch({ type: 'setPlaying', playing: !state.playing }),
-    setSpeed: (speed: number) => dispatch({ type: 'setSpeed', speed }),
-    seek: (tS: number) => dispatch({ type: 'seek', tS }),
+    toggle,
+    setSpeed,
+    seek,
   };
 }
 
