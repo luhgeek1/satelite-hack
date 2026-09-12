@@ -274,6 +274,24 @@ each other, the client retries, and the queue grows faster than it drains. The
 database also sets `idle_in_transaction_session_timeout = 120s` as a backstop,
 which is why the engine now runs with `pool_pre_ping`.
 
+**D11. A job poll is routed to the machine running it, not shared between
+machines.** The owning machine id is part of the job id, and a poll that lands
+on the wrong machine is returned to Fly's proxy with
+`fly-replay: prefer_instance=<machine>`, which re-runs the request in the right
+place.
+*Why:* `JobRegistry` is a dict in one process. The moment the app ran on two
+machines, roughly half of every search's progress polls hit the machine that had
+never heard of the job and got a 404 — the progress bar stalled near 1% and the
+API looked dead, while the logs showed one machine answering 200 twenty times
+and the other 404 fifteen times for the same id (12 Sep 2026).
+*Why not a shared store or a broker:* there is exactly one job kind and the work
+itself cannot move — the process pool doing the search lives on the machine that
+started it. Putting state in Redis would make the poll answerable anywhere but
+would not move the search, so it buys nothing a replay does not, and costs a
+moving part that can fail during a defence. `prefer_instance` rather than
+`instance` so a job whose machine has been replaced still gets an honest 404,
+and a request the proxy has already moved is never moved again.
+
 ---
 
 ## E. Findings worth presenting
