@@ -55,6 +55,7 @@ export const en = {
   'scenario.renameCancel': 'Cancel',
   'scenario.delete': 'Delete {name}',
 
+  'import.button': 'Load a scenario JSON file',
   'import.failed': 'File not loaded',
   'import.problemCount': 'Problems found: {count}',
   'import.more': 'and {count} more',
@@ -577,6 +578,7 @@ export const ru: Record<TranslationKey, string> = {
   'scenario.renameCancel': 'Отмена',
   'scenario.delete': 'Удалить {name}',
 
+  'import.button': 'Загрузить сценарий из JSON-файла',
   'import.failed': 'Файл не загружен',
   'import.problemCount': 'Найдено ошибок: {count}',
   'import.more': 'и ещё {count}',

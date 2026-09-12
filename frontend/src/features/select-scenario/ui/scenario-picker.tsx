@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
-import { ChevronDown, Trash2, Upload } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronDown, Trash2 } from 'lucide-react';
 import { useDeleteScenario, useImportScenario, useScenarios } from '@/entities/scenario';
 import { useDeleteVariant, useVariants } from '@/entities/variant';
 import { hasConfigChanges } from '@/entities/simulation';
@@ -9,7 +9,11 @@ import { useSession } from '@/entities/session';
 import { cn, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { ApiError, type ScenarioIssue } from '@/shared/api';
+import { ImportButton, type ImportButtonState } from './import-button';
 import { ImportReport, type ImportOutcome } from './import-report';
+
+/** How long the button shows how the import went before it is a button again. */
+const BUTTON_SETTLE_MS = 2400;
 
 const failure = (issue: Omit<ScenarioIssue, 'params'> & { params?: ScenarioIssue['params'] }) => ({
   kind: 'failed' as const,
@@ -29,6 +33,17 @@ export function ScenarioPicker() {
   const [open, setOpen] = useState(false);
   const [outcome, setOutcome] = useState<ImportOutcome | null>(null);
   const dismissOutcome = useCallback(() => setOutcome(null), []);
+  const [reading, setReading] = useState(false);
+  const [flash, setFlash] = useState<'loaded' | 'failed' | null>(null);
+
+  useEffect(() => {
+    if (!flash) return;
+    const timer = window.setTimeout(() => setFlash(null), BUTTON_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [flash]);
+
+  const buttonState: ImportButtonState =
+    reading || importScenario.isPending ? 'pending' : (flash ?? 'idle');
 
   const active = scenarios.data?.find((scenario) => scenario.id === state.scenarioId);
   // The name alone stops being true the moment a slider moves, and an
@@ -37,23 +52,30 @@ export function ScenarioPicker() {
 
   const handleFile = async (file: File) => {
     setOutcome(null);
+    setFlash(null);
 
     let document: unknown;
     try {
+      setReading(true);
       document = JSON.parse(await file.text());
     } catch (error) {
+      setFlash('failed');
       const reason = error instanceof Error ? error.message : String(error);
       setOutcome(
         failure({ code: 'invalid_json', field: null, message: reason, params: { reason } }),
       );
       return;
+    } finally {
+      setReading(false);
     }
 
     try {
       const created = await importScenario.mutateAsync(document);
       dispatch({ type: 'selectScenario', scenarioId: created.id });
       setOutcome({ kind: 'loaded', scenario: created });
+      setFlash('loaded');
     } catch (error) {
+      setFlash('failed');
       if (error instanceof ApiError && error.issues.length > 0) {
         setOutcome({ kind: 'failed', issues: error.issues, count: error.issueCount });
       } else {
@@ -186,15 +208,12 @@ export function ScenarioPicker() {
         )}
       </div>
 
-      <button
-        type="button"
+      <ImportButton
+        state={buttonState}
+        label={t('scenario.json')}
+        title={t('import.button')}
         onClick={() => fileInput.current?.click()}
-        disabled={importScenario.isPending}
-        className="flex h-9 items-center gap-1.5 border border-rule-strong px-2.5 font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:border-zinc-400 focus-visible:outline-none disabled:opacity-50"
-      >
-        <Upload size={13} />
-        <span className="hidden sm:inline">JSON</span>
-      </button>
+      />
 
       <input
         ref={fileInput}
