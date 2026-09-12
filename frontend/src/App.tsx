@@ -861,7 +861,7 @@ export default function App() {
     const degraded = belowTarget || !hasRoute;
 
     return (
-      <div className="pointer-events-none absolute left-3 top-3 z-10 w-[190px] border border-rule-strong bg-black/70 p-3 backdrop-blur sm:w-[215px] lg:left-6 lg:top-6 lg:p-4">
+      <div className="pointer-events-none absolute left-3 top-3 z-10 w-[215px] border border-rule-strong bg-black/70 p-3.5 backdrop-blur sm:w-[250px] lg:left-6 lg:top-6 lg:p-5">
         <button
           type="button"
           onClick={() => setNetworkHealthExpanded(expanded => !expanded)}
@@ -871,10 +871,10 @@ export default function App() {
         >
           {/* Annunciator, not decoration: it only carries hue when something
               is actually off target. */}
-          <span className={cn("h-1.5 w-1.5 shrink-0", degraded ? "bg-alarm" : "bg-zinc-500")} />
-          <span className="font-label text-[12px] text-zinc-300">Network health</span>
+          <span className={cn("h-2 w-2 shrink-0", degraded ? "bg-alarm" : "bg-zinc-500")} />
+          <span className="font-label text-[13px] text-zinc-300">Network health</span>
           <ChevronDown
-            size={13}
+            size={14}
             className={cn(
               "ml-auto shrink-0 text-zinc-600 transition-transform duration-200",
               !networkHealthExpanded && "-rotate-90"
@@ -891,7 +891,7 @@ export default function App() {
               transition={{ duration: 0.18, ease: 'easeOut' }}
               className="min-h-0 overflow-hidden"
             >
-              <div className="mt-3 space-y-1.5 font-data text-[11px] tabular-nums sm:text-xs">
+              <div className="mt-3 space-y-1.5 font-data text-[12px] tabular-nums sm:text-[13px]">
                 {Object.entries(metrics.availability).map(([id, v]) => {
                   const val = v as number;
                   return (
@@ -902,23 +902,23 @@ export default function App() {
                   );
                 })}
                 <div className="flex items-baseline justify-between gap-2 text-zinc-500">
-                  <span className="font-label text-[12px]">Target</span>
+                  <span className="font-label text-[13px]">Target</span>
                   <span>&ge; 90%</span>
                 </div>
               </div>
 
               <div className="my-3 border-t border-rule" />
 
-              <div className="flex items-baseline justify-between gap-2 font-data text-[11px] tabular-nums sm:text-xs">
-                <span className="font-label text-[12px] text-zinc-400">Max outage</span>
+              <div className="flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
+                <span className="font-label text-[13px] text-zinc-400">Max outage</span>
                 <span className="text-zinc-100">{metrics.maxOutageMinutes} min</span>
               </div>
 
-              <div className="mt-3 font-data text-[11px] tabular-nums sm:text-xs">
+              <div className="mt-3 font-data text-[12px] tabular-nums sm:text-[13px]">
                 {hasRoute ? (
                   <>
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="font-label text-[12px] text-zinc-400">Route</span>
+                      <span className="font-label text-[13px] text-zinc-400">Route</span>
                       <span className="text-zinc-100">{activeRoute.length - 1} hops</span>
                     </div>
                     {/* The path needs no hue of its own: that it exists is
@@ -933,8 +933,8 @@ export default function App() {
                     </div>
                   </>
                 ) : (
-                  <div className="flex items-center gap-1.5 font-label text-[12px] text-alarm">
-                    <AlertTriangle size={12} /> No route
+                  <div className="flex items-center gap-1.5 font-label text-[13px] text-alarm">
+                    <AlertTriangle size={13} /> No route
                   </div>
                 )}
               </div>
@@ -951,13 +951,13 @@ export default function App() {
             onClick={handleOptimize}
             disabled={optimizationState === 'running'}
             className={cn(
-              "pointer-events-auto flex h-8 w-full items-center justify-center gap-1.5 border font-label text-[12px] transition-colors focus-visible:outline-none",
+              "pointer-events-auto flex h-9 w-full items-center justify-center gap-2 border font-label text-[13px] transition-colors focus-visible:outline-none",
               optimizationState === 'running'
                 ? "cursor-wait border-rule-strong text-zinc-500"
                 : "border-zinc-600 text-zinc-100 hover:bg-zinc-100 hover:text-black focus-visible:border-zinc-300 focus-visible:bg-white/10"
             )}
           >
-            <Zap size={13} />
+            <Zap size={14} />
             {optimizationState === 'running' ? 'Optimizing' : 'Optimize deployment'}
           </button>
         </div>
