@@ -143,14 +143,9 @@ export function SatelliteDetails({
         ))}
       </dl>
 
-      <div className="mt-4">
-        <div className="font-label text-xs text-zinc-500">Carrying right now</div>
-        {carried.length === 0 ? (
-          <p className="mt-2 font-label text-[11px] leading-relaxed text-zinc-600">
-            No client route runs through this node at this instant. It still counts as spare
-            capacity — fail it and watch whether anything moves.
-          </p>
-        ) : (
+      {carried.length > 0 && (
+        <div className="mt-4">
+          <div className="font-label text-xs text-zinc-500">Carrying right now</div>
           <div className="mt-2 space-y-2.5">
             {carried.map((trace) => (
               <div key={trace.clientId}>
@@ -167,8 +162,8 @@ export function SatelliteDetails({
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {neighbours.length > 0 && (
         <div className="mt-4">
