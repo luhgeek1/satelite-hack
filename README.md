@@ -118,10 +118,20 @@
 
 ## Как проверить расчёты
 
-Одна команда, без Docker, базы и Redis:
+Без Docker, базы и Redis. Один раз установить зависимости backend (нужен [uv](https://docs.astral.sh/uv/)):
 
 ```bash
-make install                                   # один раз: backend/.venv
+cd backend
+uv venv --python 3.13 .venv
+uv pip install --python .venv/bin/python fastapi "uvicorn[standard]" pydantic-settings \
+  sqlalchemy alembic asyncpg greenlet redis orjson numpy python-multipart \
+  httpx pytest pytest-asyncio ruff
+cd ..
+```
+
+Затем запустить проверку:
+
+```bash
 backend/.venv/bin/python verification/verify.py
 ```
 
@@ -238,16 +248,17 @@ C70 теряет связь на 178 минут подряд. Это требо�
 ### Запуск всего приложения одной командой
 
 ```bash
+cp .env.example .env
 docker compose up -d --build
 ```
-*Или `make up`.*
+*Или `cp .env.example .env && make up`.*
 
 Команда автоматически соберет и запустит весь стек (PostgreSQL 17, Redis 8, FastAPI Backend и Next.js Frontend), применит миграции БД и загрузит 4 официальных сценария из [data/](data).
 
 | Сервис | Адрес |
 |---|---|
 | OrbitGuard (Frontend) | [http://localhost:3000](http://localhost:3000) |
-| REST API | [http://localhost:8080](http://localhost:8080) |
+| REST API | [http://localhost:8080/api/v1/scenarios](http://localhost:8080/api/v1/scenarios) |
 | Swagger UI | [http://localhost:8080/api/docs](http://localhost:8080/api/docs) |
 | ReDoc | [http://localhost:8080/api/redoc](http://localhost:8080/api/redoc) |
 | Health check | [http://localhost:8080/api/health](http://localhost:8080/api/health) |
@@ -260,9 +271,14 @@ docker compose down --remove-orphans
 
 ---
 
-*Для работы без Docker совсем (чисто локальный Python):*
+*Для локальной разработки backend (API локально, PostgreSQL и Redis в Docker):*
 ```bash
-make install                 # создать backend/.venv и установить зависимости
+cd backend
+uv venv --python 3.13 .venv
+uv pip install --python .venv/bin/python fastapi "uvicorn[standard]" pydantic-settings \
+  sqlalchemy alembic asyncpg greenlet redis orjson numpy python-multipart \
+  httpx pytest pytest-asyncio ruff
+cd ..
 make test-up                 # PostgreSQL :55432 и Redis :56379 для разработки
 make migrate                 # применить Alembic-миграции
 make dev                     # API с hot reload на :8080
@@ -345,10 +361,12 @@ frontend/src/
 
 ## Проверки качества
 
+Зависимости backend устанавливаются так же, как в разделе «Как проверить расчёты».
+
 ```bash
 make test-up
 make migrate
-make test                    # 92 unit + integration теста
+make test                    # 150 unit + integration тестов
 make lint                    # Ruff
 
 cd frontend
