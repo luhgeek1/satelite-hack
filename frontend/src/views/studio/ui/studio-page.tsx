@@ -18,6 +18,7 @@ import { snapToGrid, usePlayback } from '@/features/timeline-playback';
 import { planeColorMap, readGeometry, useScenario, useScenarios } from '@/entities/scenario';
 import { allFailedIds, useSession } from '@/entities/session';
 import {
+  buildRouteTraces,
   isSettling,
   outageBands,
   useAvailabilitySeries,
@@ -25,6 +26,7 @@ import {
   useSimulation,
   useSnapshot,
   useSnapshotPrefetch,
+  type RouteTrace,
 } from '@/entities/simulation';
 import { buildLinkViews, buildSatelliteViews } from '@/entities/satellite';
 import { clientsOf, gatewaysOf, groundSitesOf } from '@/entities/ground-site';
@@ -120,10 +122,15 @@ export function StudioPage() {
   const gateways = useMemo(() => gatewaysOf(scenario), [scenario]);
 
   const focusClientId = state.selectedClientId ?? summary?.clients[0]?.client_id ?? null;
-  const activeRoute = useMemo(() => {
-    const route = snapshot.data?.routes.find((item) => item.client_id === focusClientId);
-    return route?.path ?? [];
-  }, [snapshot.data, focusClientId]);
+  const routeTraces = useMemo<RouteTrace[]>(
+    () =>
+      buildRouteTraces(
+        snapshot.data?.routes,
+        clients.map((client) => client.id),
+        focusClientId,
+      ),
+    [snapshot.data, clients, focusClientId],
+  );
 
   const orbits = useMemo<OrbitTrack[]>(() => {
     if (!scenario || !geometry) return [];
@@ -303,7 +310,8 @@ export function StudioPage() {
                 links={state.tab === 'simulation' ? links : []}
                 clients={clients}
                 gateways={gateways}
-                activeRoute={state.tab === 'simulation' ? activeRoute : []}
+                routes={state.tab === 'simulation' ? routeTraces : []}
+                focusClientId={focusClientId}
                 orbits={state.tab === 'simulation' ? orbits : []}
                 mode={state.tab === 'resilience' ? 'resilience' : 'simulation'}
                 contactRadiusKm={contactRadius}
@@ -321,7 +329,7 @@ export function StudioPage() {
                 <NetworkHealth
                   clients={summary?.clients ?? []}
                   target={summary?.target_availability ?? geometry.targetAvailability}
-                  routes={snapshot.data?.routes ?? []}
+                  traces={routeTraces}
                   selectedClientId={focusClientId}
                   onSelectClient={(clientId) => dispatch({ type: 'selectClient', clientId })}
                   stale={settling || simulation.isFetching || snapshot.isFetching}
@@ -388,7 +396,7 @@ export function StudioPage() {
               <SatelliteDetails
                 satellite={selectedSatellite}
                 links={links}
-                activeRoute={activeRoute}
+                routes={routeTraces}
                 hasResilience={Boolean(resilience.data)}
                 pending={injectFailure.isPending}
                 onInjectFailure={(id) => injectFailure.mutate({ satelliteId: id })}
@@ -407,7 +415,7 @@ export function StudioPage() {
               <SatelliteDetails
                 satellite={selectedSatellite}
                 links={links}
-                activeRoute={activeRoute}
+                routes={routeTraces}
                 hasResilience={Boolean(resilience.data)}
                 pending={injectFailure.isPending}
                 onInjectFailure={(id) => injectFailure.mutate({ satelliteId: id })}

@@ -15,3 +15,14 @@ export {
   worstClient,
   type OutageBand,
 } from './model/selectors';
+export {
+  buildRouteTraces,
+  routeEdgeIndex,
+  routeNodeIndex,
+  tracesThrough,
+  routeColor,
+  edgeKey,
+  type RouteTrace,
+  type RouteEdge,
+} from './model/routes';
+export { RouteChain } from './ui/route-chain';

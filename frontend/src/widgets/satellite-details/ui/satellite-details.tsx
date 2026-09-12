@@ -4,13 +4,14 @@ import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useSession } from '@/entities/session';
 import { neighboursOf, type LinkView, type SatelliteView } from '@/entities/satellite';
+import { RouteChain, tracesThrough, type RouteTrace } from '@/entities/simulation';
 import { cn, criticalityLevel, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
 import { Button } from '@/shared/ui';
 
 interface SatelliteDetailsProps {
   satellite: SatelliteView | undefined;
   links: LinkView[];
-  activeRoute: string[];
+  routes: RouteTrace[];
   hasResilience: boolean;
   pending: boolean;
   onInjectFailure: (satelliteId: string) => void;
@@ -21,7 +22,7 @@ interface SatelliteDetailsProps {
 export function SatelliteDetails({
   satellite,
   links,
-  activeRoute,
+  routes,
   hasResilience,
   pending,
   onInjectFailure,
@@ -34,7 +35,7 @@ export function SatelliteDetails({
 
   const level = criticalityLevel(satellite.criticality);
   const neighbours = neighboursOf(links, satellite.id);
-  const carriesRoute = activeRoute.includes(satellite.id);
+  const carried = tracesThrough(routes, satellite.id);
   const accent = satellite.failed ? '#e4483a' : satellite.color;
 
   const telemetry = [
@@ -44,7 +45,10 @@ export function SatelliteDetails({
     { label: 'Latitude', value: formatLatitude(satellite.lat) },
     { label: 'Longitude', value: formatLongitude(satellite.lon) },
     { label: 'Inter-satellite links', value: `${neighbours.length}` },
-    { label: 'Active route', value: carriesRoute ? 'Carrying' : 'Not in path' },
+    {
+      label: 'Traffic',
+      value: carried.length ? `${carried.length} of ${routes.length}` : 'Idle',
+    },
   ];
 
   const content = (
@@ -132,6 +136,33 @@ export function SatelliteDetails({
           </div>
         ))}
       </dl>
+
+      <div className="mt-4">
+        <div className="font-label text-xs text-zinc-500">Carrying right now</div>
+        {carried.length === 0 ? (
+          <p className="mt-2 font-label text-[11px] leading-relaxed text-zinc-600">
+            No client route runs through this node at this instant. It still counts as spare
+            capacity — fail it and watch whether anything moves.
+          </p>
+        ) : (
+          <div className="mt-2 space-y-2.5">
+            {carried.map((trace) => (
+              <div key={trace.clientId}>
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: 'selectClient', clientId: trace.clientId })}
+                  className="flex items-center gap-1.5 font-data text-[11px] text-zinc-300 transition-colors hover:text-white"
+                >
+                  <span className="h-1.5 w-1.5 shrink-0" style={{ background: trace.color }} />
+                  {trace.clientId}
+                  <span className="text-zinc-600">{trace.hops} hops</span>
+                </button>
+                <RouteChain trace={trace} emphasize={satellite.id} className="mt-1 pl-3" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {neighbours.length > 0 && (
         <div className="mt-4">

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useSession } from '@/entities/session';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
+import type { RouteTrace } from '@/entities/simulation';
 import { GlobeBoundary } from './globe-boundary';
 import type { OrbitTrack } from './globe';
 
@@ -24,7 +25,8 @@ interface ViewportProps {
   links: LinkView[];
   clients: GroundSiteView[];
   gateways: GroundSiteView[];
-  activeRoute: string[];
+  routes: RouteTrace[];
+  focusClientId: string | null;
   orbits: OrbitTrack[];
   mode?: 'simulation' | 'resilience';
   contactRadiusKm: number;
@@ -35,7 +37,8 @@ export function Viewport({
   links,
   clients,
   gateways,
-  activeRoute,
+  routes,
+  focusClientId,
   orbits,
   mode = 'simulation',
   contactRadiusKm,
@@ -52,13 +55,17 @@ export function Viewport({
   const select = (satellite: SatelliteView) =>
     dispatch({ type: 'selectSatellite', satelliteId: satellite.id });
 
+  const selectSite = (siteId: string) => dispatch({ type: 'selectClient', clientId: siteId });
+
   const flatMap = (
     <Map2D
       satellites={satellites}
       links={links}
       groundStations={clients}
       gateways={gateways}
-      activeRoute={activeRoute}
+      routes={routes}
+      focusClientId={focusClientId}
+      onSiteClick={selectSite}
       onSatelliteClick={select}
       selectedSatellite={state.selectedSatelliteId}
       mode={mode}
@@ -85,7 +92,9 @@ export function Viewport({
               links={links}
               groundStations={clients}
               gateways={gateways}
-              activeRoute={activeRoute}
+              routes={routes}
+              focusClientId={focusClientId}
+              onSiteClick={selectSite}
               orbits={orbits}
               playing={state.playing}
               onSatelliteClick={select}

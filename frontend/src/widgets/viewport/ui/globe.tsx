@@ -5,6 +5,7 @@ import GlobeGL from 'react-globe.gl';
 import * as THREE from 'three';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
+import { routeEdgeIndex, edgeKey, type RouteTrace } from '@/entities/simulation';
 import { criticalityLevel } from '@/shared/lib';
 import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
 import {
@@ -157,12 +158,21 @@ const createStarfield = () => {
   return points;
 };
 
+const SITE_LABEL_OFFSETS = [
+  { x: 3, y: 20 },
+  { x: 9, y: -14 },
+  { x: 15, y: -30 },
+  { x: -6, y: 26 }
+];
+
 interface GlobeProps {
   satellites: SatelliteView[];
   links: LinkView[];
   groundStations: GroundSiteView[];
   gateways: GroundSiteView[];
-  activeRoute?: string[];
+  routes?: RouteTrace[];
+  onSiteClick?: (siteId: string) => void;
+  focusClientId?: string | null;
   orbits?: OrbitTrack[];
   /** While the timeline runs, satellites render as small spheres instead of the
    *  default cylinder markers, which smear as they travel. */
@@ -184,7 +194,9 @@ export const Globe: React.FC<GlobeProps> = ({
   links,
   groundStations,
   gateways,
-  activeRoute = [],
+  routes = [],
+  onSiteClick,
+  focusClientId = null,
   orbits = [],
   playing = false,
   rotation = [0, -20, 0], // Kept for API compatibility, but react-globe handles its own view
@@ -515,11 +527,24 @@ export const Globe: React.FC<GlobeProps> = ({
   };
 
   // Prepare satellite data
+  const routeEdges = useMemo(() => routeEdgeIndex(routes), [routes]);
+
+  const routeNodes = useMemo(() => {
+    const carried = new Map<string, string>();
+    for (const trace of routes) {
+      if (!trace.available) continue;
+      for (const node of trace.path) {
+        if (trace.focused || !carried.has(node)) carried.set(node, trace.color);
+      }
+    }
+    return carried;
+  }, [routes]);
+
   const pointsData = useMemo(() => {
     return satellites.map(sat => {
       const isSelected = selectedSatellite === sat.id;
       const isFailed = sat.failed;
-      const isActiveRoute = activeRoute.includes(sat.id);
+      const routeColour = routeNodes.get(sat.id);
       
       let color = "#a1a1aa"; // zinc-400
       let altitude = 0.05;
@@ -528,8 +553,8 @@ export const Globe: React.FC<GlobeProps> = ({
         color = "#ef4444"; // red-500
       } else if (mode === 'resilience') {
         color = criticalityLevel(sat.criticality).color;
-      } else if (isActiveRoute) {
-        color = "#3b82f6"; // blue-400
+      } else if (routeColour) {
+        color = routeColour;
       } else if (mode === 'simulation') {
         color = sat.color;
       }
@@ -553,7 +578,7 @@ export const Globe: React.FC<GlobeProps> = ({
         emphasized
       };
     });
-  }, [satellites, selectedSatellite, activeRoute, mode, playing, coverageSatelliteId, coverageScale]);
+  }, [satellites, selectedSatellite, routeNodes, mode, playing, coverageSatelliteId, coverageScale]);
 
   const coverageColor = pointsData.find(sat => sat.id === coverageSatelliteId)?.color ?? '#ffffff';
 
@@ -604,6 +629,7 @@ export const Globe: React.FC<GlobeProps> = ({
     [satellites, selectedSatellite]
   );
 
+
   const selectedCoverage = useMemo(() => {
     const satellite = satellites.find(sat => sat.id === coverageSatelliteId);
     if (!satellite || coverageScale <= 0.001) return null;
@@ -629,7 +655,8 @@ export const Globe: React.FC<GlobeProps> = ({
       
       if (!sourceNode || !targetNode) return null;
 
-      const isRoute = activeRoute.includes(link.source) && activeRoute.includes(link.target);
+      const routeEdge = routeEdges.get(edgeKey(link.source, link.target));
+      const isRoute = Boolean(routeEdge);
       const isFailed = Boolean((sourceNode as SatelliteView).failed) || Boolean((targetNode as SatelliteView).failed);
 
       if (isFailed && isRoute) return null;
@@ -646,9 +673,9 @@ export const Globe: React.FC<GlobeProps> = ({
       let color = 'rgba(125,211,252,0.5)'; // cross-plane ISL
       let stroke = 0.26;
 
-      if (isRoute) {
-        color = '#3b82f6';
-        stroke = 0.6;
+      if (routeEdge) {
+        color = routeEdge.focused ? routeEdge.color : `${routeEdge.color}b3`;
+        stroke = routeEdge.focused ? 0.62 : 0.42;
       } else if (isFailed) {
         color = 'rgba(239,68,68,0.45)';
         stroke = 0.2;
@@ -674,13 +701,13 @@ export const Globe: React.FC<GlobeProps> = ({
         endLng: targetNode.lon,
         endAlt: targetIsSat ? SATELLITE_ALTITUDE : 0,
         color: [color, color],
-        dashAnimateTime: isRoute ? 1000 : 0,
-        dashLength: isRoute ? 0.5 : 1,
-        dashGap: isRoute ? 0.2 : 0,
+        dashAnimateTime: routeEdge ? (routeEdge.focused ? 1000 : 2600) : 0,
+        dashLength: routeEdge ? 0.5 : 1,
+        dashGap: routeEdge ? 0.2 : 0,
         stroke
       };
     }).filter((arc): arc is NonNullable<typeof arc> => arc !== null);
-  }, [links, satellites, groundStations, gateways, activeRoute, highlightedPlane]);
+  }, [links, satellites, groundStations, gateways, routeEdges, highlightedPlane]);
 
   /**
    * One closed line per orbital plane. The plane of the selected satellite is
@@ -732,18 +759,23 @@ export const Globe: React.FC<GlobeProps> = ({
         id: sat.id,
         sat,
         accent: sat.failed ? '#e4483a' : sat.color,
-        emphasized: sat.failed || sat.id === selectedSatellite || activeRoute.includes(sat.id)
+        emphasized: sat.failed || sat.id === selectedSatellite || routeNodes.has(sat.id)
       });
     });
 
-    groundStations.forEach(gs => {
+    groundStations.forEach((gs, index) => {
+      const trace = routes.find(item => item.clientId === gs.id);
       data.push({
         lat: gs.lat,
         lng: gs.lon,
         alt: 0,
         type: 'gs',
         id: gs.id,
-        name: gs.name
+        name: gs.name,
+        focused: gs.id === focusClientId,
+        routeColor: trace?.available ? trace.color : null,
+        offline: trace ? !trace.available : false,
+        labelOffset: SITE_LABEL_OFFSETS[index % SITE_LABEL_OFFSETS.length]
       });
     });
     gateways.forEach(gw => {
@@ -753,11 +785,12 @@ export const Globe: React.FC<GlobeProps> = ({
         alt: 0,
         type: 'gw',
         id: gw.id,
-        name: gw.name
+        name: gw.name,
+        labelOffset: { x: 0, y: 21 }
       });
     });
     return data;
-  }, [satellites, groundStations, gateways, selectedSatellite, activeRoute]);
+  }, [satellites, groundStations, gateways, selectedSatellite, routeNodes, routes, focusClientId]);
 
   return (
     <div
@@ -905,18 +938,18 @@ export const Globe: React.FC<GlobeProps> = ({
           }
 
           const isGateway = d.type === 'gw';
-          const accent = isGateway ? '#fbbf24' : '#60a5fa';
-          const accentDim = isGateway ? 'rgba(251,191,36,0.22)' : 'rgba(96,165,250,0.22)';
-          const labelOffsets: Record<string, { x: number; y: number }> = {
-            G_MUR: { x: 0, y: 21 },
-            C65: { x: 3, y: 20 },
-            C70: { x: 9, y: -14 },
-            C72: { x: 15, y: -30 }
-          };
-          const labelOffset = labelOffsets[d.id] ?? { x: 0, y: 0 };
+          const accent = isGateway
+            ? '#fbbf24'
+            : d.offline
+              ? '#e4483a'
+              : (d.routeColor ?? '#60a5fa');
+          const accentDim = `${accent}38`;
+          // Sites cluster around the served region, so labels are fanned out by
+          // index rather than pinned to ids the jury's file will not contain.
+          const labelOffset = d.labelOffset ?? { x: 0, y: 0 };
 
           el.style.cssText = [
-            'pointer-events:none',
+            `pointer-events:${isGateway ? 'none' : 'auto'}`,
             'white-space:nowrap',
             'font-family:ui-monospace, SFMono-Regular, Menlo, monospace'
           ].join(';');
@@ -938,7 +971,30 @@ export const Globe: React.FC<GlobeProps> = ({
           }
 
           const label = document.createElement('div');
-          label.style.cssText = `position:absolute;left:${10 + labelOffset.x}px;top:${-11 + labelOffset.y}px;display:flex;flex-direction:column;gap:0;padding:2px 5px;border:1px solid ${isGateway ? 'rgba(251,191,36,0.75)' : 'rgba(96,165,250,0.78)'};border-radius:3px;background:rgba(3,7,18,0.9);box-shadow:0 3px 10px rgba(0,0,0,0.42);`;
+          const labelBorder = isGateway ? 'rgba(251,191,36,0.75)' : `${accent}c7`;
+          label.style.cssText = `position:absolute;left:${10 + labelOffset.x}px;top:${-11 + labelOffset.y}px;display:flex;flex-direction:column;gap:0;padding:2px 5px;border:1px solid ${d.focused ? '#fafafa' : labelBorder};border-radius:3px;background:rgba(3,7,18,0.9);box-shadow:${d.focused ? `0 0 12px ${accentDim},` : ''}0 3px 10px rgba(0,0,0,0.42);`;
+
+          if (!isGateway && onSiteClick) {
+            label.style.cursor = 'pointer';
+            marker.style.cursor = 'pointer';
+
+            let downAt: { x: number; y: number } | null = null;
+            const arm = (event: PointerEvent) => {
+              downAt = { x: event.clientX, y: event.clientY };
+            };
+            const fire = (event: MouseEvent) => {
+              if (!downAt) return;
+              const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
+              downAt = null;
+              if (moved > 4) return;
+              onSiteClick(d.id);
+            };
+
+            for (const target of [label, marker]) {
+              target.addEventListener('pointerdown', arm);
+              target.addEventListener('click', fire);
+            }
+          }
 
           const code = document.createElement('span');
           code.textContent = d.id;
