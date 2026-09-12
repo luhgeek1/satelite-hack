@@ -54,10 +54,15 @@ export function PlaybackBar({
 
   const cursor = horizonS ? (tS / horizonS) * 100 : 0;
 
+  /**
+   * A held route is the whole bar, lit. Losing one eats into it, and the
+   * deeper the loss the closer the band gets to the black behind the strip:
+   * a gap in the day reads as a gap, and severity is how much light is gone.
+   */
   const legend = [
-    { key: 'playback.routed' as const, tone: 'bg-zinc-700' },
-    { key: 'playback.noRoute' as const, tone: 'bg-zinc-500' },
-    { key: 'playback.noSatellite' as const, tone: 'bg-alarm' },
+    { key: 'playback.routed' as const, tone: 'bg-zinc-100' },
+    { key: 'playback.noRoute' as const, tone: 'bg-zinc-400' },
+    { key: 'playback.noSatellite' as const, tone: 'bg-zinc-700' },
   ];
 
   return (
@@ -108,7 +113,7 @@ export function PlaybackBar({
         <div className="ml-auto flex items-center gap-3 font-data text-[9px] tracking-[0.08em] text-zinc-600">
           {legend.map((item) => (
             <span key={item.key} className="flex items-center gap-1.5">
-              <span className={cn('h-1.5 w-2.5', item.tone)} /> {t(item.key)}
+              <span className={cn('h-1.5 w-2.5 border border-rule-strong', item.tone)} /> {t(item.key)}
             </span>
           ))}
         </div>
@@ -165,9 +170,17 @@ export function PlaybackBar({
           style={{ gridColumn: 2, gridRow: `2 / span ${Math.max(1, clients.length)}` }}
         >
           <div
-            className="absolute -top-1 bottom-0 w-[9px] -translate-x-1/2 border-l border-r border-white transition-[left] duration-75"
+            className="absolute -top-1 bottom-0 w-[9px] -translate-x-1/2 transition-[left] duration-75"
             style={{ left: `${cursor}%` }}
-          />
+          >
+            {(['left-0', 'right-0'] as const).map((edge) => (
+              <span
+                key={edge}
+                className={cn('absolute inset-y-0 w-px bg-white', edge)}
+                style={{ boxShadow: '1px 0 0 rgba(0,0,0,0.85), -1px 0 0 rgba(0,0,0,0.85)' }}
+              />
+            ))}
+          </div>
         </div>
 
         {clients.map((client, index) => {
@@ -199,15 +212,12 @@ export function PlaybackBar({
                 onPointerMove={(event) => {
                   if (event.buttons === 1) seekFromClientX(event.clientX);
                 }}
-                className={cn(
-                  'relative h-2.5 cursor-pointer touch-none overflow-hidden transition-opacity',
-                  focused ? 'opacity-100' : 'opacity-80 hover:opacity-100',
-                )}
+                // All three rows are readings, so none of them is dimmed to
+                // mark focus — the id beside the bar does that.
+                className="relative h-2.5 cursor-pointer touch-none overflow-hidden"
                 style={{ gridColumn: 2, gridRow: index + 2 }}
               >
-                {/* A day that holds a route is the quiet state; what the eye
-                    should catch is where it breaks. */}
-                <div className="absolute inset-0 bg-zinc-700" />
+                <div className="absolute inset-0 bg-zinc-100" />
                 {rows.map((band, bandIndex) => (
                   <div
                     key={`${band.state}-${bandIndex}`}
@@ -218,7 +228,7 @@ export function PlaybackBar({
                     }`}
                     className={cn(
                       'absolute inset-y-0',
-                      band.state === 'no_satellite' ? 'bg-alarm' : 'bg-zinc-500',
+                      band.state === 'no_satellite' ? 'bg-zinc-700' : 'bg-zinc-400',
                     )}
                     style={{
                       left: `${band.startFraction * 100}%`,
