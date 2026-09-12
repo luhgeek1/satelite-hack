@@ -441,6 +441,55 @@ collapsed panel, a phone), so the tour never points at an empty corner. The
 remaining hints are hover-only. Marked as seen when it opens, not when it ends:
 being met by the same overlay on every reload is worse than missing a step.
 
+**D18. The resilience tab answers one question first: does the design survive
+losing any one satellite.** It is a 10-point criterion ("какие направления
+затронуты, где маршрут выживает, как растут перерывы, карта критичных
+аппаратов"), so closing the tab was never on the table — but it was answering
+it badly. Criticality was scaled against the worst satellite of the same run,
+so the official full constellation showed eight red "КРИТ 100" satellites whose
+loss costs 2.36 pt with the target still met. Measured (2026-09-12): at launch 3
+the worst client is 96.7 % and 94.3 % after the most damaging single loss, and
+no satellite breaks the target alone; at launch 2 it is 61.8 % → 59.3 %.
+*What changed:* a verdict card on the map, per launch stage (the same switch as
+deployment); an absolute scale — red only when a loss alone breaks the target,
+"noticeable" from 1 pt, "slight" from 0.25 pt; each ranked row opens onto every
+client's loss and **how much longer its longest outage gets** (new
+`per_client_outage_growth_s`, computed from the knockouts already run); and one
+button fails the satellite for the day and opens the simulation onto it, so the
+rerouting is watched, not read. The backend's relative `criticality` stays in
+the wire model for compatibility; the UI no longer reads it.
+*Finding worth presenting:* the quick search that lifts the full constellation
+from 96.7 % to 98.2 % also lifts the worst-after-any-single-failure figure from
+94.3 % to 95.8 % — the better design is also the more robust one.
+*Finding that shaped a decision:* re-phasing after the ten failures of scenario
+03 buys +1 pt (79.3 → 80.3 %), and freeing RAAN as well buys nothing more. Spare
+margin comes from satellites, not angles — which is why the tab does not carry a
+"recover by re-phasing" search of its own.
+
+**D19. One angle search, stoppable, with an honest price.** The search could be
+started from the network card, the deployment group and the resilience tab
+under three names, with a per-angle lock grid on the last. It now lives beside
+the launch it plans (D16), as the one filled button in the panel, with *Quick*
+(one descent) or *Thorough* (three starts) and a quote in full days and minutes.
+*Timing, measured on production (performance-2x, 2 dedicated cores):* one full
+day ≈ 0.45 s; quick six-axis search 158 runs, 72 s; thorough 676 runs, ≈ 5 min;
+the exhaustive grid 4 109 runs, ≈ 30 min; resilience 21 s; one sensitivity sweep
+3 s. The UI had quoted the laptop's 0.11 s per run — a quarter of the real wait.
+*Grid removed:* refused by the service with 400, as is any search quoted above
+`OPTIMIZER_MAX_RUNS` (1 000), because it held both cores for half an hour and
+scored worse than the descent (C7).
+*Stop that stops:* cancelling the asyncio task only stopped the coroutine
+awaiting the thread; the search and its process pool ran to completion. The
+engine now polls a stop flag after every configuration and tears the pool down
+with `cancel_futures`; `DELETE /jobs/{id}` asks for it and the job settles on
+`cancelled`. Verified on production: a thorough search stopped 3.1 s after the
+request, and a sensitivity sweep issued immediately afterwards took its usual
+3.0 s.
+*Sensitivity:* each parameter is its own cached query, so switching tabs no
+longer shows the previous parameter's points; the sweeps for the configuration
+the page opens on start as soon as it settles (not on every slider move — three
+analyses per drag would queue on two cores).
+
 ## E. Findings worth presenting
 
 **E1. The ISL threshold is 2700.44 km, and it is a cliff, not a slope.**

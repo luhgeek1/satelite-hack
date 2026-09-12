@@ -24,10 +24,10 @@ where the work stands.
 | Snapshot / ephemeris / availability strip / route timeline | ✅ cached |
 | Official export `cosmo-A-result-1.0` | ✅ 2160 records, round-trips |
 | Variants + comparison | ✅ changed-parameter diff, metric rows, recommendation sentence |
-| Resilience (criticality) | ✅ ~2.3 s across a process pool |
+| Resilience (criticality) | ✅ ~2.3 s locally, 21 s on production; per-client availability loss and outage growth per knockout (DECISIONS D18) |
 | Gateway dependency | ✅ |
 | Sensitivity sweep | ✅ finds the 2700 km threshold |
-| Optimizer | ✅ coordinate descent by default, full grid still selectable, job + progress, parameter locks, configurable objective |
+| Optimizer | ✅ coordinate descent, job + progress, locks, configurable objective; grid and searches over 1 000 runs refused; `DELETE /jobs/{id}` really stops a search (DECISIONS D19) |
 | Fan-out cost | ✅ two cores left free, numpy pinned to one thread per worker, one pool per search |
 | Database | ✅ Postgres + Alembic, Redis as an optional cache |
 | Docker | ✅ `docker compose up -d --build` |
@@ -47,8 +47,9 @@ where the work stands.
 | Network health | ✅ per-client hop count or no-route reason, stranded clients named outright |
 | Satellite card | ✅ names the clients it carries right now, each chain clickable |
 | Deployment campaign | ✅ all three launches with their figures, the row is the switch; the selected launch is a draft or fixed, with find/fix/withdraw beside it; fixed launches persist and lock their rings' scales, later rings are disabled with a jump to their launch (DECISIONS D15, D16, E8) |
-| Guided tour | ✅ eight-step studio tour on first visit (dimmed spotlight, replay lamp in the header) and a six-step deployment tour behind the group's own lamp (DECISIONS D17) |
-| Optimizer UI | ✅ depth picker, run count and time estimate before the click, time remaining during; phase period derived from the plane's slots |
+| Guided tour | ✅ eleven-step studio tour on first visit — including the angle search and two resilience steps, ending back on the simulation tab — and a six-step deployment tour behind the group's own lamp (DECISIONS D17, D19) |
+| Resilience tab | ✅ single-failure verdict per launch stage on the map, absolute criticality scale, per-client loss and outage growth, fail-for-a-day into the simulation, sensitivity sweeps cached and pre-run (DECISIONS D18) |
+| Optimizer UI | ✅ one home beside the launch being planned, quick/thorough with a quote measured on production, Stop on the progress card; phase period derived from the plane's slots (DECISIONS D19) |
 | Site surroundings UI | ✅ picker on every site card, effective horizon, share of the day hidden, dashed masked links on globe and map |
 | Gateway outages UI | ✅ whole day / from now / window, same as satellite failures |
 | Quick failure | ✅ the card's one-click failure starts at the timeline position |
