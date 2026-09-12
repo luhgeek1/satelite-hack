@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Minus, RotateCcw } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, Marker, Line, ZoomableGroup, Graticule } from 'react-simple-maps';
@@ -8,6 +8,7 @@ import { geoCircle, geoEquirectangular } from 'd3-geo';
 import countries110m from 'world-atlas/countries-110m.json';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
+import { routeEdgeIndex, edgeKey, type RouteTrace } from '@/entities/simulation';
 import { criticalityLevel } from '@/shared/lib';
 import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
 import {
@@ -24,7 +25,9 @@ interface Map2DProps {
   links: LinkView[];
   groundStations: GroundSiteView[];
   gateways: GroundSiteView[];
-  activeRoute?: string[];
+  routes?: RouteTrace[];
+  onSiteClick?: (siteId: string) => void;
+  focusClientId?: string | null;
   onSatelliteClick?: (sat: SatelliteView) => void;
   selectedSatellite?: string | null;
   mode?: 'simulation' | 'resilience';
@@ -60,7 +63,9 @@ export const Map2D: React.FC<Map2DProps> = ({
   links,
   groundStations,
   gateways,
-  activeRoute = [],
+  routes = [],
+  onSiteClick,
+  focusClientId = null,
   onSatelliteClick,
   selectedSatellite,
   mode = 'simulation',
@@ -161,10 +166,28 @@ export const Map2D: React.FC<Map2DProps> = ({
     return sat.color;
   };
 
-  const renderLink = (source: { lat: number; lon: number }, target: { lat: number; lon: number }, isRoute: boolean, key: string) => {
-    const stroke = isRoute ? '#d4d4d8' : RULE;
-    const strokeWidth = (isRoute ? 1.2 : 0.5) * k;
-    const strokeOpacity = isRoute ? 1 : 0.55;
+  const routeEdges = useMemo(() => routeEdgeIndex(routes), [routes]);
+
+  const routeNodes = useMemo(() => {
+    const carried = new Map<string, string>();
+    for (const trace of routes) {
+      if (!trace.available) continue;
+      for (const node of trace.path) {
+        if (trace.focused || !carried.has(node)) carried.set(node, trace.color);
+      }
+    }
+    return carried;
+  }, [routes]);
+
+  const renderLink = (
+    source: { lat: number; lon: number },
+    target: { lat: number; lon: number },
+    route: { color: string; focused: boolean } | undefined,
+    key: string,
+  ) => {
+    const stroke = route ? route.color : RULE;
+    const strokeWidth = (route ? (route.focused ? 1.4 : 1) : 0.5) * k;
+    const strokeOpacity = route ? (route.focused ? 1 : 0.7) : 0.55;
     const diffLon = target.lon - source.lon;
 
     // A link that crosses the antimeridian has to be drawn as two runs, or it
@@ -283,16 +306,14 @@ export const Map2D: React.FC<Map2DProps> = ({
             const target = find(link.target);
             if (!source || !target) return null;
 
-            const sourceIndex = activeRoute.indexOf(link.source);
-            const targetIndex = activeRoute.indexOf(link.target);
-            const isRoute =
-              sourceIndex !== -1 && targetIndex !== -1 && Math.abs(sourceIndex - targetIndex) === 1;
+            const route = routeEdges.get(edgeKey(link.source, link.target));
+            const isRoute = Boolean(route);
 
             const touchesFailedNode =
               Boolean((source as SatelliteView).failed) || Boolean((target as SatelliteView).failed);
             if (touchesFailedNode && isRoute) return null;
 
-            return renderLink(source, target, isRoute, `link-${index}`);
+            return renderLink(source, target, route, `link-${index}`);
           })}
 
           {gateways.map(gateway => (
@@ -302,22 +323,32 @@ export const Map2D: React.FC<Map2DProps> = ({
             </Marker>
           ))}
 
-          {groundStations.map(station => (
-            <Marker key={station.id} coordinates={[station.lon, station.lat]}>
-              <polygon
-                points={`0,${-4 * k} ${4 * k},${3 * k} ${-4 * k},${3 * k}`}
-                fill="transparent"
-                stroke="#a1a1aa"
-                strokeWidth={k}
-              />
-              {siteLabel(station.id)}
-            </Marker>
-          ))}
+          {groundStations.map(station => {
+            const trace = routes.find(item => item.clientId === station.id);
+            const tint = trace ? (trace.available ? trace.color : ALARM) : '#a1a1aa';
+
+            return (
+              <Marker
+                key={station.id}
+                coordinates={[station.lon, station.lat]}
+                onClick={onSiteClick ? () => onSiteClick(station.id) : undefined}
+                style={onSiteClick ? { cursor: 'pointer' } : undefined}
+              >
+                <polygon
+                  points={`0,${-4 * k} ${4 * k},${3 * k} ${-4 * k},${3 * k}`}
+                  fill={station.id === focusClientId ? `${tint}33` : 'transparent'}
+                  stroke={tint}
+                  strokeWidth={(station.id === focusClientId ? 1.6 : 1) * k}
+                />
+                {siteLabel(station.id)}
+              </Marker>
+            );
+          })}
 
           {satellites.map(sat => {
             const isFailed = sat.failed;
             const isSelected = selectedSatellite === sat.id;
-            const isActiveRoute = activeRoute.includes(sat.id);
+            const isActiveRoute = routeNodes.has(sat.id);
             const isPinging = failurePings.has(sat.id);
 
             return (

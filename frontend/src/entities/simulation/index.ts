@@ -25,3 +25,4 @@ export {
   type RouteTrace,
   type RouteEdge,
 } from './model/routes';
+export { RouteChain } from './ui/route-chain';
