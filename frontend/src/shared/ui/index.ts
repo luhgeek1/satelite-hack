@@ -1,6 +1,6 @@
 export { Button, type ButtonProps } from './button';
 export { ParamGroup } from './param-group';
-export { ScaleRow } from './scale-row';
+export { ScaleRow, ScaleCaption, SCALE_GRID } from './scale-row';
 export { MobileDrawer } from './mobile-drawer';
 export { IndeterminateBar } from './indeterminate-bar';
 export { ProgressBar } from './progress-bar';
