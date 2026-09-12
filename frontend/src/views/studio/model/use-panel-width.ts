@@ -9,19 +9,22 @@ const DEFAULT_WIDTH = 480;
 const MIN_WIDTH = 320;
 
 /**
- * How much bigger the data column draws than it measures, by screen.
+ * How much bigger the two frames around the map — the data column and the
+ * timeline strip — draw than they measure.
  *
- * The panel is dense by design — forty-eight nodes, four parameter groups and
- * a day of outage windows have to fit — and on a laptop that density is the
- * only way it fits at all, so there it draws as designed. A larger screen has
- * room to spend on legibility, and zoom spends it on everything at once: type,
- * rules and spacing keep their proportions instead of drifting into a second
- * set of sizes to maintain.
+ * Both are dense by design, and on a laptop that density is the only reason
+ * they fit at all, so there they draw as designed. A larger screen has room to
+ * spend on legibility, and zoom spends it on everything at once: type, rules
+ * and spacing keep their proportions instead of drifting into a second set of
+ * sizes to maintain.
+ *
+ * Height counts as much as width. The strip is a band across the bottom and
+ * the column runs the full height of the window, so scaling on width alone
+ * makes a short screen pay for its width in the room it has least of.
  */
-export const panelScaleFor = (viewportWidth: number) => {
-  if (viewportWidth >= 1920) return 1.25;
-  if (viewportWidth >= 1440) return 1.125;
-  return 1;
+export const uiScaleFor = (viewportWidth: number, viewportHeight: number) => {
+  const room = Math.min(viewportWidth / 1440, viewportHeight / 900);
+  return Math.round(Math.max(1, Math.min(1.25, room)) * 100) / 100;
 };
 
 /** A third of the screen at most: past that the map stops being the subject. */
@@ -44,7 +47,7 @@ export function usePanelWidth() {
   useEffect(() => {
     const saved = readStored(STORAGE_KEY, isFiniteNumber);
     setWidth(clampTo(saved ?? DEFAULT_WIDTH, window.innerWidth));
-    setScale(panelScaleFor(window.innerWidth));
+    setScale(uiScaleFor(window.innerWidth, window.innerHeight));
   }, []);
 
   // A window that shrinks takes the panel down with it: a third of the screen
@@ -52,7 +55,7 @@ export function usePanelWidth() {
   useEffect(() => {
     const onResize = () => {
       setWidth((current) => clampTo(current, window.innerWidth));
-      setScale(panelScaleFor(window.innerWidth));
+      setScale(uiScaleFor(window.innerWidth, window.innerHeight));
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
