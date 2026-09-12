@@ -1163,7 +1163,7 @@ export const Globe: React.FC<GlobeProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full w-full items-center justify-center overflow-hidden"
+      className="isolate relative z-0 flex h-full w-full items-center justify-center overflow-hidden"
       onPointerDown={pauseRotationAfterUserContact}
       onPointerMove={pauseRotationAfterUserContact}
       onPointerUp={finishUserInteraction}
