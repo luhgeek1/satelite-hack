@@ -1,29 +1,22 @@
 'use client';
 
 import { useMemo } from 'react';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { useComparison, useVariants } from '@/entities/variant';
+import { useScenarios } from '@/entities/scenario';
 import { useSession } from '@/entities/session';
 import { useI18n } from '@/shared/i18n';
 import { EmptyState, ErrorNote } from '@/shared/ui';
+import { TARGET_AVAILABILITY_FALLBACK } from '@/shared/config';
 import type { Variant } from '@/shared/api';
+import { siteRows } from '../model/scale';
 import { MetricStrip } from './metric-strip';
+import { SiteComparison } from './site-comparison';
 import { VariantColumn } from './variant-column';
-
-const SERIES_INK = ['#6b6b72', '#d9d9de'];
 
 export function CompareBoard() {
   const { t } = useI18n();
   const variants = useVariants();
+  const scenarios = useScenarios();
   // The pair lives in the session, so arriving here from an optimizer result
   // lands on the right two variants and a tab switch does not clear them.
   const { state, dispatch } = useSession();
@@ -47,16 +40,19 @@ export function CompareBoard() {
   const selectedIds = slots.filter((id): id is string => Boolean(id));
   const comparison = useComparison(selectedIds.length === 2 ? selectedIds : []);
 
-  const chartData = useMemo(() => {
-    const perClient = comparison.data?.per_client_availability;
-    if (!perClient) return [];
+  const siteComparison = useMemo(
+    () => siteRows(comparison.data?.per_client_availability ?? {}),
+    [comparison.data],
+  );
 
-    return Object.entries(perClient).map(([clientId, values]) => ({
-      client: clientId,
-      a: Number((values[0] * 100).toFixed(2)),
-      b: Number((values[1] * 100).toFixed(2)),
-    }));
-  }, [comparison.data]);
+  // The threshold belongs to the scenario the variants were saved from, not to
+  // this screen; a jury file may set its own.
+  const target = useMemo(() => {
+    const fromScenario = resolved
+      .map((variant) => scenarios.data?.find((item) => item.id === variant?.scenario_id))
+      .find((item) => item !== undefined);
+    return fromScenario?.target_availability ?? TARGET_AVAILABILITY_FALLBACK;
+  }, [resolved, scenarios.data]);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black p-4 sm:p-6 lg:p-8">
@@ -122,76 +118,11 @@ export function CompareBoard() {
               </div>
             )}
 
-            <div className="border border-rule-strong p-4 sm:p-5">
-              <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
-                <h3 className="font-label text-[13px] text-zinc-300">{t('compare.availability')}</h3>
-                <div className="flex items-center gap-4">
-                  {[
-                    { label: resolved[0]?.name ?? 'A', ink: SERIES_INK[0], dash: '4 3' },
-                    { label: resolved[1]?.name ?? 'B', ink: SERIES_INK[1], dash: undefined },
-                  ].map((series) => (
-                    <div key={series.label} className="flex items-center gap-1.5">
-                      <svg width="16" height="2" aria-hidden="true">
-                        <line
-                          x1="0"
-                          y1="1"
-                          x2="16"
-                          y2="1"
-                          stroke={series.ink}
-                          strokeWidth="2"
-                          strokeDasharray={series.dash}
-                        />
-                      </svg>
-                      <span className="truncate font-label text-[12px] text-zinc-400">{series.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 h-48 sm:h-56 lg:h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 6, right: 12, bottom: 0, left: 0 }}>
-                    <CartesianGrid stroke="#1f1f23" vertical={false} />
-                    <XAxis
-                      dataKey="client"
-                      stroke="#3f3f46"
-                      tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
-                      tickMargin={8}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      ticks={[0, 25, 50, 75, 100]}
-                      stroke="#3f3f46"
-                      tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
-                      width={40}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <Tooltip
-                      cursor={{ stroke: '#52525b', strokeWidth: 1 }}
-                      contentStyle={{
-                        backgroundColor: '#000',
-                        border: '1px solid #2e2e34',
-                        borderRadius: 0,
-                        fontFamily: 'IBM Plex Mono, monospace',
-                        fontSize: 11,
-                      }}
-                      labelStyle={{ color: '#a1a1aa', marginBottom: 4, fontSize: 11 }}
-                      formatter={(value: unknown, name: unknown) => [
-                        `${value}%`,
-                        name === 'a' ? (resolved[0]?.name ?? 'A') : (resolved[1]?.name ?? 'B'),
-                      ]}
-                    />
-                    <ReferenceLine
-                      y={(resolved[0]?.meets_target ? 90 : 90)}
-                      stroke="#52525b"
-                      strokeDasharray="2 3"
-                    />
-                    <Line type="monotone" dataKey="a" stroke={SERIES_INK[0]} strokeWidth={2} strokeDasharray="4 3" dot />
-                    <Line type="monotone" dataKey="b" stroke={SERIES_INK[1]} strokeWidth={2} dot />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            <SiteComparison
+              rows={siteComparison}
+              target={target}
+              names={[resolved[0]?.name ?? 'A', resolved[1]?.name ?? 'B']}
+            />
 
             <div className="border border-rule-strong p-4 sm:p-5">
               <h3 className="font-label text-[13px] text-zinc-300">{t('compare.recommendation')}</h3>

@@ -312,7 +312,7 @@ export const en = {
   'compare.changed': 'Changed parameters',
   'compare.availability': 'Availability by ground site',
   'compare.recommendation': 'Recommendation',
-  'compare.was': 'was',
+  'compare.target': 'target {value}',
   'compare.open': 'Open in simulation',
   'compare.worst': 'worst {value}',
 
@@ -628,7 +628,7 @@ export const ru: Record<TranslationKey, string> = {
   'compare.changed': 'Изменённые параметры',
   'compare.availability': 'Доступность по объектам',
   'compare.recommendation': 'Рекомендация',
-  'compare.was': 'было',
+  'compare.target': 'цель {value}',
   'compare.open': 'Открыть в симуляции',
   'compare.worst': 'худший {value}',
 
