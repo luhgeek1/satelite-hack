@@ -24,6 +24,16 @@ adds what is specific to working here with Claude Code.
 - Never hardcode a ground-site id, satellite count or time step. The jury
   uploads a file with different coordinates.
 
+## Committing
+
+Read [`AGENTS.md`](AGENTS.md) §6 before your first commit in a session, and
+follow it for every commit after.
+
+The short version: commit in logical blocks **as you work**, not once at the
+end. English imperative subjects. No `Co-Authored-By` trailers, no tool
+attribution. A task that produces a data layer, some widgets and a wiring step
+is several commits, not one.
+
 ## Working notes
 
 - Source of truth order: **official case PDFs → `geometry.py` → the Q&A
