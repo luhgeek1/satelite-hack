@@ -1,24 +1,3 @@
-"""Independent check of OrbitGuard's calculations against the case documents.
-
-Everything in the first half of this file is written from the formulas in
-«Описание данных» and imports nothing from the project: positions, elevation,
-the ISL occlusion test, the active set, BFS routing with clients that never
-relay, and the result metrics. The second half puts those numbers next to
-
-  1. the organisers' own geometry.py (positions and every contact),
-  2. the service engine (visibility, availability, longest outage, hops),
-  3. the official export cosmo-A-result-1.0 (one record per instant and client,
-     every path a chain of contacts that exist at that instant).
-
-Run from the repository root:
-
-    backend/.venv/bin/python verification/verify.py            # all scenarios in data/
-    backend/.venv/bin/python verification/verify.py my.json    # any file of the same format
-
-Only numpy is needed for part one; parts two and three import backend/src.
-Exit code is 0 when every check passes, 1 otherwise.
-"""
-
 from __future__ import annotations
 
 import json
@@ -32,19 +11,12 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
 
-# Constants exactly as printed in «Описание данных», section «Координаты спутников».
 R_EARTH_KM = 6371.0
 MU_KM3_S2 = 398600.435507
 T_EARTH_S = 86164.09054
 
 
-# --------------------------------------------------------------------------- #
-# Part one: the case formulas, written from the PDF                            #
-# --------------------------------------------------------------------------- #
-
-
 def satellite_positions(scenario: dict, t_s: float) -> tuple[list[str], np.ndarray]:
-    """Earth-fixed coordinates [km] of every satellite at t_s."""
     env, design = scenario["environment"], scenario["design"]
     planes = {p["id"]: p for p in design["planes"]}
     r = R_EARTH_KM + env["altitude_km"]
@@ -92,12 +64,10 @@ def isl_available(a: np.ndarray, b: np.ndarray, range_km: float) -> bool:
 
 
 def in_window(t_s: float, start_s: float, end_s: float) -> bool:
-    """Start included, end excluded."""
     return start_s <= t_s < end_s
 
 
 def contacts(scenario: dict, t_s: float) -> set[frozenset[str]]:
-    """Every bidirectional contact available at t_s."""
     env, design = scenario["environment"], scenario["design"]
     ids, xyz = satellite_positions(scenario, t_s)
     batch = {s["id"]: s["launch_batch"] for s in design["satellites"]}
@@ -130,7 +100,6 @@ def contacts(scenario: dict, t_s: float) -> set[frozenset[str]]:
 
 def shortest_path(links: set[frozenset[str]], client: str, gateways: set[str],
                   ground: set[str]) -> list[str]:
-    """Fewest-hop path client → satellites → gateway; ground sites never relay."""
     neighbours: dict[str, list[str]] = {}
     for link in links:
         a, b = tuple(link)
@@ -176,7 +145,7 @@ def independent_metrics(scenario: dict) -> dict[str, dict]:
             path = shortest_path(links, c, gateways, ground)
             if path:
                 routed[c] += 1
-                hops[c].append(len(path) - 1)  # edges, both ground links included
+                hops[c].append(len(path) - 1)
                 run[c] = 0
             else:
                 run[c] += 1
@@ -194,11 +163,6 @@ def independent_metrics(scenario: dict) -> dict[str, dict]:
     }
 
 
-# --------------------------------------------------------------------------- #
-# Part two: put the independent numbers next to the project                    #
-# --------------------------------------------------------------------------- #
-
-
 class Report:
     def __init__(self) -> None:
         self.failures = 0
@@ -206,7 +170,7 @@ class Report:
     def check(self, ok: bool, label: str, detail: str = "") -> None:
         mark = "PASS" if ok else "FAIL"
         self.failures += 0 if ok else 1
-        print(f"  [{mark}] {label}" + (f" — {detail}" if detail else ""))
+        print(f"  [{mark}] {label}" + (f" - {detail}" if detail else ""))
 
 
 def check_geometry(scenario: dict, report: Report) -> None:
@@ -247,7 +211,7 @@ def check_engine(scenario: dict, report: Report) -> dict[str, dict]:
             and (m["avg_hops"] is None) == (e.avg_hops is None)
             and (m["avg_hops"] is None or abs(m["avg_hops"] - e.avg_hops) < 1e-9)
         )
-        hops = "—" if m["avg_hops"] is None else f"{m['avg_hops']:.2f}"
+        hops = "-" if m["avg_hops"] is None else f"{m['avg_hops']:.2f}"
         print(f"  {client:<8}{m['visibility']:>11.2%} {m['availability']:>13.2%}"
               f"{m['max_outage_s'] / 60:>9.0f} min{hops:>10}  "
               f"{'yes' if m['availability'] >= target else 'no':<9}{'same' if agree else 'DIFFERS'}")
@@ -297,7 +261,7 @@ def verify(path: Path, report: Report) -> None:
     from engine import load_scenario
 
     scenario = load_scenario(path)
-    print(f"\n{path.name} — {scenario['meta'].get('title', '')}")
+    print(f"\n{path.name} - {scenario['meta'].get('title', '')}")
     check_geometry(scenario, report)
     result = check_engine(scenario, report)["result"]
     check_export(scenario, result, report)
