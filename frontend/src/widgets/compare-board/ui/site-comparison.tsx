@@ -19,9 +19,10 @@ interface SiteComparisonProps {
  */
 export function SiteComparison({ rows, target, names }: SiteComparisonProps) {
   const { t } = useI18n();
-  const domain = availabilityDomain(rows, target);
+  const domain = availabilityDomain(rows);
   const ticks = domainTicks(domain);
   const at = (value: number) => domainPosition(domain, value);
+  const targetOnScale = target >= domain[0];
 
   return (
     <div className="border border-rule-strong p-3 sm:p-4">
@@ -66,11 +67,13 @@ export function SiteComparison({ rows, target, names }: SiteComparisonProps) {
                   />
                 ))}
                 <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-rule" />
-                <div
-                  className="absolute inset-y-0 w-0 border-l border-dashed border-zinc-600"
-                  style={{ left: `${at(target)}%` }}
-                  aria-hidden="true"
-                />
+                {targetOnScale && (
+                  <div
+                    className="absolute inset-y-0 w-0 border-l border-dashed border-zinc-600"
+                    style={{ left: `${at(target)}%` }}
+                    aria-hidden="true"
+                  />
+                )}
                 {/* The distance travelled, drawn before the markers so the two
                     ends sit on top of it. */}
                 <div

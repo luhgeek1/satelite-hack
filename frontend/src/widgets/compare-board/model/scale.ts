@@ -23,11 +23,16 @@ export const siteRows = (perClient: CompareResponse['per_client_availability']):
 /**
  * A 0–100% axis spends its whole range on nothing: these availabilities live in
  * the last few points, and a 1.7 pp gain is invisible at that scale. The window
- * starts one 5-point step below the lowest value drawn — the target included,
- * so the threshold is always on screen.
+ * starts one 5-point step below the lowest figure plotted, which is as much
+ * resolution as the comparison can have while every site stays on one axis.
+ *
+ * Stretching it down to the target as well would hand a third of the width to
+ * empty space whenever the design is comfortably above it — so the threshold
+ * gets drawn when it falls inside the window and stated in the legend when it
+ * does not.
  */
-export const availabilityDomain = (rows: SiteRow[], target: number): [number, number] => {
-  const lowest = Math.min(target, ...rows.flatMap((row) => row.values));
+export const availabilityDomain = (rows: SiteRow[]): [number, number] => {
+  const lowest = Math.min(1, ...rows.flatMap((row) => row.values));
   return [Math.max(0, Math.floor(lowest * 20) / 20 - 0.05), 1];
 };
 
