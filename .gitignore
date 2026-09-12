@@ -196,3 +196,4 @@ template/
 backend/.venv/
 
 .DS_Store
+/case/exports
