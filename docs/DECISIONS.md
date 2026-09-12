@@ -92,6 +92,31 @@ restored from `template/backend/src/{core/security.py,service/auth,api/v1/auth}`
 
 ---
 
+**B9. Scenario files are checked by our own pass, with `geometry.validate` as
+the arbiter.** The organisers' validator stops at the first problem and names it
+in a few words ("Invalid satellite"); we used to guess a field from that text
+and often guessed wrong — a bad `phase_deg` reported as `raan_deg`, a gateway
+outage as a failure, and never which of 48 satellites. `engine/scenario_check.py`
+now walks the document, collects every problem with its JSON path, a stable code
+and the values involved, and `geometry.validate` runs afterwards so we never
+accept what it refuses. A randomised test breaks the official files 3000 times
+in each direction to keep the two in step.
+
+Where we are deliberately stricter: `meta.id`, `meta.title` and a site's `name`
+are required (the case defines them; without `meta` the import used to fail with
+a 500), identifiers must be strings, and `true` is not a launch batch. Where we
+used to be stricter and no longer are: a launch stage with nothing launched is
+valid, because the official validator accepts it; it comes back as a warning.
+
+**B10. An exported result file imports as its scenario.** The service hands out
+`cosmo-A-result-1.0` files, and loading one back is the first thing a person
+tries with it; its `effective_scenario` is complete, so that is what we store.
+
+**B11. The step limit is 8640.** The official validator allows a 48-hour
+horizon; at 5000 steps a two-day file at 30 s was refused. A 5760-step run
+simulates in 1.6 s and 17 280 in 5.3 s, so 8640 (48 h at 20 s, 24 h at 10 s,
+about 2.5 s) keeps a run synchronous. Resilience sweeps scale with it too.
+
 ## C. Calculation
 
 **C1. Shortest-hop BFS is the default; Dijkstra on distance is selectable.**
@@ -574,7 +599,8 @@ minimum, so this is a modelling question, not a bug — but presenting a 15-rela
 path as a recommendation invites the question.
 
 **O6.** How large might the jury's scenario be? Guard rails currently allow 500
-satellites and 5000 steps; the official validator permits a 48-hour horizon.
+satellites and 8640 steps (B11); the official validator permits a 48-hour horizon
+at any step.
 
 **O7.** Is a deployment plan scored on the end state, on the worst stage, or
 weighted by how long each stage is flown? The case says only "не менее 90% для
