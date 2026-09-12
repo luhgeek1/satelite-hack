@@ -31,18 +31,23 @@ export function ScaleCaption({ label, stops, max }: ScaleCaptionProps) {
       <span className="font-data text-[10px] tracking-[0.06em] text-zinc-500">{label}</span>
       <div className="relative h-3.5" aria-hidden="true">
         {stops.map((stop, index) => {
-          const last = index === stops.length - 1;
+          // A stop is pulled inside the track only when it sits on an end of
+          // it. Aligning the last label right whether or not it lands at the
+          // end dragged it back towards its neighbour.
+          const at = stop / max;
+          const shift = at <= 0.001 ? 'none' : at >= 0.999 ? 'translateX(-100%)' : 'translateX(-50%)';
+
           return (
             <span
               key={stop}
               className="absolute top-0 whitespace-nowrap font-data text-[9px] tabular-nums text-zinc-600"
               style={{
-                left: `calc(${TRAVEL_INSET}px + ${stop / max} * (100% - ${TRAVEL_INSET * 2}px))`,
-                transform: index === 0 ? 'none' : last ? 'translateX(-100%)' : 'translateX(-50%)',
+                left: `calc(${TRAVEL_INSET}px + ${at} * (100% - ${TRAVEL_INSET * 2}px))`,
+                transform: shift,
               }}
             >
               {stop}
-              {last && <span className="text-zinc-700">&deg;</span>}
+              {index === stops.length - 1 && <span className="text-zinc-700">&deg;</span>}
             </span>
           );
         })}
