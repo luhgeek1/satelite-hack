@@ -4,14 +4,16 @@ import { useState } from 'react';
 import { Plus, RotateCcw } from 'lucide-react';
 import { DeploymentControl } from '@/features/configure-deployment';
 import { PlaneControls } from '@/features/configure-planes';
+import { FailureForm } from '@/features/inject-failure';
 import { OutageList } from '@/features/inspect-outages';
 import { SaveVariantButton } from '@/features/manage-variants';
 import { useSession } from '@/entities/session';
 import type { SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
-import { cn, formatLatitude, formatLongitude } from '@/shared/lib';
+import { cn, formatClock, formatLatitude, formatLongitude } from '@/shared/lib';
 import { Button, ParamGroup } from '@/shared/ui';
 import type { ClientMetrics, ScenarioDocument } from '@/shared/api';
+import type { FailureRequest } from '@/features/inject-failure';
 
 type GroupId = 'deployment' | 'planes' | 'outages' | 'failures' | 'satellites' | 'sites';
 
@@ -20,7 +22,8 @@ interface ConfigPanelProps {
   satellites: SatelliteView[];
   sites: GroundSiteView[];
   colors: Record<string, string>;
-  onInjectFailure: (satelliteId: string) => void;
+  onInjectFailure: (request: FailureRequest) => void;
+  horizonS: number;
   onRestore: (satelliteId: string) => void;
   clients: ClientMetrics[];
   focusClientId: string | null;
@@ -41,6 +44,7 @@ export function ConfigPanel({
   focusClientId,
   currentTS,
   stepS,
+  horizonS,
   exportHref,
   scenarioHref,
 }: ConfigPanelProps) {
@@ -131,6 +135,11 @@ export function ConfigPanel({
                   <span className="font-data text-[10px] text-alarm">FAIL</span>
                   <span className="font-data text-[11px] text-zinc-200">{failure.satellite_id}</span>
                   <span className="font-data text-[10px] text-zinc-500">{satellite?.planeId}</span>
+                  <span className="font-data text-[10px] tabular-nums text-zinc-600">
+                    {failure.start_s === 0 && failure.end_s >= horizonS
+                      ? 'all day'
+                      : `${formatClock(failure.start_s)}–${formatClock(failure.end_s)}`}
+                  </span>
                   <button
                     type="button"
                     onClick={() => onRestore(failure.satellite_id)}
@@ -149,39 +158,17 @@ export function ConfigPanel({
             )}
 
             {picking ? (
-              <div className="space-y-2 border border-rule-strong p-2">
-                <label htmlFor="failure-target" className="block font-label text-[11px] text-zinc-400">
-                  Which satellite fails?
-                </label>
-                <select
-                  id="failure-target"
-                  autoFocus
-                  defaultValue=""
-                  className="param-select w-full border border-rule-strong bg-black py-1.5 pl-2 pr-6 font-data text-[11px] text-zinc-200 focus:border-zinc-500 focus:outline-none"
-                  onChange={(event) => {
-                    if (event.target.value) onInjectFailure(event.target.value);
-                    setPicking(false);
-                  }}
-                >
-                  <option value="" disabled>
-                    Select a node
-                  </option>
-                  {deployed
-                    .filter((satellite) => !satellite.failed)
-                    .map((satellite) => (
-                      <option key={satellite.id} value={satellite.id}>
-                        {satellite.id} {satellite.planeId}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setPicking(false)}
-                  className="w-full border border-rule py-1.5 font-label text-[11px] text-zinc-500 transition-colors hover:border-rule-strong hover:text-zinc-300 focus-visible:outline-none"
-                >
-                  Cancel
-                </button>
-              </div>
+              <FailureForm
+                candidates={deployed.filter((satellite) => !satellite.failed)}
+                currentTS={currentTS}
+                horizonS={horizonS}
+                stepS={stepS}
+                onSubmit={(request) => {
+                  onInjectFailure(request);
+                  setPicking(false);
+                }}
+                onCancel={() => setPicking(false)}
+              />
             ) : (
               <button
                 type="button"

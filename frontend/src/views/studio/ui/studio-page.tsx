@@ -265,12 +265,13 @@ export function StudioPage() {
       satellites={satellites}
       sites={sites}
       colors={colors}
-      onInjectFailure={(id) => injectFailure.mutate(id)}
+      onInjectFailure={(request) => injectFailure.mutate(request)}
       onRestore={restore}
       clients={summary?.clients ?? []}
       focusClientId={focusClientId}
       currentTS={tS}
       stepS={stepS}
+      horizonS={horizonS}
       exportHref={exportHref}
       scenarioHref={scenarioHref}
     />
@@ -390,7 +391,7 @@ export function StudioPage() {
                 activeRoute={activeRoute}
                 hasResilience={Boolean(resilience.data)}
                 pending={injectFailure.isPending}
-                onInjectFailure={(id) => injectFailure.mutate(id)}
+                onInjectFailure={(id) => injectFailure.mutate({ satelliteId: id })}
                 onRestore={restore}
               />
             )}
@@ -409,7 +410,7 @@ export function StudioPage() {
                 activeRoute={activeRoute}
                 hasResilience={Boolean(resilience.data)}
                 pending={injectFailure.isPending}
-                onInjectFailure={(id) => injectFailure.mutate(id)}
+                onInjectFailure={(id) => injectFailure.mutate({ satelliteId: id })}
                 onRestore={restore}
                 placement="sidebar"
               />
