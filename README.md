@@ -30,49 +30,6 @@ OrbitGuard переваривает исходные JSON-сценарии (`cos
 
 ---
 
-## Матрица закрытых критериев оценки (100 / 100 баллов)
-
-Полное соответствие официальным критериям оценивания из файла [`case/Проектирование устойчивой спутниковой группировки — Критерии оценки.pdf`](case/Проектирование%20устойчивой%20спутниковой%20группировки%20—%20Критерии%20оценки.pdf).
-
-### Отраслевые эксперты — до 50 баллов
-
-| № | Критерий и Баллы | Реализация в веб-интерфейсе | Реализация в коде backend / frontend | Ссылки на файлы и тесты |
-|---|---|---|---|---|
-| 1 | **Проектирование и сравнение конфигураций** <br> *(15 баллов)* | • Выбор очереди запуска (`launch_stage` 1/2/3).<br>• Интерактивная смена RAAN и `phase_deg` (0–360°).<br>• Симуляция отказов КА и шлюзов в заданном окне.<br>• Сохранение сессионных вариантов и вкладка «Сравнение» с подсвеченными разницами параметров. | Расчёт оверрайдов конфигурации и разницы параметров между baseline и вариацией. | • [`backend/src/engine/scenario.py`](backend/src/engine/scenario.py)<br>• [`backend/src/service/simulations/service.py`](backend/src/service/simulations/service.py)<br>• [`frontend/src/features/configure-deployment`](frontend/src/features/configure-deployment)<br>• [`frontend/src/features/configure-planes`](frontend/src/features/configure-planes)<br>• [`frontend/src/widgets/compare-board`](frontend/src/widgets/compare-board)<br>• [`backend/tests/unit/test_scenario_config.py`](backend/tests/unit/test_scenario_config.py) |
-| 2 | **Анализ устойчивости** <br> *(10 баллов)* | • Вкладка «Устойчивость» с ранжированием КА по уровню ущерба.<br>• Выявление узловых спутников и единых точек отказа (Single Point of Failure).<br>• Анализ критичности шлюзов и потерь каналов.<br>• Отображение резервных маршрутов при отказах. | Параллельный расчёт критичности КА через ProcessPool, вычисление индекса зависимости от шлюза и векторов связности. | • [`backend/src/engine/analysis.py`](backend/src/engine/analysis.py)<br>• [`backend/src/engine/routing.py`](backend/src/engine/routing.py)<br>• [`frontend/src/widgets/critical-nodes`](frontend/src/widgets/critical-nodes)<br>• [`frontend/src/features/analyze-resilience`](frontend/src/features/analyze-resilience)<br>• [`backend/tests/integration/test_analysis.py`](backend/tests/integration/test_analysis.py) |
-| 3 | **Обоснованность рекомендаций** <br> *(10 баллов)* | • Автоматическая генерация экспертного вердикта.<br>• Проверка выполнения SLA (доступность ≥ 90%).<br>• Рекомендации по оптимизации фазирования и оценке уязвимости к дальности ISL. | Покоординатный спуск (Coordinate Descent) для быстрого подбора оптимального фазирования; расчёт чувствительности к ISL range. | • [`backend/src/engine/optimizer.py`](backend/src/engine/optimizer.py)<br>• [`docs/DECISIONS.md`](docs/DECISIONS.md#e-метрики-и-выводы-по-четырём-сценариям)<br>• [`frontend/src/features/run-optimizer`](frontend/src/features/run-optimizer)<br>• [`recommendation.md`](recommendation.md)<br>• [`backend/tests/unit/test_optimizer.py`](backend/tests/unit/test_optimizer.py) |
-| 4 | **Удобство использования (UX)** <br> *(10 баллов)* | • 3D WebGL-глобус + 2D картографический проектор.<br>• Временная шкала 720 отсчётов с цветной индикацией доступности.<br>• Автоматический переподхват при отсутствии WebGL (fallback в 2D).<br>• Быстрый перевод КА в отказ в 1 клик. | Модульный фронтенд на Next.js 15 (FSD-архитектура), TanStack Query v5, Three.js / Canvas. | • [`frontend/src/views/studio/index.tsx`](frontend/src/views/studio/index.tsx)<br>• [`frontend/src/widgets/viewport/index.tsx`](frontend/src/widgets/viewport/index.tsx)<br>• [`frontend/src/widgets/playback-bar/index.tsx`](frontend/src/widgets/playback-bar/index.tsx)<br>• [`docs/STATE.md`](docs/STATE.md) |
-| 5 | **Презентация решения** <br> *(5 баллов)* | • Четкий фокус: "геометрическая видимость ≠ доступность".<br>• Демонстрационный сценарий для ТЗ жюри.<br>• Регламентированное 4-минутное выступление.<br>• Полноценный публично доступный облачный стенд. | Полный комплект сопроводительной документации и опубликованные сервисы (Vercel + Fly.io). | • [`README.md`](README.md)<br>• [`BRIEF.md`](BRIEF.md)<br>• [`simple.md`](simple.md)<br>• [`docs/DECISIONS.md`](docs/DECISIONS.md) |
-
-### Технические эксперты — до 50 баллов
-
-| № | Критерий и Баллы | Реализация в алгоритмах и движке | Реализация в коде backend / tests | Ссылки на файлы и тесты |
-|---|---|---|---|---|
-| 6 | **Корректность расчётов** <br> *(15 баллов)* | • Файл `geometry.py` от постановщиков вшит **без единого изменения**.<br>• Байт-в-байт совпадение валидируется sha256-тестом.<br>• Точный 100% прогон по 720 отсчётам (шаг 120 с).<br>• Все 12 эталонных цифр по 4 сценариям совпадают с ТЗ. | Движок физики орбит и видимости; тесты контрольных сумм и эталонных значений. | • [`backend/src/engine/geometry.py`](backend/src/engine/geometry.py)<br>• [`backend/src/engine/simulate.py`](backend/src/engine/simulate.py)<br>• [`backend/src/engine/metrics.py`](backend/src/engine/metrics.py)<br>• [`backend/tests/unit/test_geometry_vendored.py`](backend/tests/unit/test_geometry_vendored.py)<br>• [`backend/tests/unit/test_reference_metrics.py`](backend/tests/unit/test_reference_metrics.py) |
-| 7 | **Алгоритмы маршрутизации** <br> *(15 баллов)* | • Моделирование динамического графа связей на каждом шаге.<br>• Поиск кратчайшего пути: BFS (хопы) или Dijkstra (дистанция).<br>• Правило: "клиентские станции — только потребители трафика".<br>• Точная диагностика **4 причин разрыва**: 1. Нет КА над пунктом; 2. Разрыв ISL; 3. Нет линии КА-GS; 4. Шлюз недоступен. | Модуль динамической графовой маршрутизации и классификатор причин отсутствия пути. | • [`backend/src/engine/routing.py`](backend/src/engine/routing.py)<br>• [`frontend/src/widgets/network-health/index.tsx`](frontend/src/widgets/network-health/index.tsx)<br>• [`backend/tests/unit/test_routing.py`](backend/tests/unit/test_routing.py) |
-| 8 | **Работа с входными данными** <br> *(10 баллов)* | • Загрузка любых пользовательских JSON-сценариев (`cosmo-A-1.0`).<br>• Полевая валидация с указанием конкретного невалидного поля.<br>• Выгрузка результата в стандартный файл `cosmo-A-result-1.0` (2160 записей).<br>• Экспорт измененных сценариев для гибридных прогонов. | Валидатор Pydantic, парсер сценариев и экспортёр в официальные форматы. | • [`backend/src/engine/scenario.py`](backend/src/engine/scenario.py)<br>• [`backend/src/engine/export.py`](backend/src/engine/export.py)<br>• [`backend/src/api/v1/scenarios.py`](backend/src/api/v1/scenarios.py)<br>• [`backend/tests/integration/test_validation.py`](backend/tests/integration/test_validation.py)<br>• [`backend/tests/unit/test_export.py`](backend/tests/unit/test_export.py) |
-| 9 | **Качество кода** <br> *(5 баллов)* | • Полная независимость выделимого пакета `engine` от API-фреймворка.<br>• Чистая слоистая архитектура: API → Service → Domain/DB → Engine.<br>• Python 3.13 + Pydantic v2 + Type hints.<br>• 89 автоматических тестов (unit + integration), ruff clean. | Высокое покрытие тестами, модульность, строгая типизация. | • [`backend/src/engine`](backend/src/engine)<br>• [`backend/src/domain`](backend/src/domain)<br>• [`backend/src/service`](backend/src/service)<br>• [`backend/pyproject.toml`](backend/pyproject.toml)<br>• [`AGENTS.md`](AGENTS.md) |
-| 10 | **Документация и запуск** <br> *(5 баллов)* | • Запуск в 1 команду через `docker compose up -d --build`.<br>• Полноценный `Makefile` (`make test`, `make dev`, `make help`).<br>• Swagger/OpenAPI спецификация API.<br>• Детальный разбор архитектурных решений (ADR) и пошаговый гайд для жюри. | Инструкции по развертыванию, контракты API и журналы принятых решений. | • [`README.md`](README.md)<br>• [`Makefile`](Makefile)<br>• [`docker-compose.yml`](docker-compose.yml)<br>• [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md)<br>• [`docs/DECISIONS.md`](docs/DECISIONS.md)<br>• [`docs/STATE.md`](docs/STATE.md) |
-
----
-
-## Дополнительные возможности (сверх базового ТЗ)
-
-1. **Рельеф и застройка площадок:**
-   - Учет локального горизонта и городского окружения (`site_conditions.py`).
-   - Настройка угла закрытия (поле 10°, тайга 15°, город 25°) или азимутального профиля.
-   - Раздельный анализ застройки: если шлюз попадает в «ГОРОД», доступность всех пунктов обрушивается с ~97% до ~46%.
-   - Реализовано в [`backend/src/engine/site_conditions.py`](backend/src/engine/site_conditions.py) и [`frontend/src/features/configure-site`](frontend/src/features/configure-site).
-
-2. **Высокоскоростной Оптимизатор Группировки:**
-   - Интеллектуальный подбор оптимального фазирования плоскостей на основе алгоритма покоординатного спуска (Coordinate Descent).
-   - Быстро находит целевую конфигурацию орбит всего за 158 прогонов (~17 секунд), что позволяет в реальном времени подбирать фазовые сдвиги прямо из веб-интерфейса.
-   - Позволяет зафиксировать произвольные параметры плоскостей и подбирать только недостающие.
-   - Сокращает максимальный перерыв связи на сценарии 01 **в 2 раза** (с 8 до 4 минут при тех же 48 КА).
-   - Реализовано в [`backend/src/engine/optimizer.py`](backend/src/engine/optimizer.py) и [`frontend/src/features/run-optimizer`](frontend/src/features/run-optimizer).
-
----
-
 ## Быстрый запуск
 
 ### 1. Запуск через Docker Compose (Рекомендуемый)
@@ -154,6 +111,23 @@ make lint
 
 ---
 
+## Дополнительные возможности (сверх базового ТЗ)
+
+1. **Рельеф и застройка площадок:**
+   - Учет локального горизонта и городского окружения (`site_conditions.py`).
+   - Настройка угла закрытия (поле 10°, тайга 15°, город 25°) или азимутального профиля.
+   - Раздельный анализ застройки: если шлюз попадает в «ГОРОД», доступность всех пунктов обрушивается с ~97% до ~46%.
+   - Реализовано в [`backend/src/engine/site_conditions.py`](backend/src/engine/site_conditions.py) и [`frontend/src/features/configure-site`](frontend/src/features/configure-site).
+
+2. **Высокоскоростной Оптимизатор Группировки:**
+   - Интеллектуальный подбор оптимального фазирования плоскостей на основе алгоритма покоординатного спуска (Coordinate Descent).
+   - Быстро находит целевую конфигурацию орбит всего за 158 прогонов (~17 секунд), что позволяет в реальном времени подбирать фазовые сдвиги прямо из веб-интерфейса.
+   - Позволяет зафиксировать произвольные параметры плоскостей и подбирать только недостающие.
+   - Сокращает максимальный перерыв связи на сценарии 01 **в 2 раза** (с 8 до 4 минут при тех же 48 КА).
+   - Реализовано в [`backend/src/engine/optimizer.py`](backend/src/engine/optimizer.py) и [`frontend/src/features/run-optimizer`](frontend/src/features/run-optimizer).
+
+---
+
 ## Воспроизводимые эталонные метрики
 
 Результаты официального прогона 4 базовых сценариев (подтверждены интеграционными тестами в [`backend/tests/unit/test_reference_metrics.py`](backend/tests/unit/test_reference_metrics.py)):
@@ -164,6 +138,32 @@ make lint
 | **02_first_launch** | 27.2% | 15.8% | 12.6% | 572 мин / 658 мин / 796 мин |
 | **03_satellite_outages** | 79.3% | 80.8% | 82.5% | 24 мин / 24 мин / 20 мин |
 | **04_link_range (2000 км)** | 77.5% | 62.2% | 65.1% | 94 мин / 178 мин / 4 мин |
+
+---
+
+## Соответствие критериям оценки
+
+Карта реализации требований из официального документа [`case/Проектирование устойчивой спутниковой группировки — Критерии оценки.pdf`](case/Проектирование%20устойчивой%20спутниковой%20группировки%20—%20Критерии%20оценки.pdf).
+
+### Отраслевые критерии
+
+| № | Критерий | Реализация в веб-интерфейсе | Реализация в коде backend / frontend | Ссылки на файлы и тесты |
+|---|---|---|---|---|
+| 1 | **Проектирование и сравнение конфигураций** | • Выбор очереди запуска (`launch_stage` 1/2/3).<br>• Интерактивная смена RAAN и `phase_deg` (0–360°).<br>• Симуляция отказов КА и шлюзов в заданном окне.<br>• Сохранение сессионных вариантов и вкладка «Сравнение» с подсвеченными разницами параметров. | Расчёт оверрайдов конфигурации и разницы параметров между baseline и вариацией. | • [`backend/src/engine/scenario.py`](backend/src/engine/scenario.py)<br>• [`backend/src/service/simulations/service.py`](backend/src/service/simulations/service.py)<br>• [`frontend/src/features/configure-deployment`](frontend/src/features/configure-deployment)<br>• [`frontend/src/features/configure-planes`](frontend/src/features/configure-planes)<br>• [`frontend/src/widgets/compare-board`](frontend/src/widgets/compare-board)<br>• [`backend/tests/unit/test_scenario_config.py`](backend/tests/unit/test_scenario_config.py) |
+| 2 | **Анализ устойчивости** | • Вкладка «Устойчивость» с ранжированием КА по уровню ущерба.<br>• Выявление узловых спутников и единых точек отказа (Single Point of Failure).<br>• Анализ критичности шлюзов и потерь каналов.<br>• Отображение резервных маршрутов при отказах. | Параллельный расчёт критичности КА через ProcessPool, вычисление индекса зависимости от шлюза и векторов связности. | • [`backend/src/engine/analysis.py`](backend/src/engine/analysis.py)<br>• [`backend/src/engine/routing.py`](backend/src/engine/routing.py)<br>• [`frontend/src/widgets/critical-nodes`](frontend/src/widgets/critical-nodes)<br>• [`frontend/src/features/analyze-resilience`](frontend/src/features/analyze-resilience)<br>• [`backend/tests/integration/test_analysis.py`](backend/tests/integration/test_analysis.py) |
+| 3 | **Обоснованность рекомендаций** | • Автоматическая генерация экспертного вердикта.<br>• Проверка выполнения SLA (доступность ≥ 90%).<br>• Рекомендации по оптимизации фазирования и оценке уязвимости к дальности ISL. | Покоординатный спуск (Coordinate Descent) для быстрого подбора оптимального фазирования; расчёт чувствительности к ISL range. | • [`backend/src/engine/optimizer.py`](backend/src/engine/optimizer.py)<br>• [`docs/DECISIONS.md`](docs/DECISIONS.md#e-метрики-и-выводы-по-четырём-сценариям)<br>• [`frontend/src/features/run-optimizer`](frontend/src/features/run-optimizer)<br>• [`recommendation.md`](recommendation.md)<br>• [`backend/tests/unit/test_optimizer.py`](backend/tests/unit/test_optimizer.py) |
+| 4 | **Удобство использования (UX)** | • 3D WebGL-глобус + 2D картографический проектор.<br>• Временная шкала 720 отсчётов с цветной индикацией доступности.<br>• Автоматический переподхват при отсутствии WebGL (fallback в 2D).<br>• Быстрый перевод КА в отказ в 1 клик. | Модульный фронтенд на Next.js 15 (FSD-архитектура), TanStack Query v5, Three.js / Canvas. | • [`frontend/src/views/studio/index.tsx`](frontend/src/views/studio/index.tsx)<br>• [`frontend/src/widgets/viewport/index.tsx`](frontend/src/widgets/viewport/index.tsx)<br>• [`frontend/src/widgets/playback-bar/index.tsx`](frontend/src/widgets/playback-bar/index.tsx)<br>• [`docs/STATE.md`](docs/STATE.md) |
+| 5 | **Презентация решения** | — *(оценивается на очной защите)* | — *(оценивается на очной защите)* | — |
+
+### Технические критерии
+
+| № | Критерий | Реализация в алгоритмах и движке | Реализация в коде backend / tests | Ссылки на файлы и тесты |
+|---|---|---|---|---|
+| 6 | **Корректность расчётов** | • Файл `geometry.py` от постановщиков вшит **без единого изменения**.<br>• Байт-в-байт совпадение валидируется sha256-тестом.<br>• Точный 100% прогон по 720 отсчётам (шаг 120 с).<br>• Все 12 эталонных цифр по 4 сценариям совпадают с ТЗ. | Движок физики орбит и видимости; тесты контрольных сумм и эталонных значений. | • [`backend/src/engine/geometry.py`](backend/src/engine/geometry.py)<br>• [`backend/src/engine/simulate.py`](backend/src/engine/simulate.py)<br>• [`backend/src/engine/metrics.py`](backend/src/engine/metrics.py)<br>• [`backend/tests/unit/test_geometry_vendored.py`](backend/tests/unit/test_geometry_vendored.py)<br>• [`backend/tests/unit/test_reference_metrics.py`](backend/tests/unit/test_reference_metrics.py) |
+| 7 | **Алгоритмы маршрутизации** | • Моделирование динамического графа связей на каждом шаге.<br>• Поиск кратчайшего пути: BFS (хопы) или Dijkstra (дистанция).<br>• Правило: "клиентские станции — только потребители трафика".<br>• Точная диагностика **4 причин разрыва**: 1. Нет КА над пунктом; 2. Разрыв ISL; 3. Нет линии КА-GS; 4. Шлюз недоступен. | Модуль динамической графовой маршрутизации и классификатор причин отсутствия пути. | • [`backend/src/engine/routing.py`](backend/src/engine/routing.py)<br>• [`frontend/src/widgets/network-health/index.tsx`](frontend/src/widgets/network-health/index.tsx)<br>• [`backend/tests/unit/test_routing.py`](backend/tests/unit/test_routing.py) |
+| 8 | **Работа с входными данными** | • Загрузка любых пользовательских JSON-сценариев (`cosmo-A-1.0`).<br>• Полевая валидация с указанием конкретного невалидного поля.<br>• Выгрузка результата в стандартный файл `cosmo-A-result-1.0` (2160 записей).<br>• Экспорт измененных сценариев для гибридных прогонов. | Валидатор Pydantic, парсер сценариев и экспортёр в официальные форматы. | • [`backend/src/engine/scenario.py`](backend/src/engine/scenario.py)<br>• [`backend/src/engine/export.py`](backend/src/engine/export.py)<br>• [`backend/src/api/v1/scenarios.py`](backend/src/api/v1/scenarios.py)<br>• [`backend/tests/integration/test_validation.py`](backend/tests/integration/test_validation.py)<br>• [`backend/tests/unit/test_export.py`](backend/tests/unit/test_export.py) |
+| 9 | **Качество кода** | • Полная независимость выделимого пакета `engine` от API-фреймворка.<br>• Чистая слоистая архитектура: API → Service → Domain/DB → Engine.<br>• Python 3.13 + Pydantic v2 + Type hints.<br>• 89 автоматических тестов (unit + integration), ruff clean. | Высокое покрытие тестами, модульность, строгая типизация. | • [`backend/src/engine`](backend/src/engine)<br>• [`backend/src/domain`](backend/src/domain)<br>• [`backend/src/service`](backend/src/service)<br>• [`backend/pyproject.toml`](backend/pyproject.toml)<br>• [`AGENTS.md`](AGENTS.md) |
+| 10 | **Документация и запуск** | • Запуск в 1 команду через `docker compose up -d --build`.<br>• Полноценный `Makefile` (`make test`, `make dev`, `make help`).<br>• Swagger/OpenAPI спецификация API.<br>• Детальный разбор архитектурных решений (ADR) и пошаговый гайд для жюри. | Инструкции по развертыванию, контракты API и журналы принятых решений. | • [`README.md`](README.md)<br>• [`Makefile`](Makefile)<br>• [`docker-compose.yml`](docker-compose.yml)<br>• [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md)<br>• [`docs/DECISIONS.md`](docs/DECISIONS.md)<br>• [`docs/STATE.md`](docs/STATE.md) |
 
 ---
 
@@ -224,4 +224,3 @@ kosmo-nizni_chupapis_96/
 - Контракт взаимодействия API: [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md)
 - Разбор требований кейса: [`BRIEF.md`](BRIEF.md)
 - Пояснение кейса простыми словами: [`simple.md`](simple.md)
-
