@@ -403,24 +403,42 @@ constellation-level, route-level question, with the site-level realism (D9)
 borrowed from the toolbox vocabulary, in a browser the jury can open without
 installing anything. Not a replacement for either; the piece neither of them has.
 
-**E8. The launch angles are chosen once, and the choice is a trade-off across
-the whole campaign.** RAAN and phase are set when a plane is launched and cannot
-be changed afterwards (D6), while the constellation is flown in three launches
-three months apart. So one set of angles has to serve stage 1, stage 2 and the
-end state. Measured on `01_full_constellation`, worst-client availability:
+**E8. Even RAAN spacing is a condition for the end state, and a greedy
+deployment plan destroys it.**
 
-| Angles | Stage 1 | Stage 2 | Stage 3 |
-|---|---:|---:|---:|
-| As flown (0/60/120) | 12.6% | **61.8%** | 96.7% |
-| Tuned for the end state | 12.4% | 58.3% | **98.3%** |
-| Tuned for stage 1 alone | **13.9%** | 13.9% | 60.9% |
+RAAN and phase are fixed when a plane is launched (D6), but each launch chooses
+its own: P1 is committed at month 0, P2 at month 3, P3 at month 6. So the
+engineer makes three decisions, each knowing the ones already flying. Measured
+on `01_full_constellation`, worst-client availability at each stage:
 
-Two things to say at the defence. Tuning for the end state buys 1.7 points there
-and costs 3.5 points through the three months of stage 2 — a real trade-off, not
-a rounding error. And tuning greedily stage by stage is a trap: the search moves
-P1 to RAAN 60°, where P2 already sits, the two planes collapse into one and the
-end state falls from 96.7% to 60.9%. A deployment plan has to be scored across
-every stage it will be flown in, not at the stage in front of you.
+| Angles | RAAN gaps (mod 180°) | Stage 1 | Stage 2 | Stage 3 |
+|---|---|---:|---:|---:|
+| As flown, 0/60/120 | 60 / 60 / 60 | 12.64% | 61.81% | 96.67% |
+| All three tuned for the end state | 60 / 60 / 60 | 12.36% | 58.33% | **98.33%** |
+| Greedy: each launch tuned for its own stage | 30 / 90 / 60 | **13.89%** | **65.69%** | 84.31% |
+| P1 tuned for stage 1, then P2+P3 chosen together | 60 / 60 / 60 | **13.89%** | 58.33% | 97.78% |
+
+Three conclusions, in order of how much they are worth saying out loud.
+
+- **Planes must be evenly spread in RAAN, and 180° is the period.** A plane
+  covers its ascending and descending passes alike, so two planes 180° apart
+  trace the same swath. Every configuration above that reaches 96% or better has
+  gaps of exactly 60/60/60; the one that does not reaches 84.31%. This is the
+  same kind of statement as the 2700 km ISL threshold (E1): a condition for the
+  architecture to work, not a parameter to tune.
+- **Tuning the first launch is free.** Pinning P1 where stage 1 wants it (60°)
+  and then choosing P2 and P3 together still reaches 97.78% — the search simply
+  restores even spacing around the pin. So the first three months can be
+  improved at no cost to the end state.
+- **Tuning the second launch greedily is not.** Choosing P2 for stage 2 alone
+  buys 3.9 points for three months and costs 13.5 points for the rest of the
+  constellation's life, because it is the choice that breaks the spacing.
+
+*Correction:* an earlier version of this entry claimed the greedy plan fails by
+putting two planes on the same RAAN. That was an artefact of the measurement —
+it left P2 and P3 at their file values instead of re-optimising them against the
+committed P1, which is what an engineer would actually do. The re-measured
+failure above is a subtler and stronger result.
 
 ## O. Open questions
 
