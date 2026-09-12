@@ -1,6 +1,0 @@
-{
-  "name": "OrbitGuard",
-  "description": "Satellite Resilience Studio - Engineering dashboard for satellite constellation design and analysis.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

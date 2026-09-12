@@ -1,0 +1,179 @@
+@import "tailwindcss";
+@source "../";
+
+@theme {
+  /* Instrument palette: greyscale plus a single annunciator hue. Surfaces are
+     separated by rules, never by fill, so there is only one ground colour. */
+  --color-rule: #1f1f23;
+  --color-rule-strong: #2e2e34;
+  --color-alarm: #e4483a;
+
+  /* Plex reads as engineering drawing rather than product UI. Mono carries
+     every number so columns align; condensed sans packs the label column. */
+  --font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-label: "IBM Plex Sans Condensed", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* App shell locks to the viewport: the page itself never scrolls,
+   only the inner panels do. */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  height: 100dvh;
+  margin: 0;
+  background: #000;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  height: 100%;
+  background: #000;
+}
+
+/* Thin, dark scrollbars for the inner scroll areas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #27272a transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Sliders stay usable on touch screens without scrolling the panel */
+input[type='range'] {
+  touch-action: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Parameter scale: a slide-rule control rather than a pill slider. The track
+   is a single hairline and the thumb is a transparent cursor window with two
+   bright edges, so the value is read off the tick scale drawn beneath it.
+   `--fill` carries the filled fraction, since a range track cannot compute it.
+   ------------------------------------------------------------------------ */
+input[type='range'].param-scale {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 15px;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+input[type='range'].param-scale::-webkit-slider-runnable-track {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    to right,
+    #9c9ca5 0 var(--fill, 0%),
+    #2e2e34 var(--fill, 0%) 100%
+  );
+}
+
+input[type='range'].param-scale::-moz-range-track {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    to right,
+    #9c9ca5 0 var(--fill, 0%),
+    #2e2e34 var(--fill, 0%) 100%
+  );
+}
+
+input[type='range'].param-scale::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 11px;
+  height: 15px;
+  margin-top: -7px;
+  border: 0;
+  border-left: 1px solid #e8e8ec;
+  border-right: 1px solid #e8e8ec;
+  border-radius: 0;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+
+input[type='range'].param-scale::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 11px;
+  height: 15px;
+  border: 0;
+  border-left: 1px solid #e8e8ec;
+  border-right: 1px solid #e8e8ec;
+  border-radius: 0;
+  background: transparent;
+}
+
+input[type='range'].param-scale:hover::-webkit-slider-thumb,
+input[type='range'].param-scale:focus-visible::-webkit-slider-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+input[type='range'].param-scale:hover::-moz-range-thumb,
+input[type='range'].param-scale:focus-visible::-moz-range-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+input[type='range'].param-scale:focus {
+  outline: none;
+}
+
+input[type='range'].param-scale:focus-visible {
+  outline: 1px solid #71717a;
+  outline-offset: 3px;
+}
+
+/* Native select chrome fights the hairline language; draw our own caret. */
+select.param-select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #71717a 50%),
+    linear-gradient(135deg, #71717a 50%, transparent 50%);
+  background-position: right 12px center, right 8px center;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* react-simple-maps makes every country a focusable target, so a stray click
+   puts the browser's focus ring around a whole landmass. The basemap is a
+   backdrop, not a control — the satellites are what can be picked. */
+.rsm-svg,
+.rsm-geography,
+.rsm-marker,
+.rsm-geography:focus,
+.rsm-geography:focus-visible,
+.rsm-marker:focus,
+.rsm-marker:focus-visible {
+  outline: none !important;
+}

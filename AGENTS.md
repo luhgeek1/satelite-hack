@@ -142,7 +142,27 @@ Consequences:
 
 ---
 
-## 6. Commands
+## 6. Commits
+
+Commit the way a careful engineer does: in logical blocks, as the work happens.
+Not one commit at the end holding everything.
+
+- **One idea per commit.** A slice of behaviour that makes sense on its own and
+  leaves the tree working. Size follows the idea — 50 lines or 400, whichever
+  the idea takes. What is wrong is a commit that bundles unrelated changes
+  because they happened on the same afternoon.
+- **Commit as you go**, not in one sweep at the end. If a task produces a data
+  layer, three widgets and a wiring step, that is four or more commits.
+- **Subject in English**, imperative mood, no trailing period, under ~72
+  characters. `Add optimistic failure injection`, not `added stuff`.
+- **Body explains why**, when the reason is not obvious from the diff. Wrap at
+  ~80 columns. Skip the body for genuinely self-evident changes.
+- **No `Co-Authored-By` trailers** and no tool attribution of any kind.
+- Never mix a refactor with a behaviour change. Land the refactor, then the
+  behaviour.
+- Run `make test` (and `npm run lint` for frontend work) before committing.
+
+## 7. Commands
 
 ```bash
 make help              # list targets
@@ -160,7 +180,7 @@ infrastructure and catches most regressions.
 
 ---
 
-## 7. Open questions
+## 8. Open questions
 
 Tracked in [`docs/DECISIONS.md`](docs/DECISIONS.md) §Open. Ask these at the
 expert consultation (2 slots per checkpoint: one tracker, one expert).
