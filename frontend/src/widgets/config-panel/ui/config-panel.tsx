@@ -16,7 +16,6 @@ import { ChangeSummary } from './change-summary';
 import { cn, formatClock, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { Button, ParamGroup } from '@/shared/ui';
-import type { PlaneLock } from '@/entities/scenario';
 import type { RunInput } from '@/entities/simulation';
 import type { ClientMetrics, ScenarioDocument, SimulationSummary } from '@/shared/api';
 import type { FailureRequest } from '@/features/inject-failure';
@@ -42,9 +41,6 @@ interface ConfigPanelProps {
   baseline: SimulationSummary | undefined;
   runInput: RunInput;
   planning: boolean;
-  nextFreeStage: number;
-  locks: PlaneLock[];
-  onLocksChange: (locks: PlaneLock[]) => void;
   onPlanFrom: (stage: number) => void;
   onOpenDeploymentPlan: () => void;
 }
@@ -67,9 +63,6 @@ export function ConfigPanel({
   baseline,
   runInput,
   planning,
-  nextFreeStage,
-  locks,
-  onLocksChange,
   onPlanFrom,
   onOpenDeploymentPlan,
 }: ConfigPanelProps) {
@@ -123,7 +116,6 @@ export function ConfigPanel({
             runInput={runInput}
             colors={colors}
             planning={planning}
-            nextFreeStage={nextFreeStage}
             onPlanFrom={onPlanFrom}
             onOpenPlan={onOpenDeploymentPlan}
           />
@@ -140,8 +132,10 @@ export function ConfigPanel({
             scenario={scenario}
             colors={colors}
             stage={state.config.launch_stage ?? scenario.design.launch_stage}
-            locks={locks}
-            onLocksChange={onLocksChange}
+            committed={state.committedStages}
+            onSelectStage={(stage) =>
+              dispatch({ type: 'setLaunchStage', stage: stage as 1 | 2 | 3 })
+            }
           />
         </ParamGroup>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from '@/entities/session';
-import { planeCommitStage, type PlaneLock } from '@/entities/scenario';
+import { planeCommitStage } from '@/entities/scenario';
 import { ScaleCaption, ScaleRow, SCALE_GRID } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
 import type { ScenarioDocument } from '@/shared/api';
@@ -31,8 +31,9 @@ interface PlaneControlsProps {
   colors: Record<string, string>;
   /** Launch stage on screen: rings that have not flown yet are shown as such. */
   stage: number;
-  locks: PlaneLock[];
-  onLocksChange: (locks: PlaneLock[]) => void;
+  /** Launches whose angles are settled, and whose rings are therefore inert. */
+  committed: number[];
+  onSelectStage: (stage: number) => void;
 }
 
 /**
@@ -48,8 +49,8 @@ export function PlaneControls({
   scenario,
   colors,
   stage,
-  locks,
-  onLocksChange,
+  committed,
+  onSelectStage,
 }: PlaneControlsProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
@@ -60,8 +61,8 @@ export function PlaneControls({
         scenario={scenario}
         colors={colors}
         stage={stage}
-        locks={locks}
-        onLocksChange={onLocksChange}
+        committed={committed}
+        onSelectStage={onSelectStage}
       />
 
       <div className="space-y-3.5">
@@ -76,9 +77,13 @@ export function PlaneControls({
                   ? (override?.raan_deg ?? plane.raan_deg)
                   : (override?.phase_deg ?? plane.phase_deg);
 
-              // A ring still on the ground moves nothing on screen, so its
-              // scale says so rather than letting the reading go unexplained.
-              const waiting = planeCommitStage(scenario, plane.id) > stage;
+              // Two reasons a scale does not move, and they are not the same.
+              // A settled ring is a decision: it stays where it was put. A ring
+              // that flies later is simply not in this picture, and is designed
+              // on its own launch — one click away in the legend above.
+              const commitStage = planeCommitStage(scenario, plane.id);
+              const settled = committed.includes(commitStage);
+              const later = commitStage > stage;
 
               return (
                 <ScaleRow
@@ -86,7 +91,8 @@ export function PlaneControls({
                   id={`${plane.id}-${scale.key}`}
                   label={plane.id}
                   accent={colors[plane.id]}
-                  muted={waiting}
+                  locked={settled}
+                  disabled={later}
                   value={value}
                   max={ANGLE_MAX_DEG}
                   step={ANGLE_STEP_DEG}

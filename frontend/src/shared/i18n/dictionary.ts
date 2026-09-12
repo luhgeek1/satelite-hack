@@ -127,6 +127,7 @@ export const en = {
     "A ring's angles are chosen when it launches and never change. One design, three moments.",
   'deploy.open': 'Details and planning',
   'deploy.close': 'Close the deployment plan',
+  'deploy.info': 'How deployment works',
   'deploy.month': 'month {month}',
   'deploy.colStage': 'LAUNCH',
   'deploy.colRings': 'IN ORBIT',
@@ -136,8 +137,30 @@ export const en = {
   'deploy.show': 'Show launch {stage} on the globe',
   'deploy.commits': 'Commits {rings}',
   'deploy.commitsNone': 'Nothing new committed',
+  'deploy.badgeFixed': 'FIXED',
+  'deploy.badgeDraft': 'DRAFT',
+  'deploy.stateDraft': 'Launch {stage} · draft',
+  'deploy.stateFixed': 'Launch {stage} · fixed',
+  'deploy.draftHint':
+    'Find the angles automatically, or set them on the scales below, then fix this launch — launch {next} is then planned on top of it.',
+  'deploy.draftHintLast':
+    'The last launch. Find or set its angles and fix it, and the campaign is planned end to end.',
+  'deploy.fixedHint':
+    'These rings are held: neither a search nor a scale moves them. Next step is launch {next}.',
+  'deploy.fixedHintAll':
+    'Every launch is fixed, so the campaign is settled. Withdraw one to revisit it.',
+  'deploy.fixedRing': '{ring} · RAAN {raan}° · phase {phase}°',
+  'deploy.find': 'Find the angles',
+  'deploy.finding': 'Searching',
+  'deploy.findHint':
+    'Holds what is fixed, chooses this launch and the later ones together, and scores the finished constellation.',
+  'deploy.fix': 'Fix this launch',
+  'deploy.fixHint': 'Nothing moves these rings afterwards — not a search, not a scale.',
+  'deploy.release': 'Withdraw',
+  'deploy.releaseHint':
+    'The rocket has not flown yet, so the plan may still be revisited. After the launch the angles cannot change.',
+  'deploy.goNext': 'Launch {stage}',
   'deploy.planFrom': 'Plan from here',
-  'deploy.planFromStage': 'Plan from launch {stage}',
   'deploy.planFromHint':
     'Hold everything already in orbit, choose this launch and the later ones together, and score the finished constellation at launch {last}.',
   'deploy.planNote':
@@ -153,12 +176,11 @@ export const en = {
   'deploy.tipTitle': 'Launches, not settings',
   'deploy.tipText':
     'A ring keeps the angles it was launched with, so all three launches share one design. Switching launch changes which rings have arrived, never their angles. Plan from the first launch still on the ground.',
-  'deploy.ringsTitle': 'Rings',
   'deploy.ringLaunch': 'launch {stage}',
-  'deploy.ringInOrbit': 'in orbit',
-  'deploy.ringWaiting': 'not launched yet',
-  'deploy.ringCommitted': 'Committed: this ring has flown and its angles are held',
-  'deploy.ringFree': 'Free: a search may move this ring',
+  'deploy.ringSettled': 'fixed',
+  'deploy.ringDesigning': 'being designed',
+  'deploy.ringLater': 'designed at launch {stage}',
+  'deploy.ringGo': 'Go to launch {stage}',
 
   'config.deployment': 'Deployment',
   'config.deploymentHint': 'Stage {stage} of {total}, {planes} orbital planes.',
@@ -531,6 +553,7 @@ export const ru: Record<TranslationKey, string> = {
     'Углы кольца выбираются при его запуске и больше не меняются. Один проект, три момента.',
   'deploy.open': 'Подробнее и планирование',
   'deploy.close': 'Закрыть план развёртывания',
+  'deploy.info': 'Как устроено развёртывание',
   'deploy.month': 'месяц {month}',
   'deploy.colStage': 'ОЧЕР.',
   'deploy.colRings': 'НА ОРБИТЕ',
@@ -540,8 +563,30 @@ export const ru: Record<TranslationKey, string> = {
   'deploy.show': 'Показать очередь {stage} на глобусе',
   'deploy.commits': 'Фиксирует {rings}',
   'deploy.commitsNone': 'Новых колец нет',
+  'deploy.badgeFixed': 'ЗАФИКС.',
+  'deploy.badgeDraft': 'ЧЕРНОВИК',
+  'deploy.stateDraft': 'Очередь {stage} · черновик',
+  'deploy.stateFixed': 'Очередь {stage} · зафиксирована',
+  'deploy.draftHint':
+    'Подберите углы автоматически или выставьте их на шкалах ниже, затем зафиксируйте — очередь {next} будет планироваться поверх этой.',
+  'deploy.draftHintLast':
+    'Последняя очередь. Подберите или выставьте её углы и зафиксируйте — кампания спланирована целиком.',
+  'deploy.fixedHint':
+    'Эти кольца удерживаются: их не двигает ни поиск, ни шкала. Следующий шаг — очередь {next}.',
+  'deploy.fixedHintAll':
+    'Зафиксированы все очереди, кампания собрана. Снимите фиксацию с любой, чтобы пересмотреть её.',
+  'deploy.fixedRing': '{ring} · RAAN {raan}° · фаза {phase}°',
+  'deploy.find': 'Подобрать углы',
+  'deploy.finding': 'Идёт подбор',
+  'deploy.findHint':
+    'Держит зафиксированное, выбирает эту очередь и последующие вместе и оценивает по полной группировке.',
+  'deploy.fix': 'Зафиксировать',
+  'deploy.fixHint': 'После этого кольца очереди не двигает ничто: ни поиск, ни шкала.',
+  'deploy.release': 'Снять фиксацию',
+  'deploy.releaseHint':
+    'Пуск ещё не состоялся, значит план можно пересмотреть. После пуска углы уже не меняются.',
+  'deploy.goNext': 'Очередь {stage}',
   'deploy.planFrom': 'Планировать отсюда',
-  'deploy.planFromStage': 'Спланировать с очереди {stage}',
   'deploy.planFromHint':
     'Удержать всё, что уже на орбите, выбрать эту очередь и последующие вместе и оценить по полной группировке на очереди {last}.',
   'deploy.planNote':
@@ -557,12 +602,11 @@ export const ru: Record<TranslationKey, string> = {
   'deploy.tipTitle': 'Очереди, а не настройки',
   'deploy.tipText':
     'Кольцо навсегда сохраняет углы, с которыми его запустили, поэтому у всех трёх очередей один общий проект. Переключение очереди меняет то, какие кольца уже прилетели, а не их углы. Планировать надо с той очереди, которая ещё на земле.',
-  'deploy.ringsTitle': 'Кольца',
   'deploy.ringLaunch': 'очередь {stage}',
-  'deploy.ringInOrbit': 'на орбите',
-  'deploy.ringWaiting': 'ещё не запущено',
-  'deploy.ringCommitted': 'Зафиксировано: кольцо улетело, его углы удерживаются',
-  'deploy.ringFree': 'Свободно: поиск может двигать это кольцо',
+  'deploy.ringSettled': 'зафиксировано',
+  'deploy.ringDesigning': 'настраивается',
+  'deploy.ringLater': 'настраивается на очереди {stage}',
+  'deploy.ringGo': 'Перейти к очереди {stage}',
 
   'config.deployment': 'Развёртывание',
   'config.deploymentHint': 'Этап {stage} из {total}, орбитальных плоскостей: {planes}.',

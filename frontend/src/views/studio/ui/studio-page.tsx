@@ -35,7 +35,6 @@ import type { OutageNode, OutageTarget, OutageWindow } from '@/features/schedule
 import { impactIndex, useResilience } from '@/features/analyze-resilience';
 import { snapToGrid, usePlayback } from '@/features/timeline-playback';
 import {
-  firstOpenStage,
   launchStages,
   locksForPlanning,
   locksFromCommitted,
@@ -638,9 +637,6 @@ export function StudioPage() {
       baseline={baseline}
       runInput={runInput}
       planning={optimizer.running || optimizer.start.isPending}
-      nextFreeStage={firstOpenStage(scenario, state.committedStages)}
-      locks={locks}
-      onLocksChange={setLocks}
       onPlanFrom={planFromStage}
       onOpenDeploymentPlan={() => setPlanOpen(true)}
     />
