@@ -1,99 +1,17 @@
-"""The official `cosmo-A-1.0` scenario, as Pydantic models.
+"""Wire models around scenarios: the catalog rows, details and checks.
 
-These mirror the case schema exactly so FastAPI documents and pre-validates an
-uploaded file, but they are *not* the validation authority: the engine still runs
-the organisers' `geometry.validate` on the dict, and that is what decides whether
-a scenario is acceptable. Keeping both means an obviously malformed upload gets a
-field-precise 422 without reaching the engine, while the engine stays the arbiter
-of the rules the case actually defines.
+The scenario document itself crosses the wire as the plain `cosmo-A-1.0` dict.
+The engine validates it, because the rules — and the field-precise report of
+what breaks them — belong next to the calculation that depends on them.
 """
 
 from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field
 
 from domain.common import WireModel
-from domain.scenario.config import SiteConditionsModel
-
-
-class ScenarioMetaModel(WireModel):
-    id: str = Field(..., min_length=1, max_length=128)
-    title: str = Field(..., min_length=1, max_length=256)
-
-
-class EnvironmentModel(WireModel):
-    altitude_km: float = Field(..., ge=200, le=1200)
-    inclination_deg: float = Field(..., gt=0, le=180)
-    earth_angle0_deg: float
-    horizon_s: int = Field(..., gt=0, le=172_800)
-    step_s: int = Field(..., gt=0)
-    min_elevation_deg: float = Field(..., ge=0, lt=90)
-    isl_range_km: float = Field(..., gt=0, le=10_000)
-    target_availability: float = Field(..., ge=0, le=1)
-
-
-class PlaneModel(WireModel):
-    id: str = Field(..., min_length=1, max_length=64)
-    raan_deg: float = Field(..., ge=0, lt=360)
-    phase_deg: float = Field(..., ge=0, lt=360)
-
-
-class SatelliteModel(WireModel):
-    id: str = Field(..., min_length=1, max_length=64)
-    plane_id: str = Field(..., min_length=1, max_length=64)
-    slot_deg: float
-    launch_batch: Literal[1, 2, 3]
-
-
-class ScenarioDesignModel(WireModel):
-    launch_stage: Literal[1, 2, 3]
-    planes: list[PlaneModel] = Field(..., min_length=1)
-    satellites: list[SatelliteModel] = Field(..., min_length=1)
-
-
-class GroundSiteModel(WireModel):
-    id: str = Field(..., min_length=1, max_length=64)
-    name: str = Field(..., max_length=256)
-    role: Literal["client", "gateway"]
-    lat_deg: float = Field(..., ge=-90, le=90)
-    lon_deg: float = Field(..., ge=-180, le=180)
-    # Our extension; the official validator ignores it, the engine checks it.
-    site_conditions: SiteConditionsModel | None = None
-
-
-class FailureModel(WireModel):
-    satellite_id: str
-    start_s: int = Field(..., ge=0)
-    end_s: int = Field(..., gt=0)
-
-
-class GatewayOutageModel(WireModel):
-    gateway_id: str
-    start_s: int = Field(..., ge=0)
-    end_s: int = Field(..., gt=0)
-
-
-class ScenarioModel(WireModel):
-    schema_version: Literal["cosmo-A-1.0"]
-    meta: ScenarioMetaModel
-    environment: EnvironmentModel
-    design: ScenarioDesignModel
-    ground_sites: list[GroundSiteModel] = Field(..., min_length=2)
-    failures: list[FailureModel] = Field(default_factory=list)
-    gateway_outages: list[GatewayOutageModel] = Field(default_factory=list)
-
-    @field_validator("ground_sites")
-    @classmethod
-    def _needs_both_roles(cls, sites: list[GroundSiteModel]) -> list[GroundSiteModel]:
-        roles = {site.role for site in sites}
-        if "client" not in roles or "gateway" not in roles:
-            raise ValueError("ground_sites must contain at least one client and one gateway")
-        return sites
-
-    def to_dict(self) -> dict[str, Any]:
-        return self.model_dump(mode="json")
 
 
 class ScenarioRenameRequest(WireModel):
@@ -102,12 +20,35 @@ class ScenarioRenameRequest(WireModel):
     title: str = Field(..., min_length=1, max_length=256)
 
 
+class ScenarioIssue(WireModel):
+    """One problem, or one warning, about a scenario document.
+
+    `field` is the JSON path to the value (`design.satellites[12].plane_id`).
+    `code` and `params` are stable so the interface can phrase it in the user's
+    language; `message` is the same in English.
+    """
+
+    code: str
+    field: str | None = None
+    message: str
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
 class ValidationReport(WireModel):
-    """Result of a dry-run check, so the UI can report before it commits."""
+    """Result of a dry-run check, so the UI can report before it commits.
+
+    `error` and `field` describe the first problem; `issues` holds all of them
+    (capped, with `issue_count` the true total). `warnings` are only reported
+    for a valid scenario.
+    """
 
     valid: bool
     error: str | None = None
     field: str | None = None
+    issues: list[ScenarioIssue] = Field(default_factory=list)
+    issue_count: int = 0
+    warnings: list[ScenarioIssue] = Field(default_factory=list)
+    from_result_file: bool = False
 
 
 class ScenarioSummary(WireModel):
@@ -126,6 +67,17 @@ class ScenarioSummary(WireModel):
     steps: int
     target_availability: float
     created_at: str | None = None
+
+
+class ScenarioImported(ScenarioSummary):
+    """The picker row for a scenario just imported, and what to tell its author.
+
+    `from_result_file` is set when the upload was an exported result and its
+    `effective_scenario` is what got imported.
+    """
+
+    warnings: list[ScenarioIssue] = Field(default_factory=list)
+    from_result_file: bool = False
 
 
 class ScenarioDetail(WireModel):

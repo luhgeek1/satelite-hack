@@ -15,6 +15,7 @@ export {
   type LaunchStageInfo,
 } from './model/types';
 export { phasePeriodDeg } from './model/phase-period';
+export { describeIssue } from './model/describe-issue';
 export {
   firstOpenStage,
   freeLocks,

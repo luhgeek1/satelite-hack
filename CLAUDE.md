@@ -16,7 +16,7 @@ adds what is specific to working here with Claude Code.
 
 ## Before you change anything
 
-- `make test` must be green before and after. 84 tests.
+- `make test` must be green before and after. 146 tests.
 - Never edit `backend/src/engine/geometry.py`. It is the organisers' file,
   vendored byte-for-byte and checksum-tested.
 - Never adjust the expected values in `tests/unit/test_reference_metrics.py` to

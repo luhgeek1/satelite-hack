@@ -14,7 +14,11 @@ export function ErrorNote({ error }: { error: unknown }) {
       <AlertTriangle size={13} className="mt-0.5 flex-shrink-0 text-alarm" />
       <div className="min-w-0">
         <div className="font-label text-[12px] text-alarm">{message}</div>
-        {field && <div className="mt-0.5 font-data text-[10px] text-zinc-500">field: {field}</div>}
+        {field && (
+          <div className="mt-0.5 font-data text-[10px] text-zinc-500">
+            {t('error.field')}: {field}
+          </div>
+        )}
       </div>
     </div>
   );

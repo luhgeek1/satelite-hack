@@ -9,7 +9,7 @@ where the work stands.
 
 ### Backend — runnable end to end
 
-89 tests green (63 unit, 26 integration), ruff clean.
+146 tests green (108 unit, 38 integration), ruff clean.
 
 | Area | Status |
 |---|---|
@@ -17,7 +17,7 @@ where the work stands.
 | `geometry.py` | ✅ vendored byte-for-byte, checksum-tested |
 | Routing | ✅ BFS + Dijkstra, client-no-relay rule, four no-route reasons, deterministic |
 | Metrics | ✅ visibility, availability, outage windows, edge-of-horizon handling, hop stats |
-| Scenario import / validate | ✅ field-precise errors, JSON body and multipart upload |
+| Scenario import / validate | ✅ every problem in one pass with its JSON path, code and values; `geometry.validate` stays the arbiter, randomised parity test; result files import as their scenario; warnings for a valid file (DECISIONS B9-B11) |
 | Configuration overrides | ✅ launch stage, RAAN, phase 0-360, failures, gateway outages, site surroundings, environment |
 | Site surroundings | ✅ per-site profile / mask / azimuth horizon / altitude, only ever removes links, reference figures untouched (DECISIONS D9, E6) |
 | Simulation API | ✅ synchronous, content-addressed, idempotent |
@@ -58,6 +58,7 @@ where the work stands.
 | Saved variants | ✅ openable from the scenario picker and from the comparison; the compared pair lives in the session |
 | Deployment plan | ✅ panel beside the configuration column: all three launches at once with per-stage strips, RAAN spread dial, and per-launch planning that holds what has already flown (DECISIONS E8) |
 | Comparison board | ✅ verdict first, all five metrics, per-site dumbbell on a fitted axis, changed parameters beside it, and standings over every saved variant that swap either slot in a click |
+| Scenario import report | ✅ every problem phrased from its code in the reader's language with the field path under it; loaded contents, result-file note and warnings on success; test files in `examples/import-checks/` |
 | Localization | ✅ Russian and English through one dictionary |
 | Verified in a browser | ✅ real metrics render, failure injection flips the UI in 60 ms and reconciles at ~2.5 s |
 

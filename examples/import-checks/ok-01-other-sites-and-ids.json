@@ -1,0 +1,372 @@
+{
+  "schema_version": "cosmo-A-1.0",
+  "meta": {
+    "id": "jury_like_arctic",
+    "title": "Другие пункты и идентификаторы"
+  },
+  "environment": {
+    "altitude_km": 550.0,
+    "inclination_deg": 87.0,
+    "earth_angle0_deg": 12.0,
+    "horizon_s": 86400,
+    "step_s": 120,
+    "min_elevation_deg": 10.0,
+    "isl_range_km": 3000.0,
+    "target_availability": 0.9
+  },
+  "design": {
+    "launch_stage": 3,
+    "planes": [
+      {
+        "id": "ORB-A",
+        "raan_deg": 0.0,
+        "phase_deg": 0.0
+      },
+      {
+        "id": "ORB-B",
+        "raan_deg": 60.0,
+        "phase_deg": 7.5
+      },
+      {
+        "id": "ORB-C",
+        "raan_deg": 120.0,
+        "phase_deg": 15.0
+      }
+    ],
+    "satellites": [
+      {
+        "id": "SAT-001",
+        "plane_id": "ORB-A",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-002",
+        "plane_id": "ORB-A",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-003",
+        "plane_id": "ORB-A",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-004",
+        "plane_id": "ORB-A",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-005",
+        "plane_id": "ORB-A",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-006",
+        "plane_id": "ORB-A",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-007",
+        "plane_id": "ORB-A",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-008",
+        "plane_id": "ORB-A",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-009",
+        "plane_id": "ORB-A",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-010",
+        "plane_id": "ORB-A",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-011",
+        "plane_id": "ORB-A",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-012",
+        "plane_id": "ORB-A",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-013",
+        "plane_id": "ORB-A",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-014",
+        "plane_id": "ORB-A",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-015",
+        "plane_id": "ORB-A",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-016",
+        "plane_id": "ORB-A",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "SAT-017",
+        "plane_id": "ORB-B",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-018",
+        "plane_id": "ORB-B",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-019",
+        "plane_id": "ORB-B",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-020",
+        "plane_id": "ORB-B",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-021",
+        "plane_id": "ORB-B",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-022",
+        "plane_id": "ORB-B",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-023",
+        "plane_id": "ORB-B",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-024",
+        "plane_id": "ORB-B",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-025",
+        "plane_id": "ORB-B",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-026",
+        "plane_id": "ORB-B",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-027",
+        "plane_id": "ORB-B",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-028",
+        "plane_id": "ORB-B",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-029",
+        "plane_id": "ORB-B",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-030",
+        "plane_id": "ORB-B",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-031",
+        "plane_id": "ORB-B",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-032",
+        "plane_id": "ORB-B",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "SAT-033",
+        "plane_id": "ORB-C",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-034",
+        "plane_id": "ORB-C",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-035",
+        "plane_id": "ORB-C",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-036",
+        "plane_id": "ORB-C",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-037",
+        "plane_id": "ORB-C",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-038",
+        "plane_id": "ORB-C",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-039",
+        "plane_id": "ORB-C",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-040",
+        "plane_id": "ORB-C",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-041",
+        "plane_id": "ORB-C",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-042",
+        "plane_id": "ORB-C",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-043",
+        "plane_id": "ORB-C",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-044",
+        "plane_id": "ORB-C",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-045",
+        "plane_id": "ORB-C",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-046",
+        "plane_id": "ORB-C",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-047",
+        "plane_id": "ORB-C",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "SAT-048",
+        "plane_id": "ORB-C",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      }
+    ]
+  },
+  "ground_sites": [
+    {
+      "id": "GW-ARH",
+      "name": "Архангельск, шлюз",
+      "role": "gateway",
+      "lat_deg": 64.54,
+      "lon_deg": 40.52
+    },
+    {
+      "id": "NRL",
+      "name": "Норильск",
+      "role": "client",
+      "lat_deg": 69.35,
+      "lon_deg": 88.2
+    },
+    {
+      "id": "TKS",
+      "name": "Тикси",
+      "role": "client",
+      "lat_deg": 71.64,
+      "lon_deg": 128.87
+    },
+    {
+      "id": "ANR",
+      "name": "Анадырь",
+      "role": "client",
+      "lat_deg": 64.73,
+      "lon_deg": 177.5
+    },
+    {
+      "id": "DKS",
+      "name": "Диксон",
+      "role": "client",
+      "lat_deg": 73.51,
+      "lon_deg": 80.55
+    }
+  ],
+  "failures": [
+    {
+      "satellite_id": "SAT-020",
+      "start_s": 21600,
+      "end_s": 43200
+    }
+  ],
+  "gateway_outages": []
+}

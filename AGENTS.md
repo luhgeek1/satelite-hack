@@ -189,7 +189,7 @@ make install           # backend/.venv on Python 3.13 (system python is 3.11)
 make test-up           # postgres :55432, redis :56379
 make migrate
 make dev               # uvicorn --reload on :8080
-make test              # 84 tests: 63 unit + 21 integration
+make test              # 146 tests: 108 unit + 38 integration
 make lint / make format
 make up / make down    # full Docker stack
 ```

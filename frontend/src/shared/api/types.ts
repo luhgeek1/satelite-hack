@@ -104,10 +104,33 @@ export interface ScenarioDetail {
   scenario: ScenarioDocument;
 }
 
+/**
+ * One problem, or one warning, about a scenario document. `field` is the JSON
+ * path to the value; `code` and `params` are stable so the text can be
+ * localised, and `message` says the same in English.
+ */
+export interface ScenarioIssue {
+  code: string;
+  field: string | null;
+  message: string;
+  params: Record<string, unknown>;
+}
+
 export interface ValidationReport {
   valid: boolean;
   error: string | null;
   field: string | null;
+  issues: ScenarioIssue[];
+  issue_count: number;
+  warnings: ScenarioIssue[];
+  from_result_file: boolean;
+}
+
+/** The picker row for a scenario just imported, and what to tell its author. */
+export interface ScenarioImported extends ScenarioSummary {
+  warnings: ScenarioIssue[];
+  /** The upload was an exported result, and its effective scenario was imported. */
+  from_result_file: boolean;
 }
 
 export interface PlaneConfig {
@@ -400,5 +423,8 @@ export interface ProblemDocument {
   instance: string;
   timestamp: string;
   request_id?: string;
-  details?: { field?: string } & Record<string, unknown>;
+  details?: { field?: string; issues?: ScenarioIssue[]; issue_count?: number } & Record<
+    string,
+    unknown
+  >;
 }

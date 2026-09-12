@@ -15,9 +15,11 @@ install:  ## Create the backend venv and install dependencies
 	cd $(BACKEND) && uv pip install --python .venv/bin/python -r <(uv pip compile pyproject.toml --all-extras -q -o -) || \
 		uv pip install --python .venv/bin/python fastapi "uvicorn[standard]" pydantic-settings sqlalchemy alembic asyncpg greenlet redis orjson numpy python-multipart httpx pytest pytest-asyncio ruff
 
-up:  ## Start the full stack (backend + postgres + redis) in Docker
+up:  ## Start the full stack (frontend + backend + postgres + redis) in Docker
 	cp -n .env.example .env || true
+	cp -n frontend/.env.example frontend/.env.local || true
 	docker compose up -d --build
+
 
 down:  ## Stop the stack
 	docker compose down --remove-orphans

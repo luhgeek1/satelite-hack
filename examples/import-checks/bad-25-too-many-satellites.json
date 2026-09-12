@@ -1,0 +1,3077 @@
+{
+  "schema_version": "cosmo-A-1.0",
+  "meta": {
+    "id": "crowd",
+    "title": "crowd"
+  },
+  "environment": {
+    "altitude_km": 550.0,
+    "inclination_deg": 87.0,
+    "earth_angle0_deg": 12.0,
+    "horizon_s": 86400,
+    "step_s": 120,
+    "min_elevation_deg": 10.0,
+    "isl_range_km": 3000.0,
+    "target_availability": 0.9
+  },
+  "design": {
+    "launch_stage": 3,
+    "planes": [
+      {
+        "id": "P1",
+        "raan_deg": 0.0,
+        "phase_deg": 0.0
+      },
+      {
+        "id": "P2",
+        "raan_deg": 60.0,
+        "phase_deg": 7.5
+      },
+      {
+        "id": "P3",
+        "raan_deg": 120.0,
+        "phase_deg": 15.0
+      }
+    ],
+    "satellites": [
+      {
+        "id": "X0000",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0001",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0002",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0003",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0004",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0005",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0006",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0007",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0008",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0009",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0010",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0011",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0012",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0013",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0014",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0015",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0016",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0017",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0018",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0019",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0020",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0021",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0022",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0023",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0024",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0025",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0026",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0027",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0028",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0029",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0030",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0031",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0032",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0033",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0034",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0035",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0036",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0037",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0038",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0039",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0040",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0041",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0042",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0043",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0044",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0045",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0046",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0047",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0048",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0049",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0050",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0051",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0052",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0053",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0054",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0055",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0056",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0057",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0058",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0059",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0060",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0061",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0062",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0063",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0064",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0065",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0066",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0067",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0068",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0069",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0070",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0071",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0072",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0073",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0074",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0075",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0076",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0077",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0078",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0079",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0080",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0081",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0082",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0083",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0084",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0085",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0086",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0087",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0088",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0089",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0090",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0091",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0092",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0093",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0094",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0095",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0096",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0097",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0098",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0099",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0100",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0101",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0102",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0103",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0104",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0105",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0106",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0107",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0108",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0109",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0110",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0111",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0112",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0113",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0114",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0115",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0116",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0117",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0118",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0119",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0120",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0121",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0122",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0123",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0124",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0125",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0126",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0127",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0128",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0129",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0130",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0131",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0132",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0133",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0134",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0135",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0136",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0137",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0138",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0139",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0140",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0141",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0142",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0143",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0144",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0145",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0146",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0147",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0148",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0149",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0150",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0151",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0152",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0153",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0154",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0155",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0156",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0157",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0158",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0159",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0160",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0161",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0162",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0163",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0164",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0165",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0166",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0167",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0168",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0169",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0170",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0171",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0172",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0173",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0174",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0175",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0176",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0177",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0178",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0179",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0180",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0181",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0182",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0183",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0184",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0185",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0186",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0187",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0188",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0189",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0190",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0191",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0192",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0193",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0194",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0195",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0196",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0197",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0198",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0199",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0200",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0201",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0202",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0203",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0204",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0205",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0206",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0207",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0208",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0209",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0210",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0211",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0212",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0213",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0214",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0215",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0216",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0217",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0218",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0219",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0220",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0221",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0222",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0223",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0224",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0225",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0226",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0227",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0228",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0229",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0230",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0231",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0232",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0233",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0234",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0235",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0236",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0237",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0238",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0239",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0240",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0241",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0242",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0243",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0244",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0245",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0246",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0247",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0248",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0249",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0250",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0251",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0252",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0253",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0254",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0255",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0256",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0257",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0258",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0259",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0260",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0261",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0262",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0263",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0264",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0265",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0266",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0267",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0268",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0269",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0270",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0271",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0272",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0273",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0274",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0275",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0276",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0277",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0278",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0279",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0280",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0281",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0282",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0283",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0284",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0285",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0286",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0287",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0288",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0289",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0290",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0291",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0292",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0293",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0294",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0295",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0296",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0297",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0298",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0299",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0300",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0301",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0302",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0303",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0304",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0305",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0306",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0307",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0308",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0309",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0310",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0311",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0312",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0313",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0314",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0315",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0316",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0317",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0318",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0319",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0320",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0321",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0322",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0323",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0324",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0325",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0326",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0327",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0328",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0329",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0330",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0331",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0332",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0333",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0334",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0335",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0336",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0337",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0338",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0339",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0340",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0341",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0342",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0343",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0344",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0345",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0346",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0347",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0348",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0349",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0350",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0351",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0352",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0353",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0354",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0355",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0356",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0357",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0358",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0359",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0360",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0361",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0362",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0363",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0364",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0365",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0366",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0367",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0368",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0369",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0370",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0371",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0372",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0373",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0374",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0375",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0376",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0377",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0378",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0379",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0380",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0381",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0382",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0383",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0384",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0385",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0386",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0387",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0388",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0389",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0390",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0391",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0392",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0393",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0394",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0395",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0396",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0397",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0398",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0399",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0400",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0401",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0402",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0403",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0404",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0405",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0406",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0407",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0408",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0409",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0410",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0411",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0412",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0413",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0414",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0415",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0416",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0417",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0418",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0419",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0420",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0421",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0422",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0423",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0424",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0425",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0426",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0427",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0428",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0429",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0430",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0431",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0432",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0433",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0434",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0435",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0436",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0437",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0438",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0439",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0440",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0441",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0442",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0443",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0444",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0445",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0446",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0447",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0448",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0449",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0450",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0451",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0452",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0453",
+        "plane_id": "P2",
+        "slot_deg": 112.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0454",
+        "plane_id": "P2",
+        "slot_deg": 135.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0455",
+        "plane_id": "P2",
+        "slot_deg": 157.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0456",
+        "plane_id": "P2",
+        "slot_deg": 180.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0457",
+        "plane_id": "P2",
+        "slot_deg": 202.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0458",
+        "plane_id": "P2",
+        "slot_deg": 225.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0459",
+        "plane_id": "P2",
+        "slot_deg": 247.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0460",
+        "plane_id": "P2",
+        "slot_deg": 270.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0461",
+        "plane_id": "P2",
+        "slot_deg": 292.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0462",
+        "plane_id": "P2",
+        "slot_deg": 315.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0463",
+        "plane_id": "P2",
+        "slot_deg": 337.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0464",
+        "plane_id": "P3",
+        "slot_deg": 0.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0465",
+        "plane_id": "P3",
+        "slot_deg": 22.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0466",
+        "plane_id": "P3",
+        "slot_deg": 45.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0467",
+        "plane_id": "P3",
+        "slot_deg": 67.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0468",
+        "plane_id": "P3",
+        "slot_deg": 90.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0469",
+        "plane_id": "P3",
+        "slot_deg": 112.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0470",
+        "plane_id": "P3",
+        "slot_deg": 135.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0471",
+        "plane_id": "P3",
+        "slot_deg": 157.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0472",
+        "plane_id": "P3",
+        "slot_deg": 180.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0473",
+        "plane_id": "P3",
+        "slot_deg": 202.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0474",
+        "plane_id": "P3",
+        "slot_deg": 225.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0475",
+        "plane_id": "P3",
+        "slot_deg": 247.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0476",
+        "plane_id": "P3",
+        "slot_deg": 270.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0477",
+        "plane_id": "P3",
+        "slot_deg": 292.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0478",
+        "plane_id": "P3",
+        "slot_deg": 315.0,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0479",
+        "plane_id": "P3",
+        "slot_deg": 337.5,
+        "launch_batch": 3
+      },
+      {
+        "id": "X0480",
+        "plane_id": "P1",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0481",
+        "plane_id": "P1",
+        "slot_deg": 22.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0482",
+        "plane_id": "P1",
+        "slot_deg": 45.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0483",
+        "plane_id": "P1",
+        "slot_deg": 67.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0484",
+        "plane_id": "P1",
+        "slot_deg": 90.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0485",
+        "plane_id": "P1",
+        "slot_deg": 112.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0486",
+        "plane_id": "P1",
+        "slot_deg": 135.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0487",
+        "plane_id": "P1",
+        "slot_deg": 157.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0488",
+        "plane_id": "P1",
+        "slot_deg": 180.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0489",
+        "plane_id": "P1",
+        "slot_deg": 202.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0490",
+        "plane_id": "P1",
+        "slot_deg": 225.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0491",
+        "plane_id": "P1",
+        "slot_deg": 247.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0492",
+        "plane_id": "P1",
+        "slot_deg": 270.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0493",
+        "plane_id": "P1",
+        "slot_deg": 292.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0494",
+        "plane_id": "P1",
+        "slot_deg": 315.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0495",
+        "plane_id": "P1",
+        "slot_deg": 337.5,
+        "launch_batch": 1
+      },
+      {
+        "id": "X0496",
+        "plane_id": "P2",
+        "slot_deg": 0.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0497",
+        "plane_id": "P2",
+        "slot_deg": 22.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0498",
+        "plane_id": "P2",
+        "slot_deg": 45.0,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0499",
+        "plane_id": "P2",
+        "slot_deg": 67.5,
+        "launch_batch": 2
+      },
+      {
+        "id": "X0500",
+        "plane_id": "P2",
+        "slot_deg": 90.0,
+        "launch_batch": 2
+      }
+    ]
+  },
+  "ground_sites": [
+    {
+      "id": "G_MUR",
+      "name": "Murmansk reference gateway (synthetic installation)",
+      "role": "gateway",
+      "lat_deg": 68.97,
+      "lon_deg": 33.07
+    },
+    {
+      "id": "C65",
+      "name": "Northern terminal 65",
+      "role": "client",
+      "lat_deg": 65.0,
+      "lon_deg": 60.0
+    },
+    {
+      "id": "C70",
+      "name": "Northern terminal 70",
+      "role": "client",
+      "lat_deg": 70.0,
+      "lon_deg": 90.0
+    },
+    {
+      "id": "C72",
+      "name": "Northern terminal 72",
+      "role": "client",
+      "lat_deg": 72.0,
+      "lon_deg": 130.0
+    }
+  ],
+  "failures": [],
+  "gateway_outages": []
+}
