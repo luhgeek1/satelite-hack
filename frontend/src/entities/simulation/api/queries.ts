@@ -58,6 +58,11 @@ export function useAvailabilitySeries(runId: string | undefined) {
     queryKey: queryKeys.availability(runId ?? ''),
     queryFn: ({ signal }) => simulationsApi.availability(runId as string, signal),
     enabled: Boolean(runId),
+    // The strip is read while the planes are being moved, and every move ends
+    // in a new run id. Without this the series drops to nothing between two
+    // runs, every row blanks, and the whole timeline reads as a freeze. The
+    // day already on screen stays until the next one is in hand.
+    placeholderData: keepPreviousData,
     staleTime: Infinity,
   });
 }
