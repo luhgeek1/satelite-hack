@@ -19,7 +19,7 @@ our earlier guesses.
 | A1 | **No reference routes and no reference availability figures exist.** Any path valid at that instant counts. | Removed the worry about matching a specific tie-break. We still pin our own twelve figures as a regression guard. |
 | A2 | **90% is a guideline, not a pass/fail condition.** It does not have to be met in every scenario. | `meets_target` is reported, never enforced. The product is a study tool, not a validator. |
 | A3 | **RAAN and phase are the free design parameters**, per group of 16. | Exactly what `ConfigModel.planes` exposes. |
-| A4 | **Launch budget and batch composition should not be changed — "это никак не оценивается".** Allowed only as a justified bonus once everything else is done. | **Dropped batch-reassignment as a feature.** We keep the *finding* (batch ≡ plane, which is why stage 1 collapses to 13%) as an explanation in the pitch, not as a proposed change. |
+| A4 | **Launch budget and batch composition should not be changed — "это никак не оценивается".** Allowed only as a justified bonus once everything else is done. | **Dropped batch-reassignment as a feature.** The second session went further (A16): a launch physically fills one ring, so the "spread a launch across rings" advice is gone from the pitch too. The diagnosis (stage 1 = one plane = no cross-plane links = 13%) stays as an explanation. |
 | A5 | **Adding gateways, satellites, planes or slots is out of scope.** One gateway. | Not built. The engine stays generic over N gateways and N clients anyway — that costs nothing and protects us against a surprising input file. |
 | A6 | **The jury's file has the same format with different ground-site coordinates**, same gateway. | Nothing may hardcode ids or counts. Flagged two frontend fixtures that violate this ([API_CONTRACT §9](API_CONTRACT.md#9-changes-from-frontendbackend_apimd)). |
 | A7 | **An engineer looks first for long outages and gateway dependency.** "Уязвимые аппараты не заложены." | Outage windows are first-class in the run summary. Added `gateway_dependency`. Criticality stays — the case PDF lists it as an optional extra — but it does not lead. |
@@ -30,6 +30,18 @@ our earlier guesses.
 | A12 | Organisers were unsure whether the script returns inter-satellite links. | **It does** — `snapshot()["edges"]`. Verified. Worth saying out loud at a consultation. |
 | A13 | A manual failure-injection tool is required: pick a satellite, set an interval inside the day or from a moment to the end. | `ConfigModel.failures` with `start_s` / `end_s`. |
 | A14 | Deliverables: a deployed link live **from code freeze until the end of all defences**, plus a 20–30 s sped-up screencast. Presentation should name which criteria it covers. | Team task — tracked in [STATE.md](STATE.md). |
+
+### Second session, 12 September 2026 ([`transcript.txt`](../transcript.txt); the case owner, Андрей Цветков, was present)
+
+| # | Answer | What we did about it |
+|---|---|---|
+| A15 | **RAAN and phase take any value in [0, 360). No other constraint** — no fuel, no collision model. | Panel sliders and the optimizer bounds run the full circle. The phase *search* still sweeps one slot spacing when the plane is uniform and unbroken, because a shift of one slot relabels the satellites without moving the geometry; any failure window on the plane widens it back to 360°. |
+| A16 | **One launch puts its satellites on one ring.** "Спутники из одной стадии зафиксированы на одно кольцо." | **Dropped the batch-reshuffle recommendation** (the old BRIEF §5 "insight 1"). The diagnosis stays — stage 1 is a single plane with no cross-plane links, hence 13% — but the advice is now: orient that one plane with the optimizer, and say plainly that 90% needs the third launch. |
+| A17 | `sunlight()` is auxiliary; on-board energy belongs to another hackathon case. | Not used, confirmed. D5 already said so. |
+| A18 | **Terrain, urban build-up and sea level are the "задача со звёздочкой, которая приветствовалась бы".** The case owner described a checkbox that applies a relief model. | Built: per-site surroundings, see D9 and E6. |
+| A19 | Defence: **4 min talk + 2 min questions + 1 technical minute.** The technical jury starts reading the repository at code freeze, apart from the defence, and the service must be usable outside the slot. | Root [README.md](../README.md) written for that reader. The pitch is cut to four minutes. |
+| A20 | Competitors to know: **Satlink Calculator** and **Satellite Communications Toolbox** (MathWorks). "Не надо копировать — надо видеть, кто конкурент." | Positioning note in E7. The azimuth/elevation horizon mask in D9 is the vocabulary those tools use. |
+| A21 | One gateway, three clients, all routed to that gateway. The model is not tied to the north: latitude −90…90, longitude −180…180. | Already the case. |
 
 ---
 
@@ -229,6 +241,36 @@ server and the VM had 207 MB usable. After the bump the machine idles at ~270 MB
 *Why the backend size lives in `fly.toml`:* `fly deploy` resizes machines to the
 `[[vm]]` block, so a size set only from the dashboard is undone by the next push.
 
+**D9. A ground site may carry its surroundings, and they can only take sky away.**
+`ground_sites[].site_conditions` holds a named profile (open, sea, forest,
+urban, mountain, custom), a uniform local mask, an optional azimuth-dependent
+horizon profile and a height above the sphere. The effective mask is
+`max(scenario mask, local mask)`; `engine/site_conditions.py` filters the ground
+edges `geometry.snapshot()` admits before routing sees them.
+*Why this shape:* the scenario mask describes the terminal — below it the link
+budget does not close — and the surroundings describe the place. Taking the
+maximum is the physics (both must hold) and it guarantees the layer never admits
+a link the organisers' geometry rejects. A site whose block raises nothing is
+skipped outright, which is what keeps the twelve reference figures byte-identical.
+*Why not model multipath or reflections:* they change link quality, not whether a
+line of sight exists, and the case counts instants with a route.
+*Why named profiles:* an engineer without a site survey should still be able to
+say "this terminal is in a city" and get a defensible number. The defaults
+(forest 15°, urban 25°, mountain 30°) are typical, not measured; each carries a
+rationale the interface shows next to the value, and `custom` exposes the number.
+*How we know it is right,* pinned by `tests/unit/test_site_conditions.py`:
+- at zero altitude our look angles equal `geometry.py`'s elevation to 1e-9°;
+- open-field visible instants = filtered visible instants + masked instants,
+  exactly, so the loss is accounted for and nothing leaks;
+- a wall to the north blocks northern bearings and nothing south of them;
+- neutral profiles leave every reference figure untouched.
+*Cost:* about 15 ms on a 165 ms run.
+*Not a sensitivity study:* two variants that differ only in surroundings are a
+legitimate design comparison — the constellation is the same, the assumption
+about the site is what changed — so the run carries `site_conditions_active`,
+not `environment_modified`, and the comparison lists the site as a changed
+parameter.
+
 ## E. Findings worth presenting
 
 **E1. The ISL threshold is 2700.44 km, and it is a cliff, not a slope.**
@@ -290,6 +332,38 @@ is the case in a single slide.
 
 ---
 
+**E6. The gateway's surroundings matter more than any client's.** Measured on
+`01_full_constellation`, everything else as flown:
+
+| Surroundings | C65 | C70 | C72 | Longest outage |
+|---|---:|---:|---:|---|
+| Baseline, open field everywhere | 96.7% | 98.8% | 98.9% | 8 min |
+| C65 in taiga (15°) | 81.8% | 98.8% | 98.9% | 66 min |
+| C65 in a city (25°) | **40.7%** | 98.8% | 98.9% | **138 min** |
+| C65 on a valley floor (30°) | 26.2% | 98.8% | 98.9% | 162 min |
+| Gateway in taiga (15°) | 92.2% | 94.3% | 94.4% | 38 min |
+| **Gateway in a city (25°)** | **45.7%** | **46.5%** | **46.5%** | **116 min** |
+
+Two things to say out loud. First, a near-polar constellation at 550 km is seen
+from 65° N mostly low in the sky, so a 25° local horizon costs a client more than
+half its day — the terminal mask alone (10°) badly understates what a real
+rooftop delivers. Second, the gateway is the one site every route ends at, so its
+surroundings cap every client at once: put the Murmansk antenna between
+buildings and the whole network drops to 46%, put it in the open and the
+constellation is fine. That is a siting requirement, and it is the kind of
+conclusion the case owner asked for: physical, specific, and traceable to a
+calculation the jury can rerun.
+
+**E7. Where this sits against the tools the case owner named.** Satlink
+Calculator is a link-budget calculator: one link, one moment, no constellation
+and no routing. Satellite Communications Toolbox (MathWorks) does constellation
+access analysis with azimuth/elevation masks and terrain, but it is a library
+for engineers who write scripts, priced per seat, with no notion of "does this
+village reach the gateway through the mesh". We sit between them: the
+constellation-level, route-level question, with the site-level realism (D9)
+borrowed from the toolbox vocabulary, in a browser the jury can open without
+installing anything. Not a replacement for either; the piece neither of them has.
+
 ## O. Open questions
 
 Ask at the expert consultation — two slots per checkpoint, one tracker and one
@@ -319,3 +393,12 @@ path as a recommendation invites the question.
 
 **O6.** How large might the jury's scenario be? Guard rails currently allow 500
 satellites and 5000 steps; the official validator permits a 48-hour horizon.
+
+**O7.** What local horizon figures does the customer use for its own terminals
+in built-up and forested sites? Our profile defaults (15° / 25° / 30°) are typical
+values with a stated rationale, not measurements; a figure from the operator
+would replace them.
+
+*Closed by the second session:* whether RAAN/phase carry further constraints
+(none, A15); whether a launch may be split across rings (no, A16); whether
+`sunlight()` matters (no, A17).

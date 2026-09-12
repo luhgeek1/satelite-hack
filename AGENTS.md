@@ -56,6 +56,12 @@ These are not style preferences. Breaking any of them loses points.
 6. **No authentication.** The jury opens a URL and must be able to use the tool
    immediately. Do not add a login screen.
 
+7. **Site surroundings may only remove ground links.** `engine/site_conditions.py`
+   applies `max(scenario mask, local mask)` on top of what `geometry.snapshot()`
+   admits; it must never admit a link the organisers' geometry rejects, and a
+   neutral site must be skipped so the reference figures stay byte-identical.
+   `tests/unit/test_site_conditions.py` pins both.
+
 ---
 
 ## 3. Wire conventions
@@ -89,6 +95,7 @@ database/    SQLAlchemy tables + interfaces + UoW; redis as a pure cache
 engine/      pure calculation, no framework imports
              geometry.py  vendored, never edited
              scenario / routing / simulate / metrics   the mandatory path
+             site_conditions.py                        terrain / buildings / altitude per site
              analysis / optimizer                      criticality, sweeps, search
              parallel.py                               how much machine a fan-out may take
 ```
@@ -182,7 +189,7 @@ make install           # backend/.venv on Python 3.13 (system python is 3.11)
 make test-up           # postgres :55432, redis :56379
 make migrate
 make dev               # uvicorn --reload on :8080
-make test              # 60 tests: 41 unit + 19 integration
+make test              # 84 tests: 63 unit + 21 integration
 make lint / make format
 make up / make down    # full Docker stack
 ```
@@ -205,3 +212,5 @@ expert consultation (2 slots per checkpoint: one tracker, one expert).
    a shorter longest outage? The organisers took this away to answer later.
 3. Whether tuning `isl_range_km` counts as a legitimate recommendation or only
    as a sensitivity study. Currently flagged as `environment_modified`.
+4. What local horizon figures the customer uses for terminals in built-up and
+   forested sites (our profile defaults are typical values, not measurements).

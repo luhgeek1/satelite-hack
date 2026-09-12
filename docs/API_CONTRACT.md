@@ -73,6 +73,24 @@ POST   /scenarios                        import from a JSON body   → 201
 POST   /scenarios/upload                 import from multipart file → 201
 POST   /scenarios/validate               dry run, never throws
 DELETE /scenarios/{id}                   imported scenarios only    → 204
+GET    /scenarios/site-profiles          named surroundings profiles for ground sites
+```
+
+`GET /scenarios/site-profiles` serves the defaults behind the surroundings
+picker so the numbers live in the engine and nowhere else:
+
+```jsonc
+[ { "id": "urban", "mask_deg": 25.0, "altitude_m": 0.0,
+    "rationale": "Mid-rise blocks a street away: anything below about 25 degrees is behind a wall." } ]
+```
+
+A ground site in a scenario may carry our extension block, which the official
+validator ignores and ours checks:
+
+```jsonc
+{ "id": "C65", "role": "client", "lat_deg": 65.0, "lon_deg": 60.0,
+  "site_conditions": { "profile": "urban", "mask_deg": 25.0,
+                       "altitude_m": 120, "azimuth_mask": [[0, 35], [180, 12]] } }
 ```
 
 The four official scenarios are seeded at startup and cannot be deleted
@@ -130,6 +148,11 @@ a file and run it in a single request, with no import step to fail in between).
       { "satellite_id": "S15", "start_s": 21600, "end_s": 86400 }
     ],
     "gateway_outages": [],            // same semantics
+    "sites": {                        // surroundings per ground site
+      "C65": { "profile": "urban" },                    // profile default mask
+      "G_MUR": { "profile": "custom", "mask_deg": 18 }, // your own number
+      "C70": null                                       // clear the file's block
+    },
     "isl_range_km": 2700              // environment block — see below
   }
 }
@@ -138,6 +161,15 @@ a file and run it in a single request, with no import step to fail in between).
 `failures` and `gateway_outages` **replace** the scenario's lists rather than
 appending, so the panel can own the whole list without add/remove verbs. Omit
 the key to leave the scenario's own list untouched; send `[]` to clear it.
+
+`sites` sets what surrounds a site: a named profile (`open`, `sea`, `forest`,
+`urban`, `mountain`) or `custom` with `mask_deg`, plus optional `altitude_m`
+and an `azimuth_mask` horizon profile. The effective mask is
+`max(scenario mask, local mask)`, so surroundings only ever remove ground
+links. Sites not named keep whatever the file says; `null` clears a block the
+file carried. This is **not** a sensitivity study: the constellation is the
+same and the assumption about the site is what changed, so the run is flagged
+`site_conditions_active`, not `environment_modified`.
 
 The environment keys (`isl_range_km`, `min_elevation_deg`, `altitude_km`,
 `inclination_deg`, `step_s`, `horizon_s`) are separated on purpose. The case says
@@ -179,6 +211,9 @@ the response sets `environment_modified: true` and the UI should label it.
       "min_hops": 2,
       "max_hops": 4,
       "outage_reasons": { "network_partition": 18, "no_visible_satellite": 6 },
+      "site_profile": null,            // "urban" etc. when surroundings apply
+      "effective_mask_deg": 10.0,      // scenario mask, or the local one if higher
+      "masked_share": 0.0,             // instants a satellite cleared the scenario mask but the surroundings hid every one
       "outage_windows": [
         {
           "client_id": "C65", "start_s": 22200, "end_s": 22680, "duration_s": 480,
@@ -190,6 +225,7 @@ the response sets `environment_modified: true` and the UI should label it.
 
   "config": { /* echoed back */ },
   "environment_modified": false,
+  "site_conditions_active": false,
   "effective_scenario": { /* the full cosmo-A-1.0 document as actually run */ },
   "compute_ms": 148.3
 }
@@ -258,6 +294,7 @@ arbitrary scrub position is always valid.
   ],
   "elevation_deg": { "C65": { "S20": 47.3, "S21": 12.8 } },
   "offline_gateways": [],
+  "masked_satellites": { "C65": ["S21"] },   // above the scenario mask, behind the site's horizon
   "active_satellites": 48,
   "total_satellites": 48
 }
@@ -271,6 +308,11 @@ arbitrary scrub position is always valid.
 | `network_partition` | Satellite in view, but the mesh cannot reach the gateway |
 | `no_gateway_contact` | No satellite can currently see the gateway |
 | `gateway_unavailable` | The gateway itself is in an outage window |
+
+`masked_satellites` lists, per site with surroundings, the satellites
+`geometry.py` considers in view that the local horizon hides. They are absent
+from `edges`; the globe draws them dashed so "no satellite overhead" and "a
+satellite overhead the site cannot use" read differently.
 
 `edges` carries `type` so links can be drawn differently even though the graph is
 homogeneous internally. Note the ISL example: **2700.44 km** is the distance
@@ -333,7 +375,8 @@ and keeps it.
   "variants": [ /* VariantModel each, in the order requested */ ],
   "changed_parameters": [
     { "path": "design.launch_stage", "label": "Launch stage", "values": [3, 1] },
-    { "path": "design.planes[P2].raan_deg", "label": "P2 RAAN", "values": [60.0, 45.0] }
+    { "path": "design.planes[P2].raan_deg", "label": "P2 RAAN", "values": [60.0, 45.0] },
+    { "path": "ground_sites[C65].site_conditions", "label": "C65 surroundings", "values": ["open", "urban 25°"] }
   ],
   "metrics": [
     {
