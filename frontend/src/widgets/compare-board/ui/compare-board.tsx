@@ -9,9 +9,12 @@ import { EmptyState, ErrorNote } from '@/shared/ui';
 import { TARGET_AVAILABILITY_FALLBACK } from '@/shared/config';
 import type { Variant } from '@/shared/api';
 import { siteRows } from '../model/scale';
+import { pickWinner, sitesBelowTarget } from '../model/verdict';
+import { ChangedParameters } from './changed-parameters';
 import { MetricStrip } from './metric-strip';
 import { SiteComparison } from './site-comparison';
 import { VariantColumn } from './variant-column';
+import { VerdictNote } from './verdict-note';
 
 export function CompareBoard() {
   const { t } = useI18n();
@@ -40,7 +43,7 @@ export function CompareBoard() {
   const selectedIds = slots.filter((id): id is string => Boolean(id));
   const comparison = useComparison(selectedIds.length === 2 ? selectedIds : []);
 
-  const siteComparison = useMemo(
+  const sites = useMemo(
     () => siteRows(comparison.data?.per_client_availability ?? {}),
     [comparison.data],
   );
@@ -54,9 +57,12 @@ export function CompareBoard() {
     return fromScenario?.target_availability ?? TARGET_AVAILABILITY_FALLBACK;
   }, [resolved, scenarios.data]);
 
+  const names: [string, string] = [resolved[0]?.name ?? 'A', resolved[1]?.name ?? 'B'];
+  const winner = comparison.data ? pickWinner(comparison.data.metrics) : null;
+
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-5xl space-y-6 lg:space-y-8">
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black p-3 sm:p-4 lg:p-6">
+      <div className="mx-auto max-w-6xl space-y-3">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 sm:gap-4">
           <VariantColumn
             slot="A"
@@ -80,9 +86,12 @@ export function CompareBoard() {
           />
         </div>
 
-        {variants.data?.length === 0 && (
+        {variants.data && !comparison.data && (
           <div className="border border-rule-strong">
-            <EmptyState title={t('compare.nothing')} hint={t('compare.nothingHint')} />
+            <EmptyState
+              title={variants.data.length === 0 ? t('compare.nothing') : t('compare.pickTwo')}
+              hint={variants.data.length === 0 ? t('compare.nothingHint') : undefined}
+            />
           </div>
         )}
 
@@ -90,45 +99,20 @@ export function CompareBoard() {
 
         {comparison.data && (
           <>
-            <MetricStrip
-              metrics={comparison.data.metrics}
-              clientCount={Object.keys(comparison.data.per_client_availability).length}
+            <VerdictNote
+              winner={winner}
+              names={names}
+              below={sitesBelowTarget(sites, winner ?? 1, target)}
+              recommendation={comparison.data.recommendation}
             />
 
-            {comparison.data.changed_parameters.length > 0 && (
-              <div className="border border-rule-strong">
-                <div className="border-b border-rule px-4 py-2.5 font-label text-[13px] text-zinc-300">
-                  {t('compare.changed')}
-                </div>
-                {comparison.data.changed_parameters.map((diff) => (
-                  <div
-                    key={diff.path}
-                    className="flex items-baseline gap-3 border-b border-rule px-4 py-2 last:border-b-0"
-                  >
-                    <span className="font-label text-[12px] text-zinc-400">{diff.label}</span>
-                    <span className="ml-auto font-data text-[11px] tabular-nums text-zinc-600">
-                      {String(diff.values[0] ?? '—')}
-                    </span>
-                    <span className="font-data text-[11px] text-zinc-700">→</span>
-                    <span className="font-data text-[12px] tabular-nums text-zinc-100">
-                      {String(diff.values[1] ?? '—')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <MetricStrip metrics={comparison.data.metrics} clientCount={sites.length} />
 
-            <SiteComparison
-              rows={siteComparison}
-              target={target}
-              names={[resolved[0]?.name ?? 'A', resolved[1]?.name ?? 'B']}
-            />
-
-            <div className="border border-rule-strong p-4 sm:p-5">
-              <h3 className="font-label text-[13px] text-zinc-300">{t('compare.recommendation')}</h3>
-              <p className="mt-2 font-label text-[12px] leading-relaxed text-zinc-400">
-                {comparison.data.recommendation}
-              </p>
+            {/* Evidence on the left, what was moved on the right: the page
+                stops being one tall column of half-empty panels. */}
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+              <SiteComparison rows={sites} target={target} names={names} />
+              <ChangedParameters diffs={comparison.data.changed_parameters} />
             </div>
           </>
         )}
