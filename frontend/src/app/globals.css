@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../";
 
 @theme {
   /* Instrument palette: greyscale plus a single annunciator hue. Surfaces are
