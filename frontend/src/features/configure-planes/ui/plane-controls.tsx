@@ -2,6 +2,7 @@
 
 import { useSession } from '@/entities/session';
 import { ScaleRow } from '@/shared/ui';
+import { useI18n } from '@/shared/i18n';
 import type { ScenarioDocument } from '@/shared/api';
 
 interface PlaneControlsProps {
@@ -11,6 +12,7 @@ interface PlaneControlsProps {
 
 export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
   const { state, dispatch } = useSession();
+  const { t } = useI18n();
 
   return (
     <>
@@ -26,7 +28,7 @@ export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
               <div className="flex items-center gap-2 border-b border-rule pb-1">
                 <span className="h-2.5 w-0.5" style={{ background: colors[plane.id] }} />
                 <span className="font-data text-[11px] text-zinc-200">{plane.id}</span>
-                <span className="ml-auto font-data text-[10px] tabular-nums text-zinc-500">{count} SV</span>
+                <span className="ml-auto font-data text-[10px] tabular-nums text-zinc-500">{t('config.satellitesInPlane', { count })}</span>
               </div>
 
               <div className="mt-1.5 space-y-1">
@@ -56,8 +58,8 @@ export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
         })}
       </div>
       <p className="mt-2.5 font-label text-[11px] leading-relaxed text-zinc-500">
-        RAAN 0–359°, phase 0–22.5° per plane.
-        <span className="mt-1 block">Click a value to type. Enter to apply · Esc to cancel.</span>
+        {t('config.planesHint')}
+        <span className="mt-1 block">{t('config.typeHint')}</span>
       </p>
     </>
   );

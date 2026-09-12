@@ -4,6 +4,7 @@ import { ChevronDown, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useDeleteVariant, useVariants } from '@/entities/variant';
 import { cn, formatPercent } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import type { Variant } from '@/shared/api';
 
 interface VariantSelectProps {
@@ -15,6 +16,7 @@ interface VariantSelectProps {
 }
 
 export function VariantSelect({ slot, value, exclude, lead, onSelect }: VariantSelectProps) {
+  const { t } = useI18n();
   const variants = useVariants();
   const deleteVariant = useDeleteVariant();
   const [open, setOpen] = useState(false);
@@ -41,7 +43,7 @@ export function VariantSelect({ slot, value, exclude, lead, onSelect }: VariantS
             value ? (lead ? 'text-zinc-100' : 'text-zinc-300') : 'text-zinc-600',
           )}
         >
-          {value?.name ?? 'Pick a saved variant'}
+          {value?.name ?? t('compare.pick')}
         </span>
         {value && (
           <span className="ml-auto font-data text-[11px] tabular-nums text-zinc-500">
@@ -81,7 +83,7 @@ export function VariantSelect({ slot, value, exclude, lead, onSelect }: VariantS
                 <button
                   type="button"
                   onClick={() => deleteVariant.mutate(variant.id)}
-                  aria-label={`Delete ${variant.name}`}
+                  aria-label={t('compare.delete', { name: variant.name })}
                   className="px-3 text-zinc-600 transition-colors hover:text-alarm"
                 >
                   <Trash2 size={13} />

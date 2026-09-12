@@ -19,8 +19,6 @@ export interface PlaneLock {
 export type SearchDepth = 'quick' | 'standard' | 'thorough';
 
 interface DepthPreset {
-  label: string;
-  hint: string;
   method: 'coordinate_descent' | 'grid';
   axisSteps: number;
   passes: number;
@@ -38,8 +36,6 @@ interface DepthPreset {
  */
 export const SEARCH_DEPTHS: Record<SearchDepth, DepthPreset> = {
   quick: {
-    label: 'Quick',
-    hint: 'One descent, 12 samples per angle',
     method: 'coordinate_descent',
     axisSteps: 12,
     passes: 2,
@@ -48,8 +44,6 @@ export const SEARCH_DEPTHS: Record<SearchDepth, DepthPreset> = {
     refineRounds: 1,
   },
   standard: {
-    label: 'Standard',
-    hint: 'Three independent starts against a local optimum',
     method: 'coordinate_descent',
     axisSteps: 12,
     passes: 3,
@@ -58,8 +52,6 @@ export const SEARCH_DEPTHS: Record<SearchDepth, DepthPreset> = {
     refineRounds: 2,
   },
   thorough: {
-    label: 'Exhaustive',
-    hint: 'Every combination on a coarse grid — slow, and rarely better',
     method: 'grid',
     axisSteps: 12,
     passes: 3,

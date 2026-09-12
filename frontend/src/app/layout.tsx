@@ -3,9 +3,9 @@ import { Providers } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'OrbitGuard — satellite resilience studio',
+  title: 'OrbitGuard — студия отказоустойчивости группировки',
   description:
-    'Design a satellite constellation, simulate a day of traffic and see where the route to the gateway breaks.',
+    'Соберите спутниковую группировку, прогоните сутки трафика и посмотрите, где рвётся маршрут до шлюза.',
 };
 
 export const viewport: Viewport = {
@@ -18,7 +18,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { cn, formatPercent } from '@/shared/lib';
 import { ErrorNote, IndeterminateBar } from '@/shared/ui';
+import { useI18n } from '@/shared/i18n';
 import type { RunInput } from '@/entities/simulation';
 import { SWEEPS, useSensitivitySweep, type SweepSpec } from '../model/use-sensitivity';
 
 export function SensitivityPanel({ runInput }: { runInput: RunInput }) {
+  const { t } = useI18n();
   const sweep = useSensitivitySweep(runInput);
   const [spec, setSpec] = useState<SweepSpec>(SWEEPS[0]);
 
@@ -15,7 +17,7 @@ export function SensitivityPanel({ runInput }: { runInput: RunInput }) {
 
   return (
     <div className="border-b border-rule px-3 py-3">
-      <div className="font-label text-[12px] text-zinc-300">Parameter sensitivity</div>
+      <div className="font-label text-[12px] text-zinc-300">{t('sensitivity.title')}</div>
 
       <div className="mt-2 flex border border-rule-strong">
         {SWEEPS.map((option) => (
@@ -31,11 +33,7 @@ export function SensitivityPanel({ runInput }: { runInput: RunInput }) {
                 : 'text-zinc-500 hover:text-zinc-200',
             )}
           >
-            {option.parameter === 'isl_range_km'
-              ? 'ISL'
-              : option.parameter === 'min_elevation_deg'
-                ? 'ELEV'
-                : 'ALT'}
+            {t(option.tokenKey)}
           </button>
         ))}
       </div>
@@ -46,7 +44,9 @@ export function SensitivityPanel({ runInput }: { runInput: RunInput }) {
         disabled={sweep.isPending}
         className="mt-2 w-full border border-rule-strong py-1.5 font-label text-[11px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none disabled:opacity-50"
       >
-        {sweep.isPending ? 'Sweeping…' : `Sweep ${spec.label.toLowerCase()}`}
+        {sweep.isPending
+          ? t('sensitivity.sweeping')
+          : t('sensitivity.sweep', { parameter: t(spec.labelKey) })}
       </button>
 
       {sweep.isPending && (
@@ -97,8 +97,15 @@ export function SensitivityPanel({ runInput }: { runInput: RunInput }) {
 
           <p className="mt-2 font-label text-[11px] leading-relaxed text-zinc-500">
             {threshold === null
-              ? `No swept value of ${spec.label.toLowerCase()} brings every site to the target. ${spec.rationale}`
-              : `Every site meets the target from ${threshold} ${spec.unit} upwards. ${spec.rationale}`}
+              ? t('sensitivity.none', {
+                  parameter: t(spec.labelKey),
+                  rationale: t(spec.rationaleKey),
+                })
+              : t('sensitivity.threshold', {
+                  value: threshold,
+                  unit: spec.unit,
+                  rationale: t(spec.rationaleKey),
+                })}
           </p>
         </>
       )}

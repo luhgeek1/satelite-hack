@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
 import { useSession } from '@/entities/session';
 import { isFiniteNumber, isRecord, readStored, writeStored } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import type { RouteTrace } from '@/entities/simulation';
@@ -54,6 +55,7 @@ export function Viewport({
   contactRadiusKm,
 }: ViewportProps) {
   const { state, dispatch } = useSession();
+  const { t } = useI18n();
   const [webglBroken, setWebglBroken] = useState(false);
 
   // Switching to the flat map unmounts the globe, and so does a reload. The
@@ -137,7 +139,7 @@ export function Viewport({
 
         {webglBroken && (
           <div className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 border border-rule-strong bg-black/85 px-3 py-1.5 font-label text-[11px] text-zinc-400 backdrop-blur">
-            This browser has no WebGL, so the flat map is shown instead of the globe.
+            {t('view.noWebgl')}
           </div>
         )}
       </motion.div>

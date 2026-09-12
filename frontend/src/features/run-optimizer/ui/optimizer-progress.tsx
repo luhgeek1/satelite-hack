@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { formatWait } from '@/shared/lib';
 import { IndeterminateBar } from '@/shared/ui';
+import { useI18n } from '@/shared/i18n';
 import type { JobStatus } from '@/shared/api';
 
 /**
@@ -19,17 +20,18 @@ export function OptimizerProgress({
   status: JobStatus | undefined;
   remainingS: number | null;
 }) {
+  const { t } = useI18n();
   const queued = !status || status.status === 'queued' || !status.total;
   const percent = Math.round((status?.progress ?? 0) * 100);
 
   return (
     <div className="flex w-[19rem] max-w-[calc(100vw-1.5rem)] flex-col border border-rule-strong bg-black/90 backdrop-blur">
       <div className="flex items-baseline justify-between gap-3 border-b border-rule px-3 py-2">
-        <span className="font-label text-[12px] text-zinc-300">Optimizer</span>
+        <span className="font-label text-[12px] text-zinc-300">{t('optimizer.title')}</span>
         <span className="flex items-baseline gap-2">
           {remainingS !== null && (
             <span className="font-data text-[10px] tabular-nums text-zinc-500">
-              ~{formatWait(remainingS)} left
+              {t('optimizer.remaining', { wait: formatWait(remainingS) })}
             </span>
           )}
           <span className="font-data text-[11px] tabular-nums text-zinc-100">
@@ -49,7 +51,7 @@ export function OptimizerProgress({
               exit={{ opacity: 0, y: -3 }}
               transition={{ duration: 0.14, ease: 'easeOut' }}
             >
-              {queued ? 'Queued' : 'Searching configurations'}
+              {queued ? t('optimizer.queued') : t('optimizer.searching')}
             </motion.span>
           </AnimatePresence>
           <span className="flex-shrink-0 font-data text-[10px] tabular-nums text-zinc-500">
@@ -82,8 +84,8 @@ export function OptimizerProgress({
               transition={{ duration: 0.12 }}
             >
               {status?.total
-                ? `Evaluated ${status.explored} of ${status.total} configurations`
-                : 'Submitting the search'}
+                ? t('optimizer.evaluated', { done: status.explored, total: status.total })
+                : t('optimizer.submitting')}
             </motion.span>
           </AnimatePresence>
         </div>

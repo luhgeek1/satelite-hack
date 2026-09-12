@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { ChevronDown, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { RouteChain, type RouteTrace } from '@/entities/simulation';
-import { cn, formatDuration, formatPercent, NO_ROUTE_COPY } from '@/shared/lib';
+import { cn, formatPercent } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import type { ClientMetrics } from '@/shared/api';
 
 interface NetworkHealthProps {
@@ -28,6 +29,7 @@ export function NetworkHealth({
   optimizing,
   onOptimize,
 }: NetworkHealthProps) {
+  const { t, formatDuration } = useI18n();
   const [expanded, setExpanded] = useState(true);
 
   const longestOutage = clients.reduce((longest, client) => Math.max(longest, client.max_outage_s), 0);
@@ -41,10 +43,10 @@ export function NetworkHealth({
         onClick={() => setExpanded((value) => !value)}
         className="pointer-events-auto flex w-full items-center gap-2 text-left transition-colors hover:text-zinc-100 focus-visible:text-zinc-100 focus-visible:outline-none"
         aria-expanded={expanded}
-        title={expanded ? 'Collapse network health' : 'Expand network health'}
+        title={expanded ? t('health.collapse') : t('health.expand')}
       >
         <span className={cn('h-2 w-2 shrink-0', degraded ? 'bg-alarm' : 'bg-zinc-500')} />
-        <span className="font-label text-[13px] text-zinc-300">Network health</span>
+        <span className="font-label text-[13px] text-zinc-300">{t('health.title')}</span>
         {stale && <span className="font-data text-[9px] tracking-[0.08em] text-zinc-600">SYNC</span>}
         <ChevronDown
           size={14}
@@ -100,8 +102,15 @@ export function NetworkHealth({
                       >
                         {trace
                           ? trace.available
-                            ? `${trace.hops} hops → ${trace.gatewayId ?? 'gateway'}`
-                            : `no route · ${trace.reason ? NO_ROUTE_COPY[trace.reason] : 'unreachable'}`
+                            ? t('health.hops', {
+                                count: trace.hops ?? 0,
+                                gateway: trace.gatewayId ?? t('health.gateway'),
+                              })
+                            : t('health.noRoute', {
+                                reason: trace.reason
+                                  ? t(`route.${trace.reason}` as 'route.none')
+                                  : t('health.unreachable'),
+                              })
                           : '—'}
                       </span>
                     </button>
@@ -114,23 +123,23 @@ export function NetworkHealth({
             </div>
 
             <div className="mt-2 flex items-baseline justify-between gap-2 pl-2 font-data text-[12px] tabular-nums text-zinc-500 sm:text-[13px]">
-              <span className="font-label text-[13px]">Target</span>
+              <span className="font-label text-[13px]">{t('health.target')}</span>
               <span>&ge; {formatPercent(target, 0)}</span>
             </div>
 
             <div className="my-3 border-t border-rule" />
 
             <div className="flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
-              <span className="font-label text-[13px] text-zinc-400">Max outage</span>
+              <span className="font-label text-[13px] text-zinc-400">{t('health.maxOutage')}</span>
               <span className="text-zinc-100">{formatDuration(longestOutage)}</span>
             </div>
 
             <div className="mt-2 flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
-              <span className="font-label text-[13px] text-zinc-400">Offline now</span>
+              <span className="font-label text-[13px] text-zinc-400">{t('health.offline')}</span>
               <span className={stranded.length ? 'text-alarm' : 'text-zinc-100'}>
                 {stranded.length
                   ? stranded.map((trace) => trace.clientId).join(' ')
-                  : 'none'}
+                  : t('health.none')}
               </span>
             </div>
           </motion.div>
@@ -152,7 +161,7 @@ export function NetworkHealth({
           )}
         >
           <Zap size={14} />
-          {optimizing ? 'Optimizing' : 'Optimize deployment'}
+          {optimizing ? t('health.optimizing') : t('health.optimize')}
         </button>
       </div>
     </div>

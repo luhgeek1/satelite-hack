@@ -14,6 +14,7 @@ import { useSession } from '@/entities/session';
 import { neighboursOf, type LinkView, type SatelliteView } from '@/entities/satellite';
 import { RouteChain, tracesThrough, type RouteTrace } from '@/entities/simulation';
 import { cn, criticalityLevel, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import { Button } from '@/shared/ui';
 
 interface SatelliteDetailsProps {
@@ -41,6 +42,7 @@ export function SatelliteDetails({
   placement = 'overlay',
 }: SatelliteDetailsProps) {
   const { dispatch } = useSession();
+  const { t } = useI18n();
   const reduce = useReducedMotion();
 
   // The score counts up to its reading rather than appearing at it, which is
@@ -76,15 +78,17 @@ export function SatelliteDetails({
   const accent = satellite.failed ? '#e4483a' : satellite.color;
 
   const telemetry = [
-    { label: 'Plane', value: satellite.planeId },
-    { label: 'Launch batch', value: `${satellite.launchBatch}` },
-    { label: 'Altitude', value: `${satellite.altitudeKm.toFixed(0)} km` },
-    { label: 'Latitude', value: formatLatitude(satellite.lat) },
-    { label: 'Longitude', value: formatLongitude(satellite.lon) },
-    { label: 'Inter-satellite links', value: `${neighbours.length}` },
+    { label: t('sat.plane'), value: satellite.planeId },
+    { label: t('sat.batch'), value: `${satellite.launchBatch}` },
+    { label: t('sat.altitude'), value: t('sat.km', { value: satellite.altitudeKm.toFixed(0) }) },
+    { label: t('sat.latitude'), value: formatLatitude(satellite.lat) },
+    { label: t('sat.longitude'), value: formatLongitude(satellite.lon) },
+    { label: t('sat.links'), value: `${neighbours.length}` },
     {
-      label: 'Traffic',
-      value: carried.length ? `${carried.length} of ${routes.length}` : 'Idle',
+      label: t('sat.traffic'),
+      value: carried.length
+        ? t('sat.trafficCount', { carried: carried.length, total: routes.length })
+        : t('sat.trafficIdle'),
     },
   ];
 
@@ -125,7 +129,11 @@ export function SatelliteDetails({
             >
               <div className="font-data text-xl leading-none text-zinc-50">{satellite.id}</div>
               <div className={cn('mt-1.5 font-label text-[11px]', satellite.failed ? 'text-alarm' : 'text-zinc-400')}>
-                {satellite.failed ? 'Failed' : satellite.deployed ? 'Active' : 'Not deployed'}
+                {satellite.failed
+                  ? t('sat.failed')
+                  : satellite.deployed
+                    ? t('sat.active')
+                    : t('sat.notDeployed')}
               </div>
             </motion.div>
           </AnimatePresence>
@@ -134,7 +142,7 @@ export function SatelliteDetails({
           type="button"
           onClick={() => dispatch({ type: 'selectSatellite', satelliteId: null })}
           className="flex h-7 w-7 flex-shrink-0 items-center justify-center text-zinc-500 transition-colors hover:text-zinc-200"
-          aria-label="Close satellite details"
+          aria-label={t('sat.close')}
         >
           <X size={16} />
         </button>
@@ -157,9 +165,9 @@ export function SatelliteDetails({
                 <span className="font-data text-sm text-zinc-600">/100</span>
               </div>
               <div className="text-right leading-tight">
-                <div className="font-label text-[11px] text-zinc-500">Criticality</div>
+                <div className="font-label text-[11px] text-zinc-500">{t('sat.criticality')}</div>
                 <div className="font-label text-[11px]" style={{ color: level.color }}>
-                  {level.label}
+                  {t(`criticality.${level.tier}` as 'criticality.low')}
                 </div>
               </div>
             </div>
@@ -186,13 +194,13 @@ export function SatelliteDetails({
 
             <p className="mt-3 font-label text-xs leading-relaxed text-zinc-400">
               {satellite.failed
-                ? 'This node is down. Links through it are cut until you restore it.'
-                : `Losing this node costs ${formatPercent(satellite.availabilityImpact)} of the worst-served client's availability.`}
+                ? t('sat.downCopy')
+                : t('sat.costCopy', { amount: formatPercent(satellite.availabilityImpact) })}
             </p>
           </>
         ) : (
           <p className="font-label text-xs leading-relaxed text-zinc-500">
-            Open the Resilience tab to score how much this node carries.
+            {t('sat.scoreHint')}
           </p>
         )}
       </motion.div>
@@ -208,7 +216,7 @@ export function SatelliteDetails({
 
       {carried.length > 0 && (
         <motion.div className="mt-4" variants={section}>
-          <div className="font-label text-xs text-zinc-500">Carrying right now</div>
+          <div className="font-label text-xs text-zinc-500">{t('sat.carrying')}</div>
           <div className="mt-2 space-y-2.5">
             {carried.map((trace) => (
               <div key={trace.clientId}>
@@ -219,7 +227,7 @@ export function SatelliteDetails({
                 >
                   <span className="h-1.5 w-1.5 shrink-0" style={{ background: trace.color }} />
                   {trace.clientId}
-                  <span className="text-zinc-600">{trace.hops} hops</span>
+                  <span className="text-zinc-600">{t('sat.hops', { count: trace.hops ?? 0 })}</span>
                 </button>
                 <RouteChain trace={trace} emphasize={satellite.id} className="mt-1 pl-3" />
               </div>
@@ -230,7 +238,7 @@ export function SatelliteDetails({
 
       {neighbours.length > 0 && (
         <motion.div className="mt-4" variants={section}>
-          <div className="font-label text-xs text-zinc-500">Connects to</div>
+          <div className="font-label text-xs text-zinc-500">{t('sat.connects')}</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {neighbours.map((id) => (
               <motion.button
@@ -252,7 +260,7 @@ export function SatelliteDetails({
         <motion.div whileTap={reduce || pending ? undefined : { scale: 0.99 }}>
           {satellite.failed ? (
             <Button variant="outline" className="w-full" onClick={() => onRestore(satellite.id)}>
-              Restore node
+              {t('sat.restore')}
             </Button>
           ) : (
             <Button
@@ -269,7 +277,7 @@ export function SatelliteDetails({
                   exit={{ opacity: 0, y: -3 }}
                   transition={{ duration: reduce ? 0 : 0.14, ease: EASE }}
                 >
-                  {pending ? 'Recomputing…' : 'Simulate failure'}
+                  {pending ? t('sat.recomputing') : t('sat.simulate')}
                 </motion.span>
               </AnimatePresence>
             </Button>

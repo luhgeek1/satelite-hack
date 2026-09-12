@@ -11,6 +11,7 @@ import { useSession } from '@/entities/session';
 import type { SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import { cn, formatClock, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import { Button, ParamGroup } from '@/shared/ui';
 import type { ClientMetrics, ScenarioDocument } from '@/shared/api';
 import type { FailureRequest } from '@/features/inject-failure';
@@ -49,6 +50,7 @@ export function ConfigPanel({
   scenarioHref,
 }: ConfigPanelProps) {
   const { state, dispatch } = useSession();
+  const { t } = useI18n();
   const [open, setOpen] = useState<Record<GroupId, boolean>>({
     deployment: true,
     planes: true,
@@ -78,8 +80,8 @@ export function ConfigPanel({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <ParamGroup
           code="DPL"
-          title="Deployment"
-          value={`${deployed.length} SV`}
+          title={t('config.deployment')}
+          value={`${deployed.length} ${t('config.sv')}`}
           open={open.deployment}
           onToggle={() => toggle('deployment')}
         >
@@ -88,7 +90,7 @@ export function ConfigPanel({
 
         <ParamGroup
           code="ORB"
-          title="Orbital planes"
+          title={t('config.planes')}
           value={planeSummary}
           open={open.planes}
           onToggle={() => toggle('planes')}
@@ -98,11 +100,16 @@ export function ConfigPanel({
 
         <ParamGroup
           code="OUT"
-          title="Outages"
+          title={t('config.outages')}
           alarm={clientMetrics.some((client) => !client.meets_target)}
           value={
             clientMetrics.length
-              ? `${clientMetrics.reduce((total, client) => total + client.outage_windows.length, 0)} gaps`
+              ? t('config.gaps', {
+                  count: clientMetrics.reduce(
+                    (total, client) => total + client.outage_windows.length,
+                    0,
+                  ),
+                })
               : '—'
           }
           open={open.outages}
@@ -118,9 +125,9 @@ export function ConfigPanel({
 
         <ParamGroup
           code="FLT"
-          title="Failures"
+          title={t('config.failures')}
           alarm={failures.length > 0}
-          value={failures.length ? `${failures.length} DOWN` : 'NONE'}
+          value={failures.length ? t('config.down', { count: failures.length }) : t('config.none')}
           open={open.failures}
           onToggle={() => toggle('failures')}
         >
@@ -132,12 +139,12 @@ export function ConfigPanel({
                   key={failure.satellite_id}
                   className="flex items-center gap-2.5 border-l-2 border-alarm bg-white/[0.03] py-1.5 pl-2.5 pr-2"
                 >
-                  <span className="font-data text-[10px] text-alarm">FAIL</span>
+                  <span className="font-data text-[10px] text-alarm">{t('config.stateFailed')}</span>
                   <span className="font-data text-[11px] text-zinc-200">{failure.satellite_id}</span>
                   <span className="font-data text-[10px] text-zinc-500">{satellite?.planeId}</span>
                   <span className="font-data text-[10px] tabular-nums text-zinc-600">
                     {failure.start_s === 0 && failure.end_s >= horizonS
-                      ? 'all day'
+                      ? t('config.allDay')
                       : `${formatClock(failure.start_s)}–${formatClock(failure.end_s)}`}
                   </span>
                   <button
@@ -145,7 +152,7 @@ export function ConfigPanel({
                     onClick={() => onRestore(failure.satellite_id)}
                     className="ml-auto font-label text-[11px] text-zinc-400 underline-offset-2 transition-colors hover:text-zinc-100 hover:underline focus-visible:outline-none"
                   >
-                    Restore
+                    {t('config.restore')}
                   </button>
                 </div>
               );
@@ -153,7 +160,7 @@ export function ConfigPanel({
 
             {failures.length === 0 && !picking && (
               <p className="font-label text-[11px] leading-relaxed text-zinc-500">
-                All {deployed.length} nodes nominal. Inject a failure to see how routing copes.
+                {t('config.allNominal', { count: deployed.length })}
               </p>
             )}
 
@@ -175,7 +182,7 @@ export function ConfigPanel({
                 onClick={() => setPicking(true)}
                 className="mt-2 flex w-full items-center justify-center gap-1.5 border border-rule-strong py-1.5 font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none"
               >
-                <Plus size={12} /> Inject failure
+                <Plus size={12} /> {t('config.inject')}
               </button>
             )}
           </div>
@@ -183,21 +190,32 @@ export function ConfigPanel({
 
         <ParamGroup
           code="SV"
-          title="Satellites"
+          title={t('config.satellites')}
           value={`${deployed.length}/${satellites.length}`}
           open={open.satellites}
           onToggle={() => toggle('satellites')}
         >
           <div className="flex items-center gap-2 border-b border-rule pb-1 pl-[10px] pr-0.5 font-data text-[9px] tracking-[0.08em] text-zinc-500">
-            <span>NODE</span>
-            <span className="ml-auto">PLANE</span>
-            <span className="w-9 text-right">STATE</span>
+            <span>{t('config.colNode')}</span>
+            <span className="ml-auto">{t('config.colPlane')}</span>
+            <span className="w-9 text-right">{t('config.colState')}</span>
           </div>
 
           <div className="max-h-[clamp(9rem,24vh,17rem)] overflow-y-auto overscroll-contain">
             {satellites.map((satellite) => {
               const selected = state.selectedSatelliteId === satellite.id;
-              const label = !satellite.deployed ? 'STBY' : satellite.failed ? 'FAIL' : 'NOM';
+              const nodeState = !satellite.deployed
+                ? 'standby'
+                : satellite.failed
+                  ? 'failed'
+                  : 'nominal';
+              const label = t(
+                nodeState === 'standby'
+                  ? 'config.stateStandby'
+                  : nodeState === 'failed'
+                    ? 'config.stateFailed'
+                    : 'config.stateNominal',
+              );
 
               return (
                 <button
@@ -217,7 +235,7 @@ export function ConfigPanel({
                 >
                   <span>{satellite.id}</span>
                   <span className="ml-auto text-zinc-500">{satellite.planeId}</span>
-                  <span className={cn('w-9 text-right text-[10px]', label === 'FAIL' ? 'text-alarm' : 'text-zinc-500')}>
+                  <span className={cn('w-9 text-right text-[10px]', nodeState === 'failed' ? 'text-alarm' : 'text-zinc-500')}>
                     {label}
                   </span>
                 </button>
@@ -228,7 +246,7 @@ export function ConfigPanel({
 
         <ParamGroup
           code="GND"
-          title="Ground sites"
+          title={t('config.sites')}
           value={`${sites.length}`}
           open={open.sites}
           onToggle={() => toggle('sites')}
@@ -250,7 +268,7 @@ export function ConfigPanel({
                     <Icon size={14} className="shrink-0 text-zinc-400" aria-hidden="true" />
                     <span className="break-all font-data text-[12px] text-zinc-200">{site.id}</span>
                     <span className="ml-auto shrink-0 font-label text-[10px] text-zinc-500">
-                      {isTerminal ? 'Terminal' : 'Gateway'}
+                      {isTerminal ? t('config.terminal') : t('config.gatewayRole')}
                     </span>
                   </span>
                   <span className="mt-1.5 block break-words font-label text-[11px] leading-relaxed text-zinc-400">
@@ -261,7 +279,7 @@ export function ConfigPanel({
                   </span>
                   {isTerminal && (
                     <span className="mt-2 flex items-baseline justify-between gap-2 border-t border-rule pt-2">
-                      <span className="font-label text-[10px] text-zinc-500">Daily connectivity</span>
+                      <span className="font-label text-[10px] text-zinc-500">{t('config.connectivity')}</span>
                       <span className={cn('font-data text-[11px] tabular-nums', metrics && !metrics.meets_target ? 'text-alarm' : 'text-zinc-300')}>
                         {metrics ? formatPercent(metrics.availability) : '—'}
                       </span>
@@ -275,7 +293,7 @@ export function ConfigPanel({
                   key={site.id}
                   type="button"
                   aria-pressed={selected}
-                  title={`Show route for ${site.id}`}
+                  title={t('config.showRoute', { site: site.id })}
                   onClick={() => dispatch({ type: 'selectClient', clientId: site.id })}
                   className={className}
                 >
@@ -286,7 +304,7 @@ export function ConfigPanel({
               );
             })}
             {sites.length === 0 && (
-              <p className="font-label text-[11px] text-zinc-500">No ground sites in this scenario.</p>
+              <p className="font-label text-[11px] text-zinc-500">{t('config.noSites')}</p>
             )}
           </div>
         </ParamGroup>
@@ -303,7 +321,7 @@ export function ConfigPanel({
             onClick={() => dispatch({ type: 'resetConfig' })}
           >
             <RotateCcw size={12} />
-            Reset
+            {t('config.reset')}
           </Button>
           <a
             href={exportHref ?? '#'}
@@ -313,7 +331,7 @@ export function ConfigPanel({
               !exportHref && 'pointer-events-none opacity-45',
             )}
           >
-            Export result
+            {t('config.export')}
           </a>
         </div>
 
@@ -325,7 +343,7 @@ export function ConfigPanel({
             !scenarioHref && 'pointer-events-none opacity-45',
           )}
         >
-          Download effective scenario
+          {t('config.download')}
         </a>
       </div>
     </div>

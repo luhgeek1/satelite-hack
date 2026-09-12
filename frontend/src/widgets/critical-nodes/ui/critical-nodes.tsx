@@ -13,6 +13,7 @@ import {
 import { useSession } from '@/entities/session';
 import type { RunInput } from '@/entities/simulation';
 import { cn, criticalityLevel, formatPercent, formatWait } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import { EmptyState, ErrorNote, IndeterminateBar } from '@/shared/ui';
 import type { GatewayDependency, ResilienceResponse } from '@/shared/api';
 
@@ -43,6 +44,7 @@ export function CriticalNodes({
   onLocksChange,
 }: CriticalNodesProps) {
   const { state, dispatch } = useSession();
+  const { t } = useI18n();
 
   const ranked = (resilience?.impacts ?? []).slice(0, 8);
 
@@ -57,9 +59,9 @@ export function CriticalNodes({
 
         {loading && !resilience && (
           <div className="p-4">
-            <div className="font-label text-[12px] text-zinc-400">Scoring every satellite</div>
+            <div className="font-label text-[12px] text-zinc-400">{t('critical.scoring')}</div>
             <div className="mt-1 font-data text-[11px] text-zinc-600">
-              One full simulation per node
+              {t('critical.scoringHint')}
             </div>
             <div className="mt-3">
               <IndeterminateBar />
@@ -68,7 +70,7 @@ export function CriticalNodes({
         )}
 
         {!loading && !error && ranked.length === 0 && (
-          <EmptyState title="No impact to rank" hint="Every satellite in this configuration can fail without moving the worst-served client." />
+          <EmptyState title={t('critical.empty')} hint={t('critical.emptyHint')} />
         )}
 
         {ranked.map((impact, index) => {
@@ -110,7 +112,9 @@ export function CriticalNodes({
                       impact.breaks_target ? 'text-alarm' : 'text-zinc-500',
                     )}
                   >
-                    {impact.breaks_target ? 'BREAKS SLA' : level.token}
+                    {impact.breaks_target
+                      ? t('critical.breaksSla')
+                      : t(`criticality.token.${level.tier}` as 'criticality.token.low')}
                   </span>
                   <span className="w-6 text-right font-data text-[11px] tabular-nums text-zinc-200">
                     {Math.round(impact.criticality)}
@@ -118,7 +122,7 @@ export function CriticalNodes({
                 </span>
 
                 <span className="mt-1.5 flex items-baseline justify-between gap-2">
-                  <span className="font-label text-[11px] text-zinc-500">Availability impact</span>
+                  <span className="font-label text-[11px] text-zinc-500">{t('critical.impact')}</span>
                   <span className="font-data text-[11px] tabular-nums text-zinc-200">
                     −{formatPercent(impact.worst_availability_drop, 2)}
                   </span>
@@ -180,7 +184,7 @@ export function CriticalNodes({
                 depth === key ? 'bg-zinc-100 text-black' : 'text-zinc-500 hover:text-zinc-200',
               )}
             >
-              {SEARCH_DEPTHS[key].label}
+              {t(`critical.depth.${key}` as never)}
               <span className="font-data text-[9px] tabular-nums opacity-70">
                 {gridSize(locks, key).toLocaleString('en-US')}
               </span>
@@ -194,16 +198,17 @@ export function CriticalNodes({
           disabled={optimizer.running || optimizer.start.isPending || gridSize(locks, depth) === 0}
           className="group flex h-10 w-full items-center justify-between border border-zinc-600 px-3 font-label text-[13px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none disabled:opacity-50"
         >
-          <span>Optimize configuration</span>
+          <span>{t('critical.optimize')}</span>
           <span className="font-data text-[10px] tabular-nums text-zinc-500 transition-colors group-hover:text-black/55">
-            {gridSize(locks, depth).toLocaleString('en-US')} runs ·{' '}
-            {formatWait(estimateSeconds(gridSize(locks, depth)))}
+            {t('critical.searchCost', {
+              runs: gridSize(locks, depth).toLocaleString('en-US'),
+              wait: formatWait(estimateSeconds(gridSize(locks, depth))),
+            })}
           </span>
         </button>
 
         <p className="font-label text-[10px] leading-relaxed text-zinc-600">
-          {SEARCH_DEPTHS[depth].hint}. Every configuration tried is a full 24-hour
-          simulation; lock an angle to take it out of the search.
+          {t(`critical.depthHint.${depth}` as never)} {t('critical.searchNote')}
         </p>
 
         {optimizer.start.isError && <ErrorNote error={optimizer.start.error} />}
@@ -214,13 +219,21 @@ export function CriticalNodes({
 }
 
 function GatewayExposure({ dependency }: { dependency: GatewayDependency }) {
+  const { t } = useI18n();
+
   return (
     <div className="border-b border-rule px-3 py-3">
-      <div className="font-label text-[12px] text-zinc-300">Gateway exposure</div>
+      <div className="font-label text-[12px] text-zinc-300">{t('gateway.title')}</div>
       <div className="mt-2 space-y-1.5 font-data text-[11px] tabular-nums">
-        <Row label={dependency.gateway_id} value={`${dependency.serving_satellites.length} feeders`} />
-        <Row label="Busiest feeder" value={`${dependency.busiest_satellite ?? '—'} · ${formatPercent(dependency.busiest_share)}`} />
-        <Row label="Carrying traffic" value={formatPercent(dependency.contact_availability)} />
+        <Row
+          label={dependency.gateway_id}
+          value={t('gateway.feeders', { count: dependency.serving_satellites.length })}
+        />
+        <Row
+          label={t('gateway.busiest')}
+          value={`${dependency.busiest_satellite ?? '—'} · ${formatPercent(dependency.busiest_share)}`}
+        />
+        <Row label={t('gateway.carrying')} value={formatPercent(dependency.contact_availability)} />
       </div>
     </div>
   );

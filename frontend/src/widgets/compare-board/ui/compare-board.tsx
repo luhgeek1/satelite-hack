@@ -13,13 +13,15 @@ import {
 } from 'recharts';
 import { VariantSelect } from '@/features/manage-variants';
 import { useComparison, useVariants } from '@/entities/variant';
-import { cn, formatDuration, formatPercent, formatPoints } from '@/shared/lib';
+import { cn, formatPercent, formatPoints } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 import { EmptyState, ErrorNote } from '@/shared/ui';
 import type { ComparedMetric } from '@/shared/api';
 
 const SERIES_INK = ['#6b6b72', '#d9d9de'];
 
 export function CompareBoard() {
+  const { t } = useI18n();
   const variants = useVariants();
   const [slots, setSlots] = useState<[string | null, string | null]>([null, null]);
 
@@ -53,7 +55,7 @@ export function CompareBoard() {
             onSelect={(id) => setSlots(([, b]) => [id, b])}
           />
           <div className="flex flex-shrink-0 items-center font-data text-[10px] tracking-[0.08em] text-zinc-600">
-            VS
+            {t('compare.vs')}
           </div>
           <VariantSelect
             slot="B"
@@ -66,10 +68,7 @@ export function CompareBoard() {
 
         {variants.data?.length === 0 && (
           <div className="border border-rule-strong">
-            <EmptyState
-              title="Nothing saved to compare yet"
-              hint="Configure the network on the Simulation tab and save it as a variant, then save a second one."
-            />
+            <EmptyState title={t('compare.nothing')} hint={t('compare.nothingHint')} />
           </div>
         )}
 
@@ -86,7 +85,7 @@ export function CompareBoard() {
             {comparison.data.changed_parameters.length > 0 && (
               <div className="border border-rule-strong">
                 <div className="border-b border-rule px-4 py-2.5 font-label text-[13px] text-zinc-300">
-                  Changed parameters
+                  {t('compare.changed')}
                 </div>
                 {comparison.data.changed_parameters.map((diff) => (
                   <div
@@ -108,7 +107,7 @@ export function CompareBoard() {
 
             <div className="border border-rule-strong p-4 sm:p-5">
               <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
-                <h3 className="font-label text-[13px] text-zinc-300">Availability by ground site</h3>
+                <h3 className="font-label text-[13px] text-zinc-300">{t('compare.availability')}</h3>
                 <div className="flex items-center gap-4">
                   {[
                     { label: resolved[0]?.name ?? 'A', ink: SERIES_INK[0], dash: '4 3' },
@@ -178,7 +177,7 @@ export function CompareBoard() {
             </div>
 
             <div className="border border-rule-strong p-4 sm:p-5">
-              <h3 className="font-label text-[13px] text-zinc-300">Recommendation</h3>
+              <h3 className="font-label text-[13px] text-zinc-300">{t('compare.recommendation')}</h3>
               <p className="mt-2 font-label text-[12px] leading-relaxed text-zinc-400">
                 {comparison.data.recommendation}
               </p>
@@ -191,6 +190,7 @@ export function CompareBoard() {
 }
 
 function MetricTile({ metric }: { metric: ComparedMetric }) {
+  const { t, formatDuration } = useI18n();
   const [before, after] = metric.values;
   const format = (value: number | null) => {
     if (value === null) return '—';
@@ -224,7 +224,7 @@ function MetricTile({ metric }: { metric: ComparedMetric }) {
       </div>
       <div className="flex items-baseline justify-between gap-2 border-t border-rule px-3 py-2">
         <span className="font-data text-[11px] tabular-nums text-zinc-500">
-          <span className="text-zinc-600">was</span> {format(before)}
+          <span className="text-zinc-600">{t('compare.was')}</span> {format(before)}
         </span>
         <span
           className={cn(

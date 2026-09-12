@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { cn, formatDegrees } from '@/shared/lib';
+import { useI18n } from '@/shared/i18n';
 
 interface ScaleRowProps {
   id: string;
@@ -29,6 +30,7 @@ export function ScaleRow({
   onChange,
   onCommit,
 }: ScaleRowProps) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState<string | null>(null);
   const cancelEdit = useRef(false);
 
@@ -94,7 +96,7 @@ export function ScaleRow({
           'relative flex h-6 w-[4.75rem] flex-shrink-0 items-center border border-rule-strong bg-white/[0.03] text-zinc-500 transition-colors',
           !disabled && 'cursor-text hover:border-zinc-500 hover:bg-white/[0.06] focus-within:border-zinc-300 focus-within:bg-white/[0.08] focus-within:text-zinc-200',
         )}
-        title={`Edit ${label}: 0–${max}°, step ${step}°. Enter to apply, Esc to cancel.`}
+        title={t('config.editScale', { label, max, step })}
       >
         <Pencil size={10} className="pointer-events-none absolute left-1.5" aria-hidden="true" />
         <input
