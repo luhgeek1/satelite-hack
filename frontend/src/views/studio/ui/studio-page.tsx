@@ -27,7 +27,9 @@ import type { OutageNode, OutageTarget, OutageWindow } from '@/features/schedule
 import { impactIndex, useResilience } from '@/features/analyze-resilience';
 import { snapToGrid, usePlayback } from '@/features/timeline-playback';
 import {
+  firstFreeStage,
   launchStages,
+  locksForStage,
   planeColorMap,
   planeCommitStage,
   readGeometry,
@@ -41,6 +43,7 @@ import {
   isSettling,
   normalizeConfig,
   outageBands,
+  sameConfig,
   useAvailabilitySeries,
   useDebouncedRunInput,
   useSimulation,
@@ -201,12 +204,12 @@ export function StudioPage() {
   // fixed corner so the answer survives a tab change.
   const optimizer = useOptimizer(runInput, scenario);
   const [locks, setLocks] = useState<PlaneLock[]>([]);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planScoredAt, setPlanScoredAt] = useState<number | null>(null);
   const [depth, setDepth] = useState<SearchDepth>('quick');
   // A search takes tens of seconds, so its answer stays on screen after it is
   // applied rather than vanishing with nothing to show it ever ran.
   const [optimizerApplied, setOptimizerApplied] = useState(false);
-  const [planOpen, setPlanOpen] = useState(false);
-  const [planScoredAt, setPlanScoredAt] = useState<number | null>(null);
   const variants = useVariants();
   const saveVariant = useSaveVariant();
 
@@ -229,17 +232,16 @@ export function StudioPage() {
       if (!scenario) return;
       const stages = launchStages(scenario);
       const lastStage = stages[stages.length - 1]?.stage ?? 3;
+      const staged = locksForStage(scenario, stage);
 
       setOptimizerApplied(false);
       setPlanOpen(false);
       setPlanScoredAt(lastStage);
+      setLocks(staged);
       optimizer.start.mutate({
         depth,
-        locks: scenario.design.planes.map((plane) => {
-          const flown = planeCommitStage(scenario, plane.id) < stage;
-          return { planeId: plane.id, raanLocked: flown, phaseLocked: flown };
-        }),
-        config: { ...state.config, launch_stage: lastStage },
+        locks: staged,
+        config: { ...state.config, launch_stage: lastStage as 1 | 2 | 3 },
       });
     },
     [scenario, depth, optimizer.start, state.config],
@@ -247,16 +249,24 @@ export function StudioPage() {
 
   const dismissOptimizer = useCallback(() => {
     setOptimizerApplied(false);
+    setPlanScoredAt(null);
     optimizer.dismiss();
   }, [optimizer]);
 
+  /** The configuration the search was measured against, and the same one plus
+   *  what it found. Both are built from the snapshot taken when the search
+   *  started, so the pair reproduces the figures on the result card even if the
+   *  angles have already been applied to the configuration on screen. */
+  const searchedConfig = useCallback(
+    () => normalizeConfig(optimizer.searched?.config ?? state.config),
+    [optimizer.searched, state.config],
+  );
+
   const optimizedConfig = useCallback(() => {
+    const base = searchedConfig();
     const found = optimizer.result ? toPlaneOverrides(optimizer.result.changed_planes) : {};
-    return normalizeConfig({
-      ...state.config,
-      planes: { ...state.config.planes, ...found },
-    });
-  }, [optimizer.result, state.config]);
+    return normalizeConfig({ ...base, planes: { ...base.planes, ...found } });
+  }, [optimizer.result, searchedConfig]);
 
   const applyOptimizerResult = useCallback(() => {
     if (!optimizer.result) return;
@@ -265,30 +275,43 @@ export function StudioPage() {
   }, [optimizer.result, dispatch]);
 
   /**
-   * Save what the search found and open it next to the untouched file.
+   * Save what the search found and open it next to what it was measured against.
    *
    * A comparison needs two named variants, and the one nobody thinks to save is
    * the baseline — so it is created here if it is missing rather than left as a
    * step the engineer has to know about.
+   *
+   * That baseline is the configuration the search started from, not the file as
+   * it was loaded. A terminal moved into a forest, a failed satellite or a
+   * different launch stage belongs on *both* sides: charging those to the
+   * optimizer made a search that gained a point and a half read as a thirteen
+   * point loss. The pair differs by the angles and nothing else.
    */
   const saveOptimizerResult = useCallback(
     async (name: string) => {
       if (!optimizer.result || !state.scenarioId) return;
       const scenarioId = state.scenarioId;
+      const baselineConfig = searchedConfig();
+      const strategy = optimizer.searched?.strategy ?? state.strategy;
 
       const existingBaseline = variants.data?.find(
         (variant) =>
           variant.scenario_id === scenarioId
-          && Object.keys(normalizeConfig(variant.config)).length === 0,
+          && variant.strategy === strategy
+          && sameConfig(variant.config, baselineConfig),
       );
       const baselineId =
         existingBaseline?.id
         ?? (
           await saveVariant.mutateAsync({
             scenario_id: scenarioId,
-            name: `${scenarioId} · ${t('optimizer.baselineSuffix')}`,
-            config: {},
-            strategy: 'min_hops',
+            name: `${scenarioId} · ${t(
+              Object.keys(baselineConfig).length === 0
+                ? 'optimizer.baselineSuffix'
+                : 'optimizer.beforeSuffix',
+            )}`,
+            config: baselineConfig,
+            strategy,
           })
         ).id;
 
@@ -296,7 +319,7 @@ export function StudioPage() {
         scenario_id: scenarioId,
         name,
         config: optimizedConfig(),
-        strategy: state.strategy,
+        strategy,
       });
 
       dispatch({ type: 'applyPlanes', planes: toPlaneOverrides(optimizer.result.changed_planes) });
@@ -306,10 +329,12 @@ export function StudioPage() {
     },
     [
       optimizer.result,
+      optimizer.searched,
       state.scenarioId,
       state.strategy,
       variants.data,
       saveVariant,
+      searchedConfig,
       optimizedConfig,
       dispatch,
       dismissOptimizer,
@@ -387,14 +412,13 @@ export function StudioPage() {
     if (!scenario || !geometry) return [];
     const rotation = earthRotationDeg(tS, geometry.earthAngle0Deg);
 
+    // Rings that have not launched yet are drawn faintly rather than hidden:
+    // the campaign is easier to read when what is coming is visible, and a
+    // ghost ring with no satellites on it cannot be mistaken for one in orbit.
     return scenario.design.planes
-      .filter((plane) =>
-        scenario.design.satellites.some(
-          (satellite) => satellite.plane_id === plane.id && satellite.launch_batch <= launchStage,
-        ),
-      )
       .map((plane) => ({
         planeId: plane.id,
+        pending: planeCommitStage(scenario, plane.id) > launchStage,
         color: colors[plane.id],
         points: orbitTrack(
           geometry.inclinationDeg,
@@ -534,6 +558,12 @@ export function StudioPage() {
       scenarioHref={scenarioHref}
       summary={summary}
       baseline={baseline}
+      runInput={runInput}
+      planning={optimizer.running || optimizer.start.isPending}
+      nextFreeStage={scenario ? firstFreeStage(scenario, locks) : 1}
+      locks={locks}
+      onLocksChange={setLocks}
+      onPlanFrom={planFromStage}
       onOpenDeploymentPlan={() => setPlanOpen(true)}
     />
   );
@@ -760,10 +790,11 @@ export function StudioPage() {
               <OptimizerResult
                 result={optimizer.result}
                 scenario={scenario}
+                searchedConfig={searchedConfig()}
                 colors={colors}
                 applied={optimizerApplied}
-                saving={saveVariant.isPending}
                 scoredAtStage={planScoredAt}
+                saving={saveVariant.isPending}
                 onApply={applyOptimizerResult}
                 onSaveAndCompare={saveOptimizerResult}
                 onDismiss={dismissOptimizer}

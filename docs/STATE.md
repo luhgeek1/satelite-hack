@@ -46,6 +46,7 @@ where the work stands.
 | Routes | ✅ every client's path drawn in its own colour, focused one emphasised; sites clickable on globe and map |
 | Network health | ✅ per-client hop count or no-route reason, stranded clients named outright |
 | Satellite card | ✅ names the clients it carries right now, each chain clickable |
+| Deployment campaign | ✅ all three launches listed with their figures, the row is the switch, rings named by the launch that commits them, ghost orbit tracks for rings still on the ground, per-launch planning that holds what has flown (DECISIONS D15, E8) |
 | Optimizer UI | ✅ depth picker, run count and time estimate before the click, time remaining during; phase period derived from the plane's slots |
 | Site surroundings UI | ✅ picker on every site card, effective horizon, share of the day hidden, dashed masked links on globe and map |
 | Gateway outages UI | ✅ whole day / from now / window, same as satellite failures |

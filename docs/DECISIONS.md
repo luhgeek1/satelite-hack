@@ -365,6 +365,22 @@ same node would be listed as failed twice over the same minute.
 
 ---
 
+**D15. The launch stage is a moment, not a setting, and the interface now says
+so.** A ring keeps the angles it launched with, so there is one design and three
+moments in it, not three configurations. The panel used to show one launch at a
+time in the group above the angle sliders, which read as "each stage has its own
+settings" — physically wrong (a plane change at 550 km is the most expensive
+manoeuvre there is, see D6) and the single biggest source of confusion in the
+tool. All three launches are now listed at once with what each delivers, the row
+is the switch, and every ring carries the launch that commits it.
+*Why no fourth tab:* the graded criterion is "Эксперт должен суметь пройти
+основные сценарии в интерфейсе" — a reviewer with minutes and no training. A
+fourth tab is one more place to find and understand, and deployment is not a
+separate activity: angles are always chosen *for* some launch. Making it
+prominent inside the simulation tab serves the same end at a lower cost.
+*What a saved variant means, as a result:* the whole campaign. The angles in it
+apply to every stage, so a variant is a plan and not a snapshot.
+
 ## E. Findings worth presenting
 
 **E1. The ISL threshold is 2700.44 km, and it is a cliff, not a slope.**

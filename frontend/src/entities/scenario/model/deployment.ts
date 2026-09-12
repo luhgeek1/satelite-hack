@@ -8,6 +8,38 @@ const RAAN_PERIOD_DEG = 180;
 const EVEN_TOLERANCE = 0.15;
 
 /**
+ * Which of a plane's two angles are held against a search.
+ *
+ * A plane already in orbit is not a design choice any more: its angles were
+ * fixed when it flew. The same mechanism also serves a constraint the tool
+ * cannot see — an agreed slot, a signed contract — which is why the two angles
+ * lock separately rather than the plane locking as a whole.
+ */
+export interface PlaneLock {
+  planeId: string;
+  raanLocked: boolean;
+  phaseLocked: boolean;
+}
+
+/** Every plane free to move: what a search assumes unless told otherwise. */
+export const freeLocks = (planeIds: string[]): PlaneLock[] =>
+  planeIds.map((planeId) => ({ planeId, raanLocked: false, phaseLocked: false }));
+
+export const isPlaneLocked = (locks: PlaneLock[], planeId: string): boolean => {
+  const lock = locks.find((item) => item.planeId === planeId);
+  return Boolean(lock?.raanLocked && lock?.phaseLocked);
+};
+
+export const setPlaneLocked = (
+  locks: PlaneLock[],
+  planeId: string,
+  locked: boolean,
+): PlaneLock[] =>
+  locks.map((lock) =>
+    lock.planeId === planeId ? { ...lock, raanLocked: locked, phaseLocked: locked } : lock,
+  );
+
+/**
  * The launch that fixes a plane's orbit.
  *
  * A plane's angles are chosen when its first satellites are put there and
@@ -84,3 +116,24 @@ export function raanSpread(scenario: ScenarioDocument, config: SimulationConfig)
 
   return { folded, gaps, idealGap, even };
 }
+
+/**
+ * Hold every launch that has already flown, free the rest.
+ *
+ * This is what planning a launch means: the angles of what is in orbit cannot
+ * be revisited, and this launch and the ones after it are chosen together.
+ */
+export const locksForStage = (scenario: ScenarioDocument, stage: number): PlaneLock[] =>
+  scenario.design.planes.map((plane) => {
+    const flown = planeCommitStage(scenario, plane.id) < stage;
+    return { planeId: plane.id, raanLocked: flown, phaseLocked: flown };
+  });
+
+/** The first launch whose rings are still free to be designed. */
+export const firstFreeStage = (scenario: ScenarioDocument, locks: PlaneLock[]): number => {
+  const free = scenario.design.planes
+    .filter((plane) => !isPlaneLocked(locks, plane.id))
+    .map((plane) => planeCommitStage(scenario, plane.id));
+
+  return free.length ? Math.min(...free) : 1;
+};

@@ -1,9 +1,11 @@
 'use client';
 
 import { useSession } from '@/entities/session';
+import { planeCommitStage, type PlaneLock } from '@/entities/scenario';
 import { ScaleCaption, ScaleRow, SCALE_GRID } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
 import type { ScenarioDocument } from '@/shared/api';
+import { RingLegend } from './ring-legend';
 
 /**
  * Both angles run the full circle: the official validator takes [0, 360) and
@@ -27,6 +29,10 @@ const SCALES = [
 interface PlaneControlsProps {
   scenario: ScenarioDocument;
   colors: Record<string, string>;
+  /** Launch stage on screen: rings that have not flown yet are shown as such. */
+  stage: number;
+  locks: PlaneLock[];
+  onLocksChange: (locks: PlaneLock[]) => void;
 }
 
 /**
@@ -38,12 +44,26 @@ interface PlaneControlsProps {
  * reading a column of numbers. The quarter marks are labelled, so each ruler
  * also says what it counts in.
  */
-export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
+export function PlaneControls({
+  scenario,
+  colors,
+  stage,
+  locks,
+  onLocksChange,
+}: PlaneControlsProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
 
   return (
     <>
+      <RingLegend
+        scenario={scenario}
+        colors={colors}
+        stage={stage}
+        locks={locks}
+        onLocksChange={onLocksChange}
+      />
+
       <div className="space-y-3.5">
         {SCALES.map((scale) => (
           <div key={scale.key} className={SCALE_GRID}>
@@ -56,12 +76,17 @@ export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
                   ? (override?.raan_deg ?? plane.raan_deg)
                   : (override?.phase_deg ?? plane.phase_deg);
 
+              // A ring still on the ground moves nothing on screen, so its
+              // scale says so rather than letting the reading go unexplained.
+              const waiting = planeCommitStage(scenario, plane.id) > stage;
+
               return (
                 <ScaleRow
                   key={plane.id}
                   id={`${plane.id}-${scale.key}`}
                   label={plane.id}
                   accent={colors[plane.id]}
+                  muted={waiting}
                   value={value}
                   max={ANGLE_MAX_DEG}
                   step={ANGLE_STEP_DEG}

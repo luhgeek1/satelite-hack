@@ -33,12 +33,11 @@ export function useSimulation(input: RunInput) {
 }
 
 /**
- * The same configuration at every launch stage.
+ * The same design at every launch stage.
  *
- * The angles are chosen once and flown through the whole campaign, so the
- * question "what does this design do" has three answers, not one. Runs are
- * content-addressed, so the stage on screen costs nothing here and the other
- * two are a single simulation each.
+ * A ring's angles are fixed when it flies, so one design has three answers and
+ * not one. Runs are content-addressed, so the stage already on screen costs
+ * nothing here and the other two are one simulation each.
  */
 export function useStageRuns(input: RunInput) {
   const atStage = (stage: 1 | 2 | 3): RunInput => ({
@@ -48,11 +47,7 @@ export function useStageRuns(input: RunInput) {
 
   // Three fixed calls rather than a loop: the official schema caps launch
   // batches at three, and a hook count may not vary between renders.
-  return [
-    useSimulation(atStage(1)),
-    useSimulation(atStage(2)),
-    useSimulation(atStage(3)),
-  ] as const;
+  return [useSimulation(atStage(1)), useSimulation(atStage(2)), useSimulation(atStage(3))] as const;
 }
 
 export function useSnapshot(runId: string | undefined, tS: number) {

@@ -68,6 +68,8 @@ interface ScaleRowProps {
   ticks: number;
   majorEvery: number;
   disabled?: boolean;
+  /** Dimmed but still usable: the row is being set for a moment that has not arrived. */
+  muted?: boolean;
   onChange: (value: number) => void;
   onCommit?: (value: number) => void;
 }
@@ -89,6 +91,7 @@ export function ScaleRow({
   ticks,
   majorEvery,
   disabled,
+  muted,
   onChange,
   onCommit,
 }: ScaleRowProps) {
@@ -119,13 +122,18 @@ export function ScaleRow({
     <>
       <label
         htmlFor={id}
-        className={cn('flex items-center gap-1.5', disabled && 'opacity-50', !disabled && 'cursor-ew-resize')}
+        className={cn(
+          'flex items-center gap-1.5',
+          disabled && 'opacity-50',
+          muted && 'opacity-55',
+          !disabled && 'cursor-ew-resize',
+        )}
       >
         {accent && <span className="h-2.5 w-0.5 flex-shrink-0" style={{ background: accent }} />}
         <span className="font-data text-[11px] text-zinc-300">{label}</span>
       </label>
 
-      <div className={cn('relative h-[15px] min-w-0', disabled && 'opacity-50')}>
+      <div className={cn('relative h-[15px] min-w-0', disabled && 'opacity-50', muted && 'opacity-55')}>
         <div
           className="pointer-events-none absolute inset-x-[5px] top-1/2 flex items-start justify-between"
           aria-hidden="true"

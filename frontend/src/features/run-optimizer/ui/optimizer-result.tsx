@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { formatDegrees, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
-import type { OptimizeResult, ScenarioDocument } from '@/shared/api';
+import type { OptimizeResult, ScenarioDocument, SimulationConfig } from '@/shared/api';
 
 interface OptimizerResultProps {
   result: OptimizeResult;
   scenario: ScenarioDocument;
+  /** The configuration the search ran against, whose angles it moved away from. */
+  searchedConfig: SimulationConfig;
   colors: Record<string, string>;
   /** True once the found angles are in the configuration on screen. */
   applied: boolean;
@@ -36,6 +38,7 @@ interface OptimizerResultProps {
 export function OptimizerResult({
   result,
   scenario,
+  searchedConfig,
   colors,
   applied,
   saving,
@@ -62,15 +65,20 @@ export function OptimizerResult({
     },
   ];
 
+  // Where each angle stood when the search started, which is the file's value
+  // only until something has been moved by hand or by an earlier search.
   const changes = Object.entries(result.changed_planes).flatMap(([planeId, change]) =>
     (['raan_deg', 'phase_deg'] as const)
       .filter((key) => change[key] !== null)
       .map((key) => {
         const plane = scenario.design.planes.find((item) => item.id === planeId);
+        const configured = searchedConfig.planes?.[planeId]?.[key];
         return {
           planeId,
           param: key === 'raan_deg' ? 'RAAN' : 'PHASE',
-          from: key === 'raan_deg' ? (plane?.raan_deg ?? 0) : (plane?.phase_deg ?? 0),
+          from:
+            configured
+            ?? (key === 'raan_deg' ? (plane?.raan_deg ?? 0) : (plane?.phase_deg ?? 0)),
           to: change[key] as number,
         };
       }),

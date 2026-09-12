@@ -11,13 +11,9 @@ import {
   type SimulationConfig,
 } from '@/shared/api';
 import { normalizeConfig, type RunInput } from '@/entities/simulation';
-import { phasePeriodDeg } from '@/entities/scenario';
+import { freeLocks, phasePeriodDeg, type PlaneLock } from '@/entities/scenario';
 
-export interface PlaneLock {
-  planeId: string;
-  raanLocked: boolean;
-  phaseLocked: boolean;
-}
+export { freeLocks, type PlaneLock };
 
 export type SearchDepth = 'quick' | 'standard' | 'thorough';
 
@@ -128,31 +124,39 @@ export const toPlaneOverrides = (
     ]),
   );
 
-/** Every plane free to move: what the search assumes unless locks say otherwise. */
-export const freeLocks = (planeIds: string[]): PlaneLock[] =>
-  planeIds.map((planeId) => ({ planeId, raanLocked: false, phaseLocked: false }));
+export interface SearchRequest {
+  locks: PlaneLock[];
+  depth: SearchDepth;
+  /**
+   * Overrides what the search is scored against. Planning a launch needs it:
+   * the angles are chosen at that launch but judged on the finished
+   * constellation, which is a different launch stage than the one on screen.
+   */
+  config?: SimulationConfig;
+}
 
 export type Optimizer = ReturnType<typeof useOptimizer>;
 
 export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undefined) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  // What the search was told to beat. The result's own baseline figures are
+  // measured against this configuration — the surroundings, failures and launch
+  // stage that were on screen — not against the file, so anything that reads
+  // the result has to compare it against this and not against the file either.
+  const [searched, setSearched] = useState<RunInput | null>(null);
 
   const start = useMutation({
-    /**
-     * `config` overrides what the search is scored against. Planning a launch
-     * needs it: the angles are chosen at that launch but judged on the finished
-     * constellation, which is a different launch stage than the one on screen.
-     */
-    mutationFn: ({
-      locks,
-      depth,
-      config,
-    }: {
-      locks: PlaneLock[];
-      depth: SearchDepth;
-      config?: SimulationConfig;
-    }) => {
+    // What was actually searched, which is not always what is on screen:
+    // planning a launch scores the finished constellation.
+    onMutate: ({ config }: SearchRequest) =>
+      setSearched({
+        scenarioId: input.scenarioId,
+        config: normalizeConfig(config ?? input.config),
+        strategy: input.strategy,
+      }),
+
+    mutationFn: ({ locks, depth, config }: SearchRequest) => {
       const preset = SEARCH_DEPTHS[depth];
       const payload: OptimizeRequest = {
         scenario_id: input.scenarioId as string,
@@ -204,11 +208,13 @@ export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undef
     start,
     status: status.data,
     result: result.data,
+    searched,
     remainingS,
     running: status.data?.status === 'queued' || status.data?.status === 'running',
     dismiss: () => {
       setJobId(null);
       setStartedAt(null);
+      setSearched(null);
     },
   };
 }

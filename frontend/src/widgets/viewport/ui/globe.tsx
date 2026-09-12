@@ -19,6 +19,8 @@ import {
 
 export type OrbitTrack = {
   planeId: string;
+  /** Launched later than the stage on screen: drawn as a plan, not as traffic. */
+  pending?: boolean;
   color: string;
   points: { lat: number; lng: number }[];
 };
@@ -862,8 +864,8 @@ export const Globe: React.FC<GlobeProps> = ({
 
       return {
         points: orbit.points.map(p => [p.lat, p.lng, SATELLITE_ALTITUDE] as [number, number, number]),
-        color: isHighlighted ? base : `${base}e6`,
-        stroke: isHighlighted ? 0.55 : 0.42,
+        color: orbit.pending ? `${base}33` : isHighlighted ? base : `${base}e6`,
+        stroke: orbit.pending ? 0.2 : isHighlighted ? 0.55 : 0.42,
         // Dashes are what separate an orbit track from the solid link arcs that
         // run along the same path.
         dashLength: 0.016,
@@ -1161,7 +1163,7 @@ export const Globe: React.FC<GlobeProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full w-full items-center justify-center overflow-hidden"
+      className="isolate relative z-0 flex h-full w-full items-center justify-center overflow-hidden"
       onPointerDown={pauseRotationAfterUserContact}
       onPointerMove={pauseRotationAfterUserContact}
       onPointerUp={finishUserInteraction}
