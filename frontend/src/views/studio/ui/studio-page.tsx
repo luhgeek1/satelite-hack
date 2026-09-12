@@ -673,7 +673,7 @@ export function StudioPage() {
       runInput={runInput}
       planning={optimizer.running || optimizer.start.isPending}
       onPlanFrom={planFromStage}
-      onOpenDeploymentPlan={() => setPlanOpen(true)}
+      onOpenDeploymentPlan={() => setPlanOpen((open) => !open)}
       depth={depth}
       onDepthChange={setDepth}
       findCosts={findCosts}
