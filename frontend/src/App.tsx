@@ -7,6 +7,7 @@ import { criticalityLevel } from './lib/criticality';
 import { Button } from './components/ui/button';
 import { cn } from './lib/utils';
 import { useMediaQuery } from './hooks/useMediaQuery';
+import { useDisableBrowserZoom } from './hooks/useDisableBrowserZoom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   initialSatellites,
@@ -369,6 +370,8 @@ export default function App() {
   const [planesConfig, setPlanesConfig] = useState<Record<Plane, { raan: number; phase: number }>>(
     persistedAppState.planesConfig ?? defaultPlanesConfig
   );
+
+  useDisableBrowserZoom();
 
   const isDesktop = useMediaQuery(desktopQuery);
   const isWideDesktop = useMediaQuery(wideDesktopQuery);

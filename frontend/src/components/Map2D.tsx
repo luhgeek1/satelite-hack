@@ -180,8 +180,16 @@ export const Map2D: React.FC<Map2DProps> = ({
   return (
     <div
       className="relative h-full w-full overflow-hidden bg-[black]"
-      onMouseMove={event => tooltip && setTooltip({ ...tooltip, x: event.clientX, y: event.clientY })}
+      // Functional update on purpose. Leaving a marker fires mouseleave and
+      // mousemove inside the same gesture; reading `tooltip` from the closure
+      // here would see the pre-clear value and resurrect the tooltip, which
+      // then trails the cursor forever.
+      onMouseMove={event => {
+        const { clientX, clientY } = event;
+        setTooltip(current => (current ? { ...current, x: clientX, y: clientY } : current));
+      }}
       onMouseLeave={() => setTooltip(null)}
+      onPointerDown={() => setTooltip(null)}
     >
       <ComposableMap
         projection="geoEquirectangular"
