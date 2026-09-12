@@ -155,26 +155,33 @@ export function StudioPage() {
    * `dispatch`, both stable, so the strip stays memoised.
    */
   const scheduleOutage = useCallback(
-    (target: OutageTarget, window: OutageWindow | null) => {
+    (target: OutageTarget, window: OutageWindow, off: boolean) => {
       if (target.kind === 'satellite') {
-        if (window) {
+        if (off) {
           injectFailure.mutate({ satelliteId: target.id, startS: window.startS, endS: window.endS });
         } else {
-          dispatch({ type: 'removeFailure', satelliteId: target.id });
+          // Only this window: the node may be down over another one as well.
+          dispatch({ type: 'removeFailure', satelliteId: target.id, window });
         }
         return;
       }
 
-      if (window) {
+      if (off) {
         dispatch({
           type: 'addGatewayOutage',
           outage: { gateway_id: target.id, start_s: window.startS, end_s: window.endS },
         });
       } else {
-        dispatch({ type: 'removeGatewayOutage', gatewayId: target.id });
+        dispatch({ type: 'removeGatewayOutage', gatewayId: target.id, window });
       }
     },
     [injectFailure.mutate, dispatch],
+  );
+
+  /** A window carries what was declared over it, so dropping one drops both. */
+  const clearOutagesIn = useCallback(
+    (window: OutageWindow) => dispatch({ type: 'clearOutagesIn', window }),
+    [dispatch],
   );
 
   // The search is owned here, not by a panel: it is started from the network
@@ -589,11 +596,13 @@ export function StudioPage() {
                 focusClientId={focusClientId}
                 satelliteNodes={satelliteNodes}
                 gatewayNodes={gatewayNodes}
+                resetNonce={state.resetNonce}
                 onToggle={playback.toggle}
                 onSpeed={playback.setSpeed}
                 onSeek={playback.seek}
                 onSelectClient={selectClient}
                 onScheduleOutage={scheduleOutage}
+                onClearOutages={clearOutagesIn}
               />
               </div>
             )}

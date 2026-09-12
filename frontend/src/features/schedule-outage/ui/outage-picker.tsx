@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { RadioTower, Search, Trash2, X } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useSession } from '@/entities/session';
 import { cn, formatClock } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
@@ -21,6 +22,7 @@ interface OutagePickerProps {
   gateways: OutageNode[];
   /** `off` is the state being asked for, so a row that is already off restores. */
   onToggle: (target: OutageTarget, off: boolean) => void;
+  onRemove: () => void;
   onClose: () => void;
 }
 
@@ -28,6 +30,9 @@ const SECTIONS: Array<{ kind: OutageKind; label: 'window.gateways' | 'window.sat
   { kind: 'gateway', label: 'window.gateways' },
   { kind: 'satellite', label: 'window.satellites' },
 ];
+
+/** As tall as the list is allowed to grow before it starts scrolling. */
+const LIST_MAX = 152;
 
 /**
  * What to switch off over the window the operator has just drawn.
@@ -43,6 +48,7 @@ export function OutagePicker({
   satellites,
   gateways,
   onToggle,
+  onRemove,
   onClose,
 }: OutagePickerProps) {
   const { t, formatDuration } = useI18n();
@@ -51,6 +57,10 @@ export function OutagePicker({
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const list = useRef<HTMLUListElement>(null);
+  // One gateway and forty-eight satellites are very different heights, and the
+  // panel jumping between them reads as two panels. The list is measured and
+  // the height is animated instead, so switching section is one movement.
+  const [height, setHeight] = useState<number | null>(null);
 
   // What is already off over this window, read from the configuration itself
   // so the list tells the truth after a reload or an edit made elsewhere.
@@ -80,6 +90,18 @@ export function OutagePicker({
   useEffect(() => {
     list.current?.children[active]?.scrollIntoView({ block: 'nearest' });
   }, [active]);
+
+  useLayoutEffect(() => {
+    const element = list.current;
+    if (!element) return;
+
+    const measure = () => setHeight(Math.min(LIST_MAX, element.scrollHeight));
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [kind]);
 
   const toggle = (node: OutageNode) => onToggle({ kind, id: node.id }, !offIds.has(node.id));
 
@@ -114,6 +136,15 @@ export function OutagePicker({
             <span className="ml-auto text-[10px] text-zinc-500">{formatDuration(span.endS - span.startS)}</span>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={t('window.remove')}
+          title={t('window.remove')}
+          className="-mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center text-zinc-600 transition-colors hover:text-alarm focus-visible:text-alarm focus-visible:outline-none"
+        >
+          <Trash2 size={12} />
+        </button>
         <button
           type="button"
           onClick={onClose}
@@ -182,43 +213,105 @@ export function OutagePicker({
         )}
       </div>
 
-      <ul ref={list} className="max-h-[9.5rem] overflow-y-auto overscroll-contain" onKeyDown={onKeyDown}>
-        {matches.map((node, index) => {
-          const off = offIds.has(node.id);
+      <div
+        style={height === null ? undefined : { height }}
+        className="overflow-y-auto overscroll-contain transition-[height] duration-200 ease-out"
+      >
+        <motion.ul
+          key={kind}
+          ref={list}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.14, ease: 'easeOut' }}
+          onKeyDown={onKeyDown}
+          className={kind === 'gateway' ? 'space-y-1.5 p-2' : 'py-1'}
+        >
+          {matches.map((node, index) => {
+            const off = offIds.has(node.id);
 
-          return (
-            <li key={node.id}>
-              <button
-                type="button"
-                onMouseEnter={() => setActive(index)}
-                onClick={() => toggle(node)}
-                aria-pressed={off}
-                className={cn(
-                  'flex w-full items-center gap-2 px-2.5 py-1 text-left font-data text-[11px] transition-colors',
-                  index === active ? 'bg-white/[0.06]' : '',
-                  off ? 'text-alarm' : 'text-zinc-300',
-                )}
-              >
-                <span
+            // A gateway is one of two or three, carries a name worth reading and
+            // takes the whole network with it — the same card the panel gives a
+            // ground site. A satellite is one of forty-eight and is a line.
+            if (kind === 'gateway') {
+              return (
+                <li key={node.id}>
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActive(index)}
+                    onClick={() => toggle(node)}
+                    aria-pressed={off}
+                    className={cn(
+                      'block w-full border p-2 text-left transition-colors',
+                      off
+                        ? 'border-alarm/50 bg-alarm/[0.07]'
+                        : cn(
+                            'bg-white/[0.02]',
+                            index === active ? 'border-zinc-600' : 'border-rule-strong',
+                          ),
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <RadioTower
+                        size={13}
+                        aria-hidden="true"
+                        className={cn('flex-shrink-0', off ? 'text-alarm' : 'text-zinc-400')}
+                      />
+                      <span
+                        className={cn(
+                          'break-all font-data text-[12px]',
+                          off ? 'text-alarm' : 'text-zinc-200',
+                        )}
+                      >
+                        {node.id}
+                      </span>
+                      {off && (
+                        <span className="ml-auto flex-shrink-0 font-label text-[10px] text-alarm">
+                          {t('window.offNow')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-1.5 block break-words font-label text-[11px] leading-relaxed text-zinc-400">
+                      {node.detail}
+                    </span>
+                  </button>
+                </li>
+              );
+            }
+
+            return (
+              <li key={node.id}>
+                <button
+                  type="button"
+                  onMouseEnter={() => setActive(index)}
+                  onClick={() => toggle(node)}
+                  aria-pressed={off}
                   className={cn(
-                    'h-1.5 w-1.5 flex-shrink-0 border',
-                    off ? 'border-alarm bg-alarm' : 'border-zinc-700',
+                    'flex w-full items-center gap-2 px-2.5 py-1 text-left font-data text-[11px] transition-colors',
+                    index === active ? 'bg-white/[0.06]' : '',
+                    off ? 'text-alarm' : 'text-zinc-300',
                   )}
-                />
-                <span className="flex-shrink-0">{node.id}</span>
-                <span className="min-w-0 flex-1 truncate text-[10px] text-zinc-600">{node.detail}</span>
-                {off && <span className="flex-shrink-0 text-[9px] text-alarm">{t('window.offNow')}</span>}
-              </button>
-            </li>
-          );
-        })}
+                >
+                  <span
+                    className={cn(
+                      'h-1.5 w-1.5 flex-shrink-0 border',
+                      off ? 'border-alarm bg-alarm' : 'border-zinc-700',
+                    )}
+                  />
+                  <span className="flex-shrink-0">{node.id}</span>
+                  <span className="min-w-0 flex-1 truncate text-[10px] text-zinc-600">{node.detail}</span>
+                  {off && <span className="flex-shrink-0 text-[9px] text-alarm">{t('window.offNow')}</span>}
+                </button>
+              </li>
+            );
+          })}
 
-        {matches.length === 0 && (
-          <li className="px-2.5 py-2 font-label text-[11px] leading-snug text-zinc-500">
-            {query.trim() ? t('failure.noMatch', { query: query.trim() }) : t('window.none')}
-          </li>
-        )}
-      </ul>
+          {matches.length === 0 && (
+            <li className="px-2.5 py-2 font-label text-[11px] leading-snug text-zinc-500">
+              {query.trim() ? t('failure.noMatch', { query: query.trim() }) : t('window.none')}
+            </li>
+          )}
+        </motion.ul>
+      </div>
     </div>
   );
 }

@@ -153,7 +153,7 @@ export function ConfigPanel({
               const satellite = satellites.find((item) => item.id === failure.satellite_id);
               return (
                 <div
-                  key={failure.satellite_id}
+                  key={`${failure.satellite_id}-${failure.start_s}`}
                   className="flex items-center gap-2.5 border-l-2 border-alarm bg-white/[0.03] py-1.5 pl-2.5 pr-2"
                 >
                   <span className="font-data text-[10px] text-alarm">{t('config.stateFailed')}</span>

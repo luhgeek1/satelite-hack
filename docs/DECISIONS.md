@@ -329,6 +329,15 @@ are different arguments about the network, and the operator arrives knowing
 which one they mean. Search sits under the sections because it searches inside
 the section. Rows toggle: the picker is a list of switches, so what was taken
 down over the window goes back the same way.
+*Several windows at once:* the interesting question is rarely about one span —
+"the gateway is down at dawn and a plane is out at noon" is two of them, and
+the day has to hold both to be worth drawing. Each band is dragged and resized
+on its own; the one the picker points at is the brighter one. A node can be
+down over more than one window, which the engine already supports: it collects
+the failed set per step from the whole list, so repeating an id with a
+different span is a second outage rather than a conflict. Two windows that do
+overlap are one outage, and the later one replaces the earlier — otherwise the
+same node would be listed as failed twice over the same minute.
 
 ---
 

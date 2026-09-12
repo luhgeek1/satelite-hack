@@ -11,6 +11,20 @@ import type {
 } from '@/shared/api';
 
 export type StudioTab = 'simulation' | 'resilience' | 'compare';
+
+/** Start inclusive, end exclusive, in seconds from the start of the day. */
+export interface OutageSpan {
+  startS: number;
+  endS: number;
+}
+
+/**
+ * The engine reads its failure list as a set of spans per node, so one node can
+ * be down over several of them. Two spans that overlap are one outage, though,
+ * and the later one wins rather than being stacked on the earlier.
+ */
+const clashes = (start: number, end: number, span: OutageSpan | undefined) =>
+  span === undefined || (start < span.endS && end > span.startS);
 export type ViewMode = '3d' | '2d';
 
 export interface SessionState {
@@ -27,6 +41,8 @@ export interface SessionState {
   focusRequest: { id: string; nonce: number } | null;
   /** Bumped when a control is released, so a run can start without waiting. */
   commitNonce: number;
+  /** Bumped by a reset, so views holding their own drawings can drop them. */
+  resetNonce: number;
   /** Which saved variants the Compare tab holds, so a tab switch does not clear them. */
   compareSlots: [string | null, string | null];
 }
@@ -38,10 +54,14 @@ type Action =
   | { type: 'applyPlanes'; planes: Record<string, { raan_deg?: number; phase_deg?: number }> }
   | { type: 'commitConfig' }
   | { type: 'addFailure'; failure: FailureDto }
-  | { type: 'removeFailure'; satelliteId: string }
+  /** Without a window every outage of that node goes; with one, only the
+   *  windows it overlaps — a node can be down over more than one span. */
+  | { type: 'removeFailure'; satelliteId: string; window?: OutageSpan }
   | { type: 'clearFailures' }
+  /** Everything switched off over a span, both kinds, in one step. */
+  | { type: 'clearOutagesIn'; window: OutageSpan }
   | { type: 'addGatewayOutage'; outage: GatewayOutageDto }
-  | { type: 'removeGatewayOutage'; gatewayId: string }
+  | { type: 'removeGatewayOutage'; gatewayId: string; window?: OutageSpan }
   | { type: 'setSiteConditions'; siteId: string; conditions: SiteConditionsDto | null }
   | { type: 'resetSiteConditions'; siteId: string }
   | { type: 'setStrategy'; strategy: RoutingStrategy }
@@ -71,6 +91,7 @@ const initialState: SessionState = {
   tab: 'simulation',
   focusRequest: null,
   commitNonce: 0,
+  resetNonce: 0,
   compareSlots: [null, null],
 };
 
@@ -122,7 +143,12 @@ function reducer(state: SessionState, action: Action): SessionState {
 
     case 'addFailure': {
       const failures = (state.config.failures ?? []).filter(
-        (failure) => failure.satellite_id !== action.failure.satellite_id,
+        (failure) =>
+          failure.satellite_id !== action.failure.satellite_id
+          || !clashes(failure.start_s, failure.end_s, {
+            startS: action.failure.start_s,
+            endS: action.failure.end_s,
+          }),
       );
       return { ...state, config: { ...state.config, failures: [...failures, action.failure] } };
     }
@@ -133,7 +159,9 @@ function reducer(state: SessionState, action: Action): SessionState {
         config: {
           ...state.config,
           failures: (state.config.failures ?? []).filter(
-            (failure) => failure.satellite_id !== action.satelliteId,
+            (failure) =>
+              failure.satellite_id !== action.satelliteId
+              || !clashes(failure.start_s, failure.end_s, action.window),
           ),
         },
       };
@@ -141,9 +169,28 @@ function reducer(state: SessionState, action: Action): SessionState {
     case 'clearFailures':
       return { ...state, config: { ...state.config, failures: [] } };
 
+    case 'clearOutagesIn':
+      return {
+        ...state,
+        config: {
+          ...state.config,
+          failures: (state.config.failures ?? []).filter(
+            (failure) => !clashes(failure.start_s, failure.end_s, action.window),
+          ),
+          gateway_outages: (state.config.gateway_outages ?? []).filter(
+            (outage) => !clashes(outage.start_s, outage.end_s, action.window),
+          ),
+        },
+      };
+
     case 'addGatewayOutage': {
       const outages = (state.config.gateway_outages ?? []).filter(
-        (outage) => outage.gateway_id !== action.outage.gateway_id,
+        (outage) =>
+          outage.gateway_id !== action.outage.gateway_id
+          || !clashes(outage.start_s, outage.end_s, {
+            startS: action.outage.start_s,
+            endS: action.outage.end_s,
+          }),
       );
       return {
         ...state,
@@ -157,7 +204,9 @@ function reducer(state: SessionState, action: Action): SessionState {
         config: {
           ...state.config,
           gateway_outages: (state.config.gateway_outages ?? []).filter(
-            (outage) => outage.gateway_id !== action.gatewayId,
+            (outage) =>
+              outage.gateway_id !== action.gatewayId
+              || !clashes(outage.start_s, outage.end_s, action.window),
           ),
         },
       };
@@ -236,7 +285,7 @@ function reducer(state: SessionState, action: Action): SessionState {
       };
 
     case 'resetConfig':
-      return { ...state, config: {}, tS: 0, playing: false };
+      return { ...state, config: {}, tS: 0, playing: false, resetNonce: state.resetNonce + 1 };
 
     // Whatever survived the last visit, merged over the defaults. Playback is
     // deliberately not among the restored fields: a page that starts running
