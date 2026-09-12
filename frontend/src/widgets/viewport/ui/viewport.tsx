@@ -194,6 +194,7 @@ export function Viewport({
               mode={mode}
               contactRadiusKm={contactRadiusKm}
               coverageGaps={gaps}
+              resetNonce={state.resetNonce}
             />
           </GlobeBoundary>
         ) : (

@@ -17,7 +17,7 @@ import {
   FAILURE_RING_INTERVAL_MS
 } from '../model/use-failure-pings';
 import { useKonamiCode } from '../model/use-konami-code';
-import { PlanetExplosionController, type ExplosionPhase } from '../model/globe-explosion';
+import { PlanetExplosionController, type ExplosionPhase, type ExplosionMode } from '../model/globe-explosion';
 
 export type OrbitTrack = {
   planeId: string;
@@ -217,6 +217,7 @@ interface GlobeProps {
   contactRadiusKm?: number;
   /** Footprints that fall short of the selected terminal, drawn as they fall. */
   coverageGaps?: CoverageGap[];
+  resetNonce?: number;
 }
 
 export const Globe: React.FC<GlobeProps> = ({
@@ -237,7 +238,8 @@ export const Globe: React.FC<GlobeProps> = ({
   mode = 'simulation',
   focusOn = null,
   contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM,
-  coverageGaps = NO_COVERAGE_GAPS
+  coverageGaps = NO_COVERAGE_GAPS,
+  resetNonce = 0
 }) => {
   const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -252,6 +254,7 @@ export const Globe: React.FC<GlobeProps> = ({
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isGlobeVisible, setIsGlobeVisible] = useState(true);
   const [explosionPhase, setExplosionPhase] = useState<ExplosionPhase>('idle');
+  const [explosionMode, setExplosionMode] = useState<ExplosionMode>('konami');
   const explosionControllerRef = useRef<PlanetExplosionController | null>(null);
   const coverageCapMaterial = useMemo(
     () => new THREE.MeshBasicMaterial({
@@ -565,8 +568,9 @@ export const Globe: React.FC<GlobeProps> = ({
               : `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
           }
         },
-        onPhaseChange: (phase) => {
+        onPhaseChange: (phase, mode) => {
           setExplosionPhase(phase);
+          if (mode) setExplosionMode(mode);
         }
       });
 
@@ -583,8 +587,26 @@ export const Globe: React.FC<GlobeProps> = ({
   }, []);
 
   useKonamiCode(useCallback(() => {
-    explosionControllerRef.current?.start();
+    explosionControllerRef.current?.start('konami');
   }, []));
+
+  useEffect(() => {
+    (window as any).__resetPlanet = () => explosionControllerRef.current?.start('reset');
+    (window as any).__explodePlanet = () => explosionControllerRef.current?.start('konami');
+    return () => {
+      delete (window as any).__resetPlanet;
+      delete (window as any).__explodePlanet;
+    };
+  }, []);
+
+  const lastResetNonceRef = useRef(resetNonce);
+  useEffect(() => {
+    if (!resetNonce) return;
+    if (resetNonce === lastResetNonceRef.current) return;
+    lastResetNonceRef.current = resetNonce;
+
+    explosionControllerRef.current?.start('reset');
+  }, [resetNonce]);
 
   // Keep the whole globe inside the viewport as the container resizes — once
   // the container has stopped. Refitting on every frame of a drag pumps the
@@ -1378,7 +1400,11 @@ export const Globe: React.FC<GlobeProps> = ({
         htmlElement={createHtmlElement}
       />
 
-      {explosionPhase !== 'idle' && explosionPhase !== 'restored' && (
+      {explosionPhase === 'exploding' && explosionMode === 'konami' && (
+        <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_center,transparent_45%,rgba(239,68,68,0.25)_100%)] shadow-[inset_0_0_80px_rgba(239,68,68,0.35)]" />
+      )}
+
+      {explosionPhase !== 'idle' && explosionPhase !== 'restored' && explosionMode === 'konami' && (
         <div className="pointer-events-auto absolute top-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 border border-red-500/50 bg-black/90 px-4 py-2 shadow-[0_0_30px_rgba(239,68,68,0.45)] backdrop-blur-md transition-all">
           <div className="relative flex h-3 w-3 items-center justify-center">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
