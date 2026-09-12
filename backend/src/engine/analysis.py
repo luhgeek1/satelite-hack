@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .metrics import mean_availability, worst_availability
+from .parallel import pin_worker_threads, resolve_workers
 from .routing import RoutingStrategy
 from .scenario import active_satellite_ids, satellite_ids
 from .simulate import simulate
@@ -68,10 +69,11 @@ def analyse_resilience(
         return ResilienceReport(base_worst, base_mean, target, ())
 
     payloads = [(scenario, sat_id, strategy) for sat_id in candidates]
-    if max_workers == 1 or len(candidates) == 1:
+    workers = resolve_workers(max_workers)
+    if workers == 1 or len(candidates) == 1:
         outcomes = [_knockout(p) for p in payloads]
     else:
-        with ProcessPoolExecutor(max_workers=max_workers) as pool:
+        with ProcessPoolExecutor(max_workers=workers, initializer=pin_worker_threads) as pool:
             outcomes = list(pool.map(_knockout, payloads, chunksize=4))
 
     impacts = []

@@ -4,7 +4,13 @@ import { useState } from 'react';
 import { Lock, LockOpen, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SensitivityPanel } from '@/features/analyze-sensitivity';
-import { useOptimizer, type PlaneLock } from '@/features/run-optimizer';
+import {
+  gridSize,
+  SEARCH_DEPTHS,
+  useOptimizer,
+  type PlaneLock,
+  type SearchDepth,
+} from '@/features/run-optimizer';
 import { useSession } from '@/entities/session';
 import type { RunInput } from '@/entities/simulation';
 import { cn, criticalityLevel, formatDegrees, formatDuration, formatPercent } from '@/shared/lib';
@@ -30,6 +36,7 @@ export function CriticalNodes({
 }: CriticalNodesProps) {
   const { state, dispatch } = useSession();
   const optimizer = useOptimizer(runInput);
+  const [depth, setDepth] = useState<SearchDepth>('standard');
   const [locks, setLocks] = useState<PlaneLock[]>(
     scenario.design.planes.map((plane) => ({
       planeId: plane.id,
@@ -161,17 +168,43 @@ export function CriticalNodes({
           ))}
         </div>
 
+        <div className="flex items-stretch gap-px border border-rule">
+          {(Object.keys(SEARCH_DEPTHS) as SearchDepth[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setDepth(key)}
+              disabled={optimizer.running}
+              aria-pressed={depth === key}
+              className={cn(
+                'flex flex-1 flex-col items-center py-1 font-label text-[11px] transition-colors',
+                depth === key ? 'bg-zinc-100 text-black' : 'text-zinc-500 hover:text-zinc-200',
+              )}
+            >
+              {SEARCH_DEPTHS[key].label}
+              <span className="font-data text-[9px] tabular-nums opacity-70">
+                {gridSize(locks, key).toLocaleString('en-US')}
+              </span>
+            </button>
+          ))}
+        </div>
+
         <button
           type="button"
-          onClick={() => optimizer.start.mutate(locks)}
-          disabled={optimizer.running || optimizer.start.isPending}
+          onClick={() => optimizer.start.mutate({ locks, depth })}
+          disabled={optimizer.running || optimizer.start.isPending || gridSize(locks, depth) === 0}
           className="group flex h-10 w-full items-center justify-between border border-zinc-600 px-3 font-label text-[13px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none disabled:opacity-50"
         >
           <span>Optimize configuration</span>
           <span className="font-data text-[10px] tabular-nums text-zinc-500 transition-colors group-hover:text-black/55">
-            {locks.filter((lock) => !lock.raanLocked || !lock.phaseLocked).length} planes free
+            {gridSize(locks, depth).toLocaleString('en-US')} runs
           </span>
         </button>
+
+        <p className="font-label text-[10px] leading-relaxed text-zinc-600">
+          Each point of the grid is a full 24-hour simulation. Lock a plane to drop two
+          dimensions and cut the search by an order of magnitude.
+        </p>
 
         {optimizer.start.isError && <ErrorNote error={optimizer.start.error} />}
       </div>
@@ -191,6 +224,11 @@ export function CriticalNodes({
                   <div className="mt-1 font-data text-[11px] tabular-nums text-zinc-500">
                     {optimizer.status?.explored ?? 0} / {optimizer.status?.total ?? '—'} explored
                   </div>
+                  {optimizer.remainingS !== null && (
+                    <div className="mt-0.5 font-data text-[11px] tabular-nums text-zinc-600">
+                      about {formatDuration(optimizer.remainingS)} left
+                    </div>
+                  )}
                   <div className="mt-3">
                     {optimizer.status?.total ? (
                       <ProgressBar value={optimizer.status.progress} />

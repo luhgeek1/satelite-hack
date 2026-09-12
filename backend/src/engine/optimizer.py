@@ -29,6 +29,7 @@ from enum import StrEnum
 from typing import Any
 
 from .metrics import mean_availability, worst_availability
+from .parallel import pin_worker_threads, resolve_workers
 from .routing import RoutingStrategy
 from .scenario import ConfigOverride, PlaneOverride, apply_override
 from .simulate import simulate
@@ -100,7 +101,8 @@ def optimize(
     the objective is smooth enough in RAAN/phase that hill-climbing from the best
     coarse point lands in the same place for a fraction of the runs.
     """
-    baseline = _evaluate((scenario, {}, strategy))
+    _install_scenario(scenario)
+    baseline = _evaluate(({}, strategy))
     free = [b for b in bounds if not b.locked]
 
     if not free:
@@ -116,8 +118,16 @@ def optimize(
     if best.score(objective) < baseline.score(objective):
         best = baseline
 
+    # Without the scenario's own angles the refinement has no centre to move
+    # around whenever the coarse grid failed to beat the baseline, and the whole
+    # local search would silently do nothing.
+    defaults = {
+        plane["id"]: PlaneOverride(plane["raan_deg"], plane["phase_deg"])
+        for plane in scenario["design"]["planes"]
+    }
+
     for round_index in range(refine_rounds):
-        neighbourhood = list(_refine_grid(free, best.planes, coarse_steps, round_index))
+        neighbourhood = list(_refine_grid(free, best.planes, defaults, coarse_steps, round_index))
         if not neighbourhood:
             break
         candidate, count = _search(
@@ -160,18 +170,28 @@ def _search(
     done_before: int,
     total: int,
 ) -> tuple[Candidate, int]:
-    payloads = [(scenario, planes, strategy) for planes in candidates]
+    payloads = [(planes, strategy) for planes in candidates]
+    workers = resolve_workers(max_workers)
 
-    if max_workers == 1:
+    if workers == 1:
+        _install_scenario(scenario)
         evaluated = []
         for index, payload in enumerate(payloads, start=1):
             evaluated.append(_evaluate(payload))
             if progress:
                 progress(done_before + index, total)
     else:
-        with ProcessPoolExecutor(max_workers=max_workers) as pool:
+        # The scenario is the bulk of every payload and never changes during a
+        # search, so it is handed to each worker once at start-up. Sending it
+        # per candidate made a 4096-point grid move hundreds of megabytes
+        # through the pool for no reason.
+        with ProcessPoolExecutor(
+            max_workers=workers,
+            initializer=_install_scenario,
+            initargs=(scenario,),
+        ) as pool:
             evaluated = []
-            for index, candidate in enumerate(pool.map(_evaluate, payloads, chunksize=4), start=1):
+            for index, candidate in enumerate(pool.map(_evaluate, payloads, chunksize=8), start=1):
                 evaluated.append(candidate)
                 if progress:
                     progress(done_before + index, total)
@@ -179,11 +199,22 @@ def _search(
     return max(evaluated, key=lambda c: c.score(objective)), len(evaluated)
 
 
-def _evaluate(
-    payload: tuple[dict[str, Any], dict[str, PlaneOverride], RoutingStrategy],
-) -> Candidate:
+_WORKER_SCENARIO: dict[str, Any] | None = None
+
+
+def _install_scenario(scenario: dict[str, Any]) -> None:
+    """Pool initializer: hold the scenario for the life of the worker."""
+    global _WORKER_SCENARIO
+    pin_worker_threads()
+    _WORKER_SCENARIO = scenario
+
+
+def _evaluate(payload: tuple[dict[str, PlaneOverride], RoutingStrategy]) -> Candidate:
     """Score one configuration. Module-level so the process pool can pickle it."""
-    scenario, planes, strategy = payload
+    planes, strategy = payload
+    scenario = _WORKER_SCENARIO
+    if scenario is None:
+        raise RuntimeError("Worker scenario was never installed")
     effective = apply_override(scenario, ConfigOverride(planes=planes)) if planes else scenario
     result = simulate(effective, strategy=strategy)
 
@@ -215,6 +246,7 @@ def _coarse_grid(
 def _refine_grid(
     free: Sequence[PlaneBounds],
     around: dict[str, PlaneOverride],
+    defaults: dict[str, PlaneOverride],
     steps: int,
     round_index: int,
 ) -> Iterable[dict[str, PlaneOverride]]:
@@ -223,10 +255,13 @@ def _refine_grid(
 
     for bound in free:
         current = around.get(bound.plane_id, PlaneOverride())
+        fallback = defaults.get(bound.plane_id, PlaneOverride())
         for attribute, span in (("raan_deg", bound.raan_deg), ("phase_deg", bound.phase_deg)):
             if span is None:
                 continue
             centre = getattr(current, attribute)
+            if centre is None:
+                centre = getattr(fallback, attribute)
             if centre is None:
                 continue
             width = (span[1] - span[0]) / (steps * shrink)
@@ -290,11 +325,12 @@ def sweep_environment(
     collapsing the moment the link budget falls below that chord.
     """
     payloads = [(scenario, parameter, float(value), strategy) for value in values]
+    workers = resolve_workers(max_workers)
 
-    if max_workers == 1:
+    if workers == 1:
         points = [_sweep_one(p) for p in payloads]
     else:
-        with ProcessPoolExecutor(max_workers=max_workers) as pool:
+        with ProcessPoolExecutor(max_workers=workers, initializer=pin_worker_threads) as pool:
             points = list(pool.map(_sweep_one, payloads, chunksize=2))
 
     return points
