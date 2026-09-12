@@ -1,3 +1,4 @@
+export { BrandMark } from './brand-mark';
 export { Button, type ButtonProps } from './button';
 export { ParamGroup } from './param-group';
 export { ScaleRow, ScaleCaption, SCALE_GRID } from './scale-row';
