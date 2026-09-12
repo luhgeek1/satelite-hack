@@ -89,6 +89,21 @@ function PlaybackBarView({
   const tracks = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const chip = useRef<HTMLSpanElement>(null);
+  const rowsBox = useRef<HTMLDivElement>(null);
+  // The rows scroll once there are more sites than the strip has room for, and
+  // a classic scrollbar takes width: the ruler and the floating layer give the
+  // same width back so the hours still sit over the instants they name.
+  const [gutter, setGutter] = useState(0);
+
+  useEffect(() => {
+    const box = rowsBox.current;
+    if (!box) return;
+    const measure = () => setGutter(box.offsetWidth - box.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [clients.length]);
 
   // Drawing an outage window over the strip. The mode is the discoverable way
   // in — a drag then works like trimming a clip — and a right-drag does the
@@ -542,208 +557,238 @@ function PlaybackBarView({
         }}
         // The spacing is padding rather than margin so the black above and
         // below the rows belongs to the strip and answers a click.
-        className="-mb-2 grid grid-cols-[2.6rem_1fr_2.9rem] items-center gap-x-2 gap-y-1 pb-2 pt-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
+        className="relative -mb-2 pb-2 pt-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
       >
-        <span aria-hidden="true" />
-        <div className="relative h-3" aria-hidden="true">
-          {HOUR_MARKS.map((hour) => {
-            const at = (hour / 24) * 100;
-            return (
-              <span
-                key={hour}
-                className={cn(
-                  'absolute top-0 font-data text-[9px] tabular-nums text-zinc-600',
-                  hour === 0 && 'left-0',
-                  hour === 24 && 'right-0',
-                )}
-                style={hour === 0 || hour === 24 ? undefined : { left: `${at}%`, transform: 'translateX(-50%)' }}
-              >
-                {String(hour).padStart(2, '0')}:00
-              </span>
-            );
-          })}
-        </div>
-        <span aria-hidden="true" />
-
-        {/* The cursor spans the rows rather than repeating in each one, so the
-            same instant is one line down the whole stack. The drawn window
-            rides the same overlay, under the cursor line. */}
         <div
-          // Stretched on purpose: the grid centres its items, and a centred
-          // overlay collapses to nothing instead of covering the rows.
-          className="pointer-events-none relative z-10 self-stretch"
-          style={{ gridColumn: 2, gridRow: `2 / span ${Math.max(1, clients.length)}` }}
+          className="grid grid-cols-[2.6rem_1fr_2.9rem] items-center gap-x-2"
+          style={{ paddingRight: gutter }}
         >
-          {windows.map((item) => {
-            const place = placeOf(item);
-            const current = item.id === activeId;
+          <span aria-hidden="true" />
+          <div className="relative h-3" aria-hidden="true">
+            {HOUR_MARKS.map((hour) => {
+              const at = (hour / 24) * 100;
+              return (
+                <span
+                  key={hour}
+                  className={cn(
+                    'absolute top-0 font-data text-[9px] tabular-nums text-zinc-600',
+                    hour === 0 && 'left-0',
+                    hour === 24 && 'right-0',
+                  )}
+                  style={hour === 0 || hour === 24 ? undefined : { left: `${at}%`, transform: 'translateX(-50%)' }}
+                >
+                  {String(hour).padStart(2, '0')}:00
+                </span>
+              );
+            })}
+          </div>
+          <span aria-hidden="true" />
+        </div>
 
-            return (
+        {/* Whatever hangs above the rows lives outside the scroll box, which
+            would otherwise clip it: the picker and the length of a window
+            being drawn. Same columns as the rows, pinned to where they start. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-6 z-30 grid h-0 grid-cols-[2.6rem_1fr_2.9rem] gap-x-2"
+          style={{ paddingRight: gutter }}
+        >
+          <div className="relative" style={{ gridColumn: 2 }}>
+            {windows.map((item) => {
+              if (drag?.id !== item.id) return null;
+              const place = placeOf(item);
+              return (
+                <span
+                  key={item.id}
+                  className="absolute -top-5 -translate-x-1/2 whitespace-nowrap border border-alarm/40 bg-black px-1 font-data text-[9px] tabular-nums text-alarm"
+                  style={{ left: `${place.left + place.width / 2}%` }}
+                >
+                  {formatDuration(item.endS - item.startS)}
+                </span>
+              );
+            })}
+
+            <AnimatePresence>
+              {picking && active && activePlace && (
+                <motion.div
+                  initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={reduce ? { opacity: 0 } : { opacity: 0, y: 4, scale: 0.99 }}
+                  transition={{ duration: reduce ? 0 : 0.16, ease: 'easeOut' }}
+                  style={{
+                    left: `clamp(${PICKER_HALF}, ${activePlace.left + activePlace.width / 2}%, calc(100% - ${PICKER_HALF}))`,
+                    transformOrigin: 'bottom center',
+                  }}
+                  className="pointer-events-auto absolute bottom-full mb-2 w-[19.5rem] -translate-x-1/2"
+                >
+                  <OutagePicker
+                    window={active}
+                    horizonS={horizonS}
+                    satellites={satelliteNodes}
+                    gateways={gatewayNodes}
+                    onToggle={(target, off) => onScheduleOutage(target, active, off)}
+                    onRemove={() => dropWindow(active.id)}
+                    onClose={() => setPicking(false)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* A fixed height however many sites the scenario has: past a handful
+            the rows scroll, and the map above keeps its room. */}
+        <div ref={rowsBox} className="max-h-[9.5rem] overflow-y-auto overscroll-contain pt-1">
+          <div className="grid grid-cols-[2.6rem_1fr_2.9rem] items-center gap-x-2 gap-y-1">
+            {/* The cursor spans the rows rather than repeating in each one, so the
+                same instant is one line down the whole stack. The drawn window
+                rides the same overlay, under the cursor line. */}
+            <div
+              // Stretched on purpose: the grid centres its items, and a centred
+              // overlay collapses to nothing instead of covering the rows.
+              className="pointer-events-none relative z-10 self-stretch"
+              style={{ gridColumn: 2, gridRow: `1 / span ${Math.max(1, clients.length)}` }}
+            >
+              {windows.map((item) => {
+                const place = placeOf(item);
+                const current = item.id === activeId;
+
+                return (
+                  <div
+                    key={item.id}
+                    data-window=""
+                    onPointerDown={(event) => {
+                      if (event.button === 0 || event.button === 2) startDrag(event, { kind: 'move' }, item);
+                    }}
+                    className={cn(
+                      'pointer-events-auto absolute -top-1 bottom-0 cursor-grab border-x transition-colors active:cursor-grabbing',
+                      current ? 'z-[2] border-alarm/70 bg-alarm/[0.18]' : 'border-alarm/35 bg-alarm/[0.1]',
+                    )}
+                    style={{ left: `${place.left}%`, width: `${place.width}%` }}
+                  >
+                    <span className={cn('absolute inset-x-0 top-0 h-px', current ? 'bg-alarm/50' : 'bg-alarm/25')} />
+                    <span className={cn('absolute inset-x-0 bottom-0 h-px', current ? 'bg-alarm/50' : 'bg-alarm/25')} />
+
+                    {(['start', 'end'] as const).map((edge) => (
+                      <span
+                        key={edge}
+                        role="presentation"
+                        onPointerDown={(event) => {
+                          if (event.button === 0 || event.button === 2) {
+                            startDrag(event, { kind: 'edge', edge }, item);
+                          }
+                        }}
+                        className={cn(
+                          'absolute inset-y-0 flex w-3 cursor-ew-resize items-center justify-center',
+                          edge === 'start' ? '-left-1.5' : '-right-1.5',
+                        )}
+                      >
+                        <span className={cn('h-full w-[3px]', current ? 'bg-alarm' : 'bg-alarm/60')} />
+                      </span>
+                    ))}
+                  </div>
+                );
+              })}
+
               <div
-                key={item.id}
-                data-window=""
-                onPointerDown={(event) => {
-                  if (event.button === 0 || event.button === 2) startDrag(event, { kind: 'move' }, item);
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-1 bottom-0 w-[9px] -translate-x-1/2"
+                style={{
+                  left: `${cursor}%`,
+                  transition: `left ${playing ? glideMs : 75}ms linear`,
                 }}
-                className={cn(
-                  'pointer-events-auto absolute -top-1 bottom-0 cursor-grab border-x transition-colors active:cursor-grabbing',
-                  current ? 'z-[2] border-alarm/70 bg-alarm/[0.18]' : 'border-alarm/35 bg-alarm/[0.1]',
-                )}
-                style={{ left: `${place.left}%`, width: `${place.width}%` }}
               >
-                <span className={cn('absolute inset-x-0 top-0 h-px', current ? 'bg-alarm/50' : 'bg-alarm/25')} />
-                <span className={cn('absolute inset-x-0 bottom-0 h-px', current ? 'bg-alarm/50' : 'bg-alarm/25')} />
-
-                {(['start', 'end'] as const).map((edge) => (
+                {(['left-0', 'right-0'] as const).map((edge) => (
                   <span
                     key={edge}
-                    role="presentation"
-                    onPointerDown={(event) => {
-                      if (event.button === 0 || event.button === 2) {
-                        startDrag(event, { kind: 'edge', edge }, item);
-                      }
-                    }}
-                    className={cn(
-                      'absolute inset-y-0 flex w-3 cursor-ew-resize items-center justify-center',
-                      edge === 'start' ? '-left-1.5' : '-right-1.5',
-                    )}
-                  >
-                    <span className={cn('h-full w-[3px]', current ? 'bg-alarm' : 'bg-alarm/60')} />
-                  </span>
-                ))}
-
-                {drag?.id === item.id && (
-                  <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap border border-alarm/40 bg-black px-1 font-data text-[9px] tabular-nums text-alarm">
-                    {formatDuration(item.endS - item.startS)}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-1 bottom-0 w-[9px] -translate-x-1/2"
-            style={{
-              left: `${cursor}%`,
-              transition: `left ${playing ? glideMs : 75}ms linear`,
-            }}
-          >
-            {(['left-0', 'right-0'] as const).map((edge) => (
-              <span
-                key={edge}
-                className={cn('absolute inset-y-0 w-px bg-white', edge)}
-                style={{ boxShadow: '1px 0 0 rgba(0,0,0,0.85), -1px 0 0 rgba(0,0,0,0.85)' }}
-              />
-            ))}
-          </div>
-
-          <AnimatePresence>
-            {picking && active && activePlace && (
-              <motion.div
-                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, y: 4, scale: 0.99 }}
-                transition={{ duration: reduce ? 0 : 0.16, ease: 'easeOut' }}
-                style={{
-                  left: `clamp(${PICKER_HALF}, ${activePlace.left + activePlace.width / 2}%, calc(100% - ${PICKER_HALF}))`,
-                  transformOrigin: 'bottom center',
-                }}
-                className="pointer-events-auto absolute bottom-full z-30 mb-2 w-[19.5rem] -translate-x-1/2"
-              >
-                <OutagePicker
-                  window={active}
-                  horizonS={horizonS}
-                  satellites={satelliteNodes}
-                  gateways={gatewayNodes}
-                  onToggle={(target, off) => onScheduleOutage(target, active, off)}
-                  onRemove={() => dropWindow(active.id)}
-                  onClose={() => setPicking(false)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {clients.map((client, index) => {
-          const focused = client.client_id === focusClientId;
-          const rows = bandsByClient.get(client.client_id) ?? [];
-
-          return (
-            <div key={client.client_id} className="contents">
-              <button
-                type="button"
-                onClick={() => onSelectClient(client.client_id)}
-                title={t('playback.focusClient', { client: client.client_id })}
-                className={cn(
-                  'text-left font-data text-[11px] transition-colors focus-visible:outline-none',
-                  focused ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300',
-                )}
-                style={{ gridColumn: 1, gridRow: index + 2 }}
-              >
-                {client.client_id}
-              </button>
-
-              <div
-                ref={index === 0 ? tracks : undefined}
-                data-track=""
-                onPointerDown={(event) => {
-                  // The secondary button draws a window wherever it is pressed;
-                  // the primary one only does while the mode is on, so the
-                  // strip stays a scrubber by default.
-                  if (event.button === 2 || (event.button === 0 && selectMode)) {
-                    startDrag(event, { kind: 'new' });
-                    return;
-                  }
-                  if (event.button !== 0) return;
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  onSelectClient(client.client_id);
-                  seekFromClientX(event.clientX);
-                }}
-                onPointerMove={(event) => {
-                  if (!drag && event.buttons === 1) seekFromClientX(event.clientX);
-                }}
-                // All three rows are readings, so none of them is dimmed to
-                // mark focus — the id beside the bar does that.
-                className={cn(
-                  'relative h-2.5 touch-none overflow-hidden',
-                  selectMode ? 'cursor-crosshair' : 'cursor-pointer',
-                )}
-                style={{ gridColumn: 2, gridRow: index + 2 }}
-              >
-                <div className="absolute inset-0 bg-zinc-700" />
-                {rows.map((band, bandIndex) => (
-                  <div
-                    key={`${band.state}-${bandIndex}`}
-                    title={`${client.client_id} · ${formatClock(band.startFraction * horizonS)} · ${
-                      band.state === 'no_satellite'
-                        ? t('playback.bandNoSatellite')
-                        : t('playback.bandNoRoute')
-                    }`}
-                    className={cn(
-                      'absolute inset-y-0',
-                      band.state === 'no_satellite' ? 'bg-zinc-100' : 'bg-zinc-400',
-                    )}
-                    style={{
-                      left: `${band.startFraction * 100}%`,
-                      width: `${Math.max(0.35, band.widthFraction * 100)}%`,
-                    }}
+                    className={cn('absolute inset-y-0 w-px bg-white', edge)}
+                    style={{ boxShadow: '1px 0 0 rgba(0,0,0,0.85), -1px 0 0 rgba(0,0,0,0.85)' }}
                   />
                 ))}
               </div>
 
-              <span
-                className={cn(
-                  'text-right font-data text-[11px] tabular-nums',
-                  client.meets_target ? 'text-zinc-300' : 'text-alarm',
-                )}
-                style={{ gridColumn: 3, gridRow: index + 2 }}
-              >
-                {formatPercent(client.availability)}
-              </span>
             </div>
-          );
-        })}
+
+            {clients.map((client, index) => {
+              const focused = client.client_id === focusClientId;
+              const rows = bandsByClient.get(client.client_id) ?? [];
+
+              return (
+                <div key={client.client_id} className="contents">
+                  <button
+                    type="button"
+                    onClick={() => onSelectClient(client.client_id)}
+                    title={t('playback.focusClient', { client: client.client_id })}
+                    className={cn(
+                      'text-left font-data text-[11px] transition-colors focus-visible:outline-none',
+                      focused ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300',
+                    )}
+                    style={{ gridColumn: 1, gridRow: index + 1 }}
+                  >
+                    {client.client_id}
+                  </button>
+
+                  <div
+                    ref={index === 0 ? tracks : undefined}
+                    data-track=""
+                    onPointerDown={(event) => {
+                      // The secondary button draws a window wherever it is pressed;
+                      // the primary one only does while the mode is on, so the
+                      // strip stays a scrubber by default.
+                      if (event.button === 2 || (event.button === 0 && selectMode)) {
+                        startDrag(event, { kind: 'new' });
+                        return;
+                      }
+                      if (event.button !== 0) return;
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      onSelectClient(client.client_id);
+                      seekFromClientX(event.clientX);
+                    }}
+                    onPointerMove={(event) => {
+                      if (!drag && event.buttons === 1) seekFromClientX(event.clientX);
+                    }}
+                    // All three rows are readings, so none of them is dimmed to
+                    // mark focus — the id beside the bar does that.
+                    className={cn(
+                      'relative h-2.5 touch-none overflow-hidden',
+                      selectMode ? 'cursor-crosshair' : 'cursor-pointer',
+                    )}
+                    style={{ gridColumn: 2, gridRow: index + 1 }}
+                  >
+                    <div className="absolute inset-0 bg-zinc-700" />
+                    {rows.map((band, bandIndex) => (
+                      <div
+                        key={`${band.state}-${bandIndex}`}
+                        title={`${client.client_id} · ${formatClock(band.startFraction * horizonS)} · ${
+                          band.state === 'no_satellite'
+                            ? t('playback.bandNoSatellite')
+                            : t('playback.bandNoRoute')
+                        }`}
+                        className={cn(
+                          'absolute inset-y-0',
+                          band.state === 'no_satellite' ? 'bg-zinc-100' : 'bg-zinc-400',
+                        )}
+                        style={{
+                          left: `${band.startFraction * 100}%`,
+                          width: `${Math.max(0.35, band.widthFraction * 100)}%`,
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  <span
+                    className={cn(
+                      'text-right font-data text-[11px] tabular-nums',
+                      client.meets_target ? 'text-zinc-300' : 'text-alarm',
+                    )}
+                    style={{ gridColumn: 3, gridRow: index + 1 }}
+                  >
+                    {formatPercent(client.availability)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
