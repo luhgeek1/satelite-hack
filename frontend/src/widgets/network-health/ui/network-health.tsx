@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { RouteChain, type RouteTrace } from '@/entities/simulation';
 import { cn, formatDuration, formatPercent, NO_ROUTE_COPY } from '@/shared/lib';
-import type { ClientMetrics, RouteDto } from '@/shared/api';
+import type { ClientMetrics } from '@/shared/api';
 
 interface NetworkHealthProps {
   clients: ClientMetrics[];
   target: number;
-  routes: RouteDto[];
+  traces: RouteTrace[];
   selectedClientId: string | null;
   onSelectClient: (clientId: string) => void;
   stale: boolean;
@@ -18,20 +19,19 @@ interface NetworkHealthProps {
 export function NetworkHealth({
   clients,
   target,
-  routes,
+  traces,
   selectedClientId,
   onSelectClient,
   stale,
 }: NetworkHealthProps) {
   const [expanded, setExpanded] = useState(true);
 
-  const focusClient = selectedClientId ?? clients[0]?.client_id ?? null;
-  const route = routes.find((item) => item.client_id === focusClient);
   const longestOutage = clients.reduce((longest, client) => Math.max(longest, client.max_outage_s), 0);
-  const degraded = clients.some((client) => !client.meets_target) || route?.available === false;
+  const stranded = traces.filter((trace) => !trace.available);
+  const degraded = clients.some((client) => !client.meets_target) || stranded.length > 0;
 
   return (
-    <div className="pointer-events-none absolute left-3 top-3 z-10 w-[215px] border border-rule-strong bg-black/70 p-3.5 backdrop-blur sm:w-[250px] lg:left-6 lg:top-6 lg:p-5">
+    <div className="pointer-events-none absolute left-3 top-3 z-10 w-[232px] border border-rule-strong bg-black/70 p-3.5 backdrop-blur sm:w-[268px] lg:left-6 lg:top-6 lg:p-5">
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
@@ -56,29 +56,54 @@ export function NetworkHealth({
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="min-h-0 overflow-hidden"
           >
-            <div className="pointer-events-auto mt-3 space-y-1.5 font-data text-[12px] tabular-nums sm:text-[13px]">
-              {clients.map((client) => (
-                <button
-                  key={client.client_id}
-                  type="button"
-                  onClick={() => onSelectClient(client.client_id)}
-                  className={cn(
-                    'flex w-full items-baseline justify-between gap-2 text-left transition-colors',
-                    client.client_id === focusClient ? 'text-zinc-100' : 'hover:text-zinc-200',
-                  )}
-                >
-                  <span className={cn(client.client_id === focusClient ? 'text-zinc-200' : 'text-zinc-400')}>
-                    {client.client_id}
-                  </span>
-                  <span className={client.meets_target ? 'text-zinc-100' : 'text-alarm'}>
-                    {formatPercent(client.availability)}
-                  </span>
-                </button>
-              ))}
-              <div className="flex items-baseline justify-between gap-2 text-zinc-500">
-                <span className="font-label text-[13px]">Target</span>
-                <span>&ge; {formatPercent(target, 0)}</span>
-              </div>
+            <div className="pointer-events-auto mt-3 space-y-px">
+              {clients.map((client) => {
+                const trace = traces.find((item) => item.clientId === client.client_id);
+                const focused = client.client_id === selectedClientId;
+
+                return (
+                  <button
+                    key={client.client_id}
+                    type="button"
+                    onClick={() => onSelectClient(client.client_id)}
+                    aria-pressed={focused}
+                    className={cn(
+                      'block w-full border-l-2 py-1 pl-2 pr-1 text-left transition-colors',
+                      focused ? 'border-l-current bg-white/[0.06]' : 'border-l-transparent hover:bg-white/[0.03]',
+                    )}
+                    style={{ color: trace?.color }}
+                  >
+                    <span className="flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
+                      <span className={focused ? 'text-zinc-100' : 'text-zinc-400'}>
+                        {client.client_id}
+                      </span>
+                      <span className={client.meets_target ? 'text-zinc-100' : 'text-alarm'}>
+                        {formatPercent(client.availability)}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        'mt-0.5 block font-data text-[10.5px] leading-tight',
+                        trace?.available === false ? 'text-alarm' : 'text-zinc-500',
+                      )}
+                    >
+                      {trace
+                        ? trace.available
+                          ? `${trace.hops} hops → ${trace.gatewayId ?? 'gateway'}`
+                          : `no route · ${trace.reason ? NO_ROUTE_COPY[trace.reason] : 'unreachable'}`
+                        : '—'}
+                    </span>
+                    {focused && trace?.available && (
+                      <RouteChain trace={trace} className="mt-1.5" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-2 flex items-baseline justify-between gap-2 pl-2 font-data text-[12px] tabular-nums text-zinc-500 sm:text-[13px]">
+              <span className="font-label text-[13px]">Target</span>
+              <span>&ge; {formatPercent(target, 0)}</span>
             </div>
 
             <div className="my-3 border-t border-rule" />
@@ -88,20 +113,13 @@ export function NetworkHealth({
               <span className="text-zinc-100">{formatDuration(longestOutage)}</span>
             </div>
 
-            <div className="mt-2 font-data text-[12px] tabular-nums sm:text-[13px]">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-label text-[13px] text-zinc-400">Route</span>
-                <span className={route?.available ? 'text-zinc-100' : 'text-alarm'}>
-                  {route?.available ? `${route.hops} hops` : 'no route'}
-                </span>
-              </div>
-              <div className="mt-1 break-words text-[11px] leading-relaxed text-zinc-500">
-                {route?.available
-                  ? route.path.join(' → ')
-                  : route?.reason
-                    ? NO_ROUTE_COPY[route.reason]
-                    : '—'}
-              </div>
+            <div className="mt-2 flex items-baseline justify-between gap-2 font-data text-[12px] tabular-nums sm:text-[13px]">
+              <span className="font-label text-[13px] text-zinc-400">Offline now</span>
+              <span className={stranded.length ? 'text-alarm' : 'text-zinc-100'}>
+                {stranded.length
+                  ? stranded.map((trace) => trace.clientId).join(' ')
+                  : 'none'}
+              </span>
             </div>
           </motion.div>
         )}

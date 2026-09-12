@@ -329,7 +329,7 @@ export function StudioPage() {
                 <NetworkHealth
                   clients={summary?.clients ?? []}
                   target={summary?.target_availability ?? geometry.targetAvailability}
-                  routes={snapshot.data?.routes ?? []}
+                  traces={routeTraces}
                   selectedClientId={focusClientId}
                   onSelectClient={(clientId) => dispatch({ type: 'selectClient', clientId })}
                   stale={settling || simulation.isFetching || snapshot.isFetching}
