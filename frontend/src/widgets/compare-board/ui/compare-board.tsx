@@ -13,6 +13,7 @@ import { pickWinner, sitesBelowTarget } from '../model/verdict';
 import { ChangedParameters } from './changed-parameters';
 import { MetricStrip } from './metric-strip';
 import { SiteComparison } from './site-comparison';
+import { VariantBoard } from './variant-board';
 import { VariantColumn } from './variant-column';
 import { VerdictNote } from './verdict-note';
 
@@ -39,6 +40,21 @@ export function CompareBoard() {
       config: variant.config,
       strategy: variant.strategy,
     });
+
+  // Assigning from the standings: the same variant clicked into the slot it
+  // already holds clears it, and one clicked into the other slot swaps the two
+  // rather than vanishing from the comparison.
+  const assign = (slot: 0 | 1, variantId: string) => {
+    const next: [string | null, string | null] = [slots[0], slots[1]];
+    const other = slot === 0 ? 1 : 0;
+    if (next[slot] === variantId) {
+      next[slot] = null;
+    } else {
+      if (next[other] === variantId) next[other] = next[slot];
+      next[slot] = variantId;
+    }
+    setSlots(next);
+  };
 
   const selectedIds = slots.filter((id): id is string => Boolean(id));
   const comparison = useComparison(selectedIds.length === 2 ? selectedIds : []);
@@ -86,12 +102,9 @@ export function CompareBoard() {
           />
         </div>
 
-        {variants.data && !comparison.data && (
+        {variants.data?.length === 0 && (
           <div className="border border-rule-strong">
-            <EmptyState
-              title={variants.data.length === 0 ? t('compare.nothing') : t('compare.pickTwo')}
-              hint={variants.data.length === 0 ? t('compare.nothingHint') : undefined}
-            />
+            <EmptyState title={t('compare.nothing')} hint={t('compare.nothingHint')} />
           </div>
         )}
 
@@ -115,6 +128,15 @@ export function CompareBoard() {
               <ChangedParameters diffs={comparison.data.changed_parameters} />
             </div>
           </>
+        )}
+
+        {variants.data && variants.data.length > 0 && (
+          <VariantBoard
+            variants={variants.data}
+            slots={slots}
+            hint={comparison.data ? undefined : t('compare.pickTwo')}
+            onAssign={assign}
+          />
         )}
       </div>
     </div>
