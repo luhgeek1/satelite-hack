@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { AlertTriangle, Check, X } from 'lucide-react';
+import { AlertTriangle, CircleCheck, X } from 'lucide-react';
 import { describeIssue } from '@/entities/scenario';
 import type { ScenarioImported, ScenarioIssue } from '@/shared/api';
 import { useI18n } from '@/shared/i18n';
@@ -62,17 +62,17 @@ export function ImportReport({ outcome, onDismiss }: { outcome: ImportOutcome; o
       className={
         failed
           ? 'max-h-[60vh] overflow-y-auto border border-alarm/40 bg-black px-3 py-2.5'
-          : 'max-h-[60vh] overflow-y-auto border border-rule-strong bg-black px-3 py-2.5'
+          : 'max-h-[60vh] overflow-y-auto border border-emerald-400/40 bg-black px-3 py-2.5'
       }
     >
       <div className="mb-2 flex items-start gap-2">
         {failed ? (
           <AlertTriangle size={13} className="mt-0.5 flex-shrink-0 text-alarm" />
         ) : (
-          <Check size={13} className="mt-0.5 flex-shrink-0 text-zinc-300" />
+          <CircleCheck size={13} className="mt-0.5 flex-shrink-0 text-emerald-400" />
         )}
         <div className="min-w-0 flex-1">
-          <div className={failed ? 'font-label text-[12px] text-alarm' : 'font-label text-[12px] text-zinc-100'}>
+          <div className={failed ? 'font-label text-[12px] text-alarm' : 'font-label text-[12px] text-emerald-400'}>
             {failed ? t('import.failed') : t('import.loaded')}
           </div>
           <div className="mt-0.5 font-data text-[10px] text-zinc-500">
