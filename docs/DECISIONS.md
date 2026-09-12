@@ -218,6 +218,17 @@ visible stall in the panel.
 
 ---
 
+**D8. Hosting: Fly.io in `fra`, three apps, and the database gets 1 GB.**
+`orbitguard-backend` (two `shared-cpu-2x` / 2 GB machines, sized in
+`backend/fly.toml`), `orbitguard-db` (Fly Postgres 18, one machine, 1 GB RAM) and
+`orbitguard-redis` (256 MB). The backend runs `alembic upgrade head` on every
+boot, so a database that is down takes the API down with it.
+*Why 1 GB for Postgres:* the default 256 MB machine was OOM-killing `postgres`
+within hours (12 Sep 2026): `postgres-flex` runs repmgr and a monitor next to the
+server and the VM had 207 MB usable. After the bump the machine idles at ~270 MB.
+*Why the backend size lives in `fly.toml`:* `fly deploy` resizes machines to the
+`[[vm]]` block, so a size set only from the dashboard is undone by the next push.
+
 ## E. Findings worth presenting
 
 **E1. The ISL threshold is 2700.44 km, and it is a cliff, not a slope.**

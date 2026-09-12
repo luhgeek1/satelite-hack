@@ -69,10 +69,13 @@ where the work stands.
 
 1. **Nothing blocking.** The API covers every mandatory case requirement.
 2. Prune old runs (`SimulationRunInterface.prune` exists, nothing calls it yet).
-3. Deployment: pick a host, get the public URL live. **A14 requires it to stay up
-   from code freeze until the end of all defences.** Budget CPU, not RAM: a search
-   needs about 34 MB per worker but is bound by core count and memory traffic, so
-   a two-vCPU box runs roughly four times slower than a laptop.
+3. Deployment: live on Fly.io at `https://orbitguard-backend.fly.dev`, two
+   `shared-cpu-2x` machines (see D8 in DECISIONS.md). **A14 requires it to stay
+   up from code freeze until the end of all defences.** Budget CPU, not RAM: a
+   search needs about 34 MB per worker but is bound by core count and memory
+   traffic, so a two-vCPU box runs roughly four times slower than a laptop. If
+   the API dies on boot, check `orbitguard-db` first — it is the one dependency
+   that stops the migration step.
 
 ### Frontend
 

@@ -21,7 +21,10 @@ primary_region = 'fra'
     timeout = "5s"
     path = "/api/ping"
 
+# Sized for the search workers: a search is CPU-bound, so cores matter more
+# than RAM. Keep this in step with the live machines — `fly deploy` resizes
+# them to whatever is written here.
 [[vm]]
-  memory = '1gb'
-  cpus = 1
+  memory = '2gb'
+  cpus = 2
   cpu_kind = 'shared'
