@@ -71,16 +71,19 @@ where the work stands.
 
 ### Frontend
 
-Everything on the mandatory path is wired to the API. What is left:
+Everything on the mandatory path is wired to the API, including the flows the
+organisers named: jump to an outage and see how the site connects at that
+instant, partial failure windows, and the parameter sweep that turns a low
+availability figure into a hardware requirement.
 
-1. **Click an outage to jump the timeline to it.** The bands are drawn and
-   `outage_windows` carry `start_s`; the click handler is not there yet. The
-   organisers named this flow explicitly (A8), so it is the highest-value gap.
-2. Partial failure windows in the UI — the config and the backend both support
-   `start_s`/`end_s`, only the whole-day case is exposed.
-3. A sensitivity view over the ISL sweep; the endpoint and the finding both
-   exist, nothing renders them.
-4. Keyboard access pass over the new dropdowns.
+What is left:
+
+1. Keyboard access pass over the scenario and variant dropdowns.
+2. A route inspector — `/simulations/{id}/routes/{client_id}` is typed and
+   unused; it would let the whole day's paths be scrubbed without refetching
+   snapshots.
+3. Deployment. **A14 requires the link to stay up from code freeze until the
+   end of all defences.**
 
 ### Team deliverables
 
