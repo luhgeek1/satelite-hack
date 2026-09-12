@@ -359,6 +359,7 @@ export const en = {
   'compare.target': 'target {value}',
   'compare.pickTwo': 'Pick two variants to compare',
   'compare.leads': '{name} is ahead',
+  'compare.tied': 'Nothing separates them',
   'compare.allMeet': 'every site meets the target',
   'compare.belowTarget': 'below the target: {sites}',
   'compare.noChanges': 'The two variants share every parameter',
@@ -743,6 +744,7 @@ export const ru: Record<TranslationKey, string> = {
   'compare.target': 'цель {value}',
   'compare.pickTwo': 'Выберите два варианта для сравнения',
   'compare.leads': 'Лучше: {name}',
+  'compare.tied': 'Варианты равны',
   'compare.allMeet': 'все пункты в норме',
   'compare.belowTarget': 'ниже цели: {sites}',
   'compare.recoMeets':
