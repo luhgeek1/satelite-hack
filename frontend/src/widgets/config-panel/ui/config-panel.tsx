@@ -4,15 +4,16 @@ import { useState } from 'react';
 import { Plus, RotateCcw } from 'lucide-react';
 import { DeploymentControl } from '@/features/configure-deployment';
 import { PlaneControls } from '@/features/configure-planes';
+import { OutageList } from '@/features/inspect-outages';
 import { SaveVariantButton } from '@/features/manage-variants';
 import { useSession } from '@/entities/session';
 import type { SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import { cn, formatLatitude, formatLongitude } from '@/shared/lib';
 import { Button, ParamGroup } from '@/shared/ui';
-import type { ScenarioDocument } from '@/shared/api';
+import type { ClientMetrics, ScenarioDocument } from '@/shared/api';
 
-type GroupId = 'deployment' | 'planes' | 'failures' | 'satellites' | 'sites';
+type GroupId = 'deployment' | 'planes' | 'outages' | 'failures' | 'satellites' | 'sites';
 
 interface ConfigPanelProps {
   scenario: ScenarioDocument;
@@ -21,6 +22,10 @@ interface ConfigPanelProps {
   colors: Record<string, string>;
   onInjectFailure: (satelliteId: string) => void;
   onRestore: (satelliteId: string) => void;
+  clients: ClientMetrics[];
+  focusClientId: string | null;
+  currentTS: number;
+  stepS: number;
   exportHref: string | null;
   scenarioHref: string | null;
 }
@@ -32,6 +37,10 @@ export function ConfigPanel({
   colors,
   onInjectFailure,
   onRestore,
+  clients: clientMetrics,
+  focusClientId,
+  currentTS,
+  stepS,
   exportHref,
   scenarioHref,
 }: ConfigPanelProps) {
@@ -39,6 +48,7 @@ export function ConfigPanel({
   const [open, setOpen] = useState<Record<GroupId, boolean>>({
     deployment: true,
     planes: true,
+    outages: true,
     failures: false,
     satellites: false,
     sites: false,
@@ -80,6 +90,26 @@ export function ConfigPanel({
           onToggle={() => toggle('planes')}
         >
           <PlaneControls scenario={scenario} colors={colors} />
+        </ParamGroup>
+
+        <ParamGroup
+          code="OUT"
+          title="Outages"
+          alarm={clientMetrics.some((client) => !client.meets_target)}
+          value={
+            clientMetrics.length
+              ? `${clientMetrics.reduce((total, client) => total + client.outage_windows.length, 0)} gaps`
+              : '—'
+          }
+          open={open.outages}
+          onToggle={() => toggle('outages')}
+        >
+          <OutageList
+            clients={clientMetrics}
+            focusClientId={focusClientId}
+            currentTS={currentTS}
+            stepS={stepS}
+          />
         </ParamGroup>
 
         <ParamGroup

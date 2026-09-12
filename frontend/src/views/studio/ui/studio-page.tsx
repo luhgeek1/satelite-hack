@@ -267,6 +267,10 @@ export function StudioPage() {
       colors={colors}
       onInjectFailure={(id) => injectFailure.mutate(id)}
       onRestore={restore}
+      clients={summary?.clients ?? []}
+      focusClientId={focusClientId}
+      currentTS={tS}
+      stepS={stepS}
       exportHref={exportHref}
       scenarioHref={scenarioHref}
     />

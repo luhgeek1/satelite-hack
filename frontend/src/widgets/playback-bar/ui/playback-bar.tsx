@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { Pause, Play } from 'lucide-react';
-import { cn, formatClock } from '@/shared/lib';
+import { cn, formatClock, formatDuration } from '@/shared/lib';
 import type { OutageBand } from '@/entities/simulation';
 
 interface PlaybackBarProps {
@@ -114,6 +114,9 @@ export function PlaybackBar({
               {visible.map((band, index) => (
                 <div
                   key={`${band.clientId}-${index}`}
+                  title={`${band.clientId} · ${formatClock(band.startFraction * horizonS)} · ${formatDuration(
+                    band.widthFraction * horizonS,
+                  )} · ${band.state === 'no_satellite' ? 'no satellite in view' : 'satellite in view, no route'}`}
                   className={cn(
                     'absolute inset-y-0',
                     band.state === 'no_satellite' ? 'bg-alarm' : 'bg-zinc-400',
