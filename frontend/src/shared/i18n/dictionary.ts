@@ -160,6 +160,10 @@ export const en = {
   'deploy.releaseHint':
     'The rocket has not flown yet, so the plan may still be revisited. After the launch the angles cannot change.',
   'deploy.goNext': 'Launch {stage}',
+  'deploy.planStart': 'Nothing is fixed yet. Start with launch {stage}: settle its angles, then move on.',
+  'deploy.planProgress': '{fixed} of {total} launches fixed. A fixed launch is held until you withdraw it.',
+  'deploy.fixedKept': 'Fixed and kept: this launch survives a reload, and only Withdraw frees it.',
+  'deploy.fixedQuiet': 'Fixed',
   'deploy.planFrom': 'Plan from here',
   'deploy.planFromHint':
     'Hold everything already in orbit, choose this launch and the later ones together, and score the finished constellation at launch {last}.',
@@ -586,6 +590,10 @@ export const ru: Record<TranslationKey, string> = {
   'deploy.releaseHint':
     'Пуск ещё не состоялся, значит план можно пересмотреть. После пуска углы уже не меняются.',
   'deploy.goNext': 'Очередь {stage}',
+  'deploy.planStart': 'Пока ничего не зафиксировано. Начните с очереди {stage}: решите её углы и идите дальше.',
+  'deploy.planProgress': 'Зафиксировано очередей: {fixed} из {total}. Зафиксированное держится, пока вы его не снимете.',
+  'deploy.fixedKept': 'Зафиксировано и сохранено: переживёт перезагрузку, снимается только кнопкой «Снять фиксацию».',
+  'deploy.fixedQuiet': 'Зафиксировано',
   'deploy.planFrom': 'Планировать отсюда',
   'deploy.planFromHint':
     'Удержать всё, что уже на орбите, выбрать эту очередь и последующие вместе и оценить по полной группировке на очереди {last}.',

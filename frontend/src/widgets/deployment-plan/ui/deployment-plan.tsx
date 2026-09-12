@@ -1,9 +1,10 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
-import { Check, X } from 'lucide-react';
+import { ArrowRight, Check, Lock, LockOpen, Sparkles, X } from 'lucide-react';
 import { useSession } from '@/entities/session';
 import {
+  firstOpenStage,
   launchStages,
   planeCommitStage,
   planesAtStage,
@@ -27,14 +28,15 @@ interface DeploymentPlanProps {
 }
 
 /**
- * One design, read across the whole deployment campaign.
+ * The campaign at length: three launches, what each one is, and what is left
+ * to decide about it.
  *
- * The stage switch in the panel shows one launch at a time, which is the wrong
- * shape for the decision actually being made: a plane's angles are fixed when
- * it is launched, and the same set has to serve every stage from then on. So
- * the three stages are put side by side, and each row can start a plan from
- * the launch it names — earlier launches held, this one and the later ones
- * chosen together, scored on the finished constellation.
+ * The group in the panel carries the same three rows and the same actions,
+ * deliberately: this is the wider view of one thing, not a second thing. What
+ * it adds is room — a day of connectivity per launch rather than a percentage,
+ * the angles a fixed launch holds, and the spread of the rings that no single
+ * stage can show. The guidance sits on the launch being worked on and nowhere
+ * else, so the panel never becomes a page of prose to read past.
  */
 export function DeploymentPlan({
   scenario,
@@ -53,6 +55,8 @@ export function DeploymentPlan({
   const current = state.config.launch_stage ?? scenario.design.launch_stage;
   const spread = raanSpread(scenario, state.config);
   const lastStage = stages[stages.length - 1]?.stage ?? 3;
+  const committed = state.committedStages;
+  const open = firstOpenStage(scenario, committed);
 
   return (
     <motion.div
@@ -67,7 +71,9 @@ export function DeploymentPlan({
         <div className="min-w-0">
           <div className="font-label text-[13px] text-zinc-100">{t('deploy.title')}</div>
           <p className="mt-1 font-label text-[11px] leading-relaxed text-zinc-500">
-            {t('deploy.intro')}
+            {committed.length
+              ? t('deploy.planProgress', { fixed: committed.length, total: stages.length })
+              : t('deploy.planStart', { stage: open })}
           </p>
         </div>
         <button
@@ -90,7 +96,7 @@ export function DeploymentPlan({
 
         <div className="mt-1 space-y-2">
           {stages.map(({ stage }) => (
-            <StageRow
+            <StageBlock
               key={stage}
               scenario={scenario}
               stage={stage}
@@ -99,9 +105,12 @@ export function DeploymentPlan({
               loading={runs[stage - 1]?.isPending ?? false}
               colors={colors}
               current={current === stage}
+              fixed={committed.includes(stage)}
               planning={planning}
               onShow={() => dispatch({ type: 'setLaunchStage', stage })}
               onPlan={() => onPlanFrom(stage)}
+              onFix={() => dispatch({ type: 'commitStage', stage })}
+              onRelease={() => dispatch({ type: 'releaseStage', stage })}
             />
           ))}
         </div>
@@ -137,15 +146,11 @@ export function DeploymentPlan({
           </div>
         </div>
       )}
-
-      <p className="border-t border-rule px-4 py-3 font-label text-[11px] leading-relaxed text-zinc-500">
-        {t('deploy.planNote')}
-      </p>
     </motion.div>
   );
 }
 
-interface StageRowProps {
+interface StageBlockProps {
   scenario: ScenarioDocument;
   stage: number;
   lastStage: number;
@@ -153,12 +158,15 @@ interface StageRowProps {
   loading: boolean;
   colors: Record<string, string>;
   current: boolean;
+  fixed: boolean;
   planning: boolean;
   onShow: () => void;
   onPlan: () => void;
+  onFix: () => void;
+  onRelease: () => void;
 }
 
-function StageRow({
+function StageBlock({
   scenario,
   stage,
   lastStage,
@@ -166,10 +174,13 @@ function StageRow({
   loading,
   colors,
   current,
+  fixed,
   planning,
   onShow,
   onPlan,
-}: StageRowProps) {
+  onFix,
+  onRelease,
+}: StageBlockProps) {
   const { t, formatDuration } = useI18n();
 
   const rings = planesAtStage(scenario, stage);
@@ -178,7 +189,7 @@ function StageRow({
   const outage = summary
     ? summary.clients.reduce((longest, client) => Math.max(longest, client.max_outage_s), 0)
     : null;
-  const committed = rings.filter((ring) => planeCommitStage(scenario, ring) === stage);
+  const commits = rings.filter((ring) => planeCommitStage(scenario, ring) === stage);
 
   return (
     <div
@@ -194,7 +205,10 @@ function StageRow({
         title={t('deploy.show', { stage })}
         className="grid w-full grid-cols-[auto_1fr_auto_auto] items-baseline gap-x-3 text-left focus-visible:outline-none"
       >
-        <span className="font-data text-[12px] tabular-nums text-zinc-200">{stage}</span>
+        <span className="flex items-baseline gap-1">
+          <span className="font-data text-[12px] tabular-nums text-zinc-200">{stage}</span>
+          {fixed && <Lock size={9} className="text-zinc-400" aria-hidden="true" />}
+        </span>
         <span className="flex min-w-0 items-baseline gap-1.5">
           {rings.map((ring) => (
             <span
@@ -229,21 +243,77 @@ function StageRow({
       <StageStrip summary={summary} loading={loading} />
 
       <div className="mt-1 flex items-baseline gap-2">
+        <span
+          className={cn(
+            'border px-1 py-px font-data text-[8px] tracking-[0.08em]',
+            fixed ? 'border-zinc-500 text-zinc-200' : 'border-rule text-zinc-600',
+          )}
+        >
+          {t(fixed ? 'deploy.badgeFixed' : 'deploy.badgeDraft')}
+        </span>
         <span className="min-w-0 flex-1 truncate font-label text-[10px] text-zinc-600">
-          {committed.length
-            ? t('deploy.commits', { rings: committed.join(', ') })
+          {commits.length
+            ? t('deploy.commits', { rings: commits.join(', ') })
             : t('deploy.commitsNone')}
         </span>
-        <button
-          type="button"
-          onClick={onPlan}
-          disabled={planning}
-          title={t('deploy.planFromHint', { stage, last: lastStage })}
-          className="flex-shrink-0 border border-rule-strong px-2 py-0.5 font-label text-[10px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none disabled:opacity-40"
-        >
-          {t('deploy.planFrom')}
-        </button>
       </div>
+
+      {/* The sentence goes where the work is. Three of them at once would be a
+          page of prose, and the two that are not being acted on are noise. */}
+      {current && (
+        <>
+          <p className="mt-1.5 font-label text-[11px] leading-relaxed text-zinc-500">
+            {fixed
+              ? t('deploy.fixedKept')
+              : stage < lastStage
+                ? t('deploy.planFromHint', { stage, last: lastStage })
+                : t('deploy.draftHintLast')}
+          </p>
+
+          <div className="mt-1.5 flex gap-1.5">
+            {fixed ? (
+              <button
+                type="button"
+                onClick={onRelease}
+                title={t('deploy.releaseHint')}
+                className="flex items-center gap-1 border border-rule-strong px-2 py-1 font-label text-[10px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none"
+              >
+                <LockOpen size={10} />
+                {t('deploy.release')}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onPlan}
+                  disabled={planning}
+                  title={t('deploy.findHint')}
+                  className="flex items-center gap-1 border border-zinc-600 px-2 py-1 font-label text-[10px] text-zinc-100 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none disabled:opacity-40"
+                >
+                  <Sparkles size={10} />
+                  {t(planning ? 'deploy.finding' : 'deploy.find')}
+                </button>
+                <button
+                  type="button"
+                  onClick={onFix}
+                  title={t('deploy.fixHint')}
+                  className="flex items-center gap-1 border border-rule-strong px-2 py-1 font-label text-[10px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none"
+                >
+                  <Lock size={10} />
+                  {t('deploy.fix')}
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {!current && fixed && (
+        <p className="mt-1 flex items-center gap-1 font-label text-[10px] text-zinc-600">
+          <ArrowRight size={9} aria-hidden="true" />
+          {t('deploy.fixedQuiet')}
+        </p>
+      )}
     </div>
   );
 }
