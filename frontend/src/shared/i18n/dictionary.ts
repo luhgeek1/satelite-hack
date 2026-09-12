@@ -419,8 +419,9 @@ export const en = {
   'gateway.feeders': '{count} feeders',
   'gateway.busiest': 'Busiest feeder',
   'gateway.carrying': 'Carrying traffic',
-  'sensitivity.sweep': 'Sweep {parameter}',
-  'sensitivity.sweeping': 'Sweeping…',
+  'sensitivity.sweeping': 'Sweeping {parameter}…',
+  'sensitivity.now': 'now',
+  'sensitivity.intro': 'Worst-client availability as one piece of hardware changes, everything else as configured.',
 
   'optimizer.title': 'Angle search',
   'optimizer.stop': 'Stop the search',
@@ -907,8 +908,9 @@ export const ru: Record<TranslationKey, string> = {
   'gateway.feeders': 'питающих: {count}',
   'gateway.busiest': 'Самый нагруженный',
   'gateway.carrying': 'Несёт трафик',
-  'sensitivity.sweep': 'Прогнать {parameter}',
-  'sensitivity.sweeping': 'Прогон…',
+  'sensitivity.sweeping': 'Считаем: {parameter}…',
+  'sensitivity.now': 'сейчас',
+  'sensitivity.intro': 'Худший пункт при изменении одного параметра железа, всё остальное как настроено.',
 
   'optimizer.title': 'Подбор углов',
   'optimizer.stop': 'Остановить подбор',

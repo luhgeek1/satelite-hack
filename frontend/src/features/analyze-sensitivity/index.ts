@@ -1,2 +1,2 @@
 export { SensitivityPanel } from './ui/sensitivity-panel';
-export { SWEEPS, type SweepSpec } from './model/use-sensitivity';
+export { SWEEPS, useSensitivitySweeps, type SweepSpec, type SweepParameter } from './model/use-sensitivity';

@@ -36,6 +36,7 @@ import {
 import { useInjectFailure, useRestoreSatellite } from '@/features/inject-failure';
 import type { OutageNode, OutageTarget, OutageWindow } from '@/features/schedule-outage';
 import { impactIndex, useResilience } from '@/features/analyze-resilience';
+import { useSensitivitySweeps } from '@/features/analyze-sensitivity';
 import { snapToGrid, usePlayback } from '@/features/timeline-playback';
 import {
   launchStages,
@@ -192,6 +193,18 @@ export function StudioPage() {
   }, [state.playing, tS, prefetch]);
 
   const resilience = useResilience(runInput, state.tab === 'resilience');
+
+  // The sweeps for whatever is on screen when the page first settles, so the
+  // resilience tab opens onto answers rather than spinners. Once only: a sweep
+  // per slider move would queue three analyses behind every drag on a machine
+  // with two cores. Later configurations are swept when the tab is opened.
+  const [firstSettled, setFirstSettled] = useState<typeof runInput | null>(null);
+
+  useEffect(() => {
+    if (summary && !settling && firstSettled === null) setFirstSettled(runInput);
+  }, [summary, settling, firstSettled, runInput]);
+
+  useSensitivitySweeps(firstSettled ?? runInput, firstSettled !== null);
   const impacts = useMemo(() => impactIndex(resilience.data?.impacts), [resilience.data]);
 
   const injectFailure = useInjectFailure(summary?.id, tS, horizonS);
