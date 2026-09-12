@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { isFiniteNumber, isRecord, readStored, writeStored } from '@/shared/lib';
 import type { FailureDto, RoutingStrategy, SimulationConfig } from '@/shared/api';
 
 export type StudioTab = 'simulation' | 'resilience' | 'compare';
@@ -37,7 +38,8 @@ type Action =
   | { type: 'selectClient'; clientId: string | null }
   | { type: 'setViewMode'; viewMode: ViewMode }
   | { type: 'setTab'; tab: StudioTab }
-  | { type: 'resetConfig' };
+  | { type: 'resetConfig' }
+  | { type: 'restore'; state: Partial<SessionState> };
 
 const initialState: SessionState = {
   scenarioId: null,
@@ -155,10 +157,58 @@ function reducer(state: SessionState, action: Action): SessionState {
     case 'resetConfig':
       return { ...state, config: {}, tS: 0, playing: false };
 
+    // Whatever survived the last visit, merged over the defaults. Playback is
+    // deliberately not among the restored fields: a page that starts running
+    // by itself is a surprise, not a convenience.
+    case 'restore':
+      return { ...state, ...action.state, playing: false, focusRequest: null };
+
     default:
       return state;
   }
 }
+
+/** Bumped whenever the persisted shape changes, so old entries are ignored. */
+const STORAGE_KEY = 'orbitguard-session-v1';
+
+type PersistedSession = Pick<
+  SessionState,
+  | 'scenarioId'
+  | 'config'
+  | 'strategy'
+  | 'tS'
+  | 'selectedSatelliteId'
+  | 'selectedClientId'
+  | 'viewMode'
+  | 'tab'
+>;
+
+const TABS: StudioTab[] = ['simulation', 'resilience', 'compare'];
+const VIEW_MODES: ViewMode[] = ['3d', '2d'];
+
+const isSession = (value: unknown): value is Partial<PersistedSession> => {
+  if (!isRecord(value)) return false;
+  const { scenarioId, config, tS, selectedSatelliteId, selectedClientId, viewMode, tab } = value;
+  if (scenarioId !== undefined && scenarioId !== null && typeof scenarioId !== 'string') return false;
+  if (config !== undefined && !isRecord(config)) return false;
+  if (tS !== undefined && !isFiniteNumber(tS)) return false;
+  if (selectedSatelliteId !== undefined && selectedSatelliteId !== null && typeof selectedSatelliteId !== 'string') return false;
+  if (selectedClientId !== undefined && selectedClientId !== null && typeof selectedClientId !== 'string') return false;
+  if (viewMode !== undefined && !VIEW_MODES.includes(viewMode as ViewMode)) return false;
+  if (tab !== undefined && !TABS.includes(tab as StudioTab)) return false;
+  return true;
+};
+
+const persisted = (state: SessionState): PersistedSession => ({
+  scenarioId: state.scenarioId,
+  config: state.config,
+  strategy: state.strategy,
+  tS: state.tS,
+  selectedSatelliteId: state.selectedSatelliteId,
+  selectedClientId: state.selectedClientId,
+  viewMode: state.viewMode,
+  tab: state.tab,
+});
 
 interface SessionContextValue {
   state: SessionState;
@@ -169,6 +219,24 @@ const SessionContext = React.createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = React.useReducer(reducer, initialState);
+  const [restored, setRestored] = React.useState(false);
+
+  // Read after mount rather than in the reducer's initialiser: the page is
+  // prerendered, and restoring during the first render would make the server's
+  // markup and the client's disagree.
+  React.useEffect(() => {
+    const saved = readStored(STORAGE_KEY, isSession);
+    if (saved) dispatch({ type: 'restore', state: saved });
+    setRestored(true);
+  }, []);
+
+  // Writing before the restore has landed would save the defaults over the
+  // session we are about to read.
+  React.useEffect(() => {
+    if (!restored) return;
+    writeStored(STORAGE_KEY, persisted(state));
+  }, [state, restored]);
+
   const value = React.useMemo(() => ({ state, dispatch }), [state]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

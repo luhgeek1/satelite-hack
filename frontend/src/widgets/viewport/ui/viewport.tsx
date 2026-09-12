@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
 import { useSession } from '@/entities/session';
+import { isFiniteNumber, isRecord, readStored, writeStored } from '@/shared/lib';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
 import type { RouteTrace } from '@/entities/simulation';
@@ -32,6 +33,15 @@ interface ViewportProps {
   contactRadiusKm: number;
 }
 
+/** Where the globe was left, so a reload keeps the framing the user set. */
+const CAMERA_KEY = 'orbitguard-globe-camera-v1';
+
+const isCamera = (value: unknown): value is GlobeCameraPosition =>
+  isRecord(value)
+  && isFiniteNumber(value.lat)
+  && isFiniteNumber(value.lng)
+  && isFiniteNumber(value.altitude);
+
 export function Viewport({
   satellites,
   links,
@@ -46,11 +56,17 @@ export function Viewport({
   const { state, dispatch } = useSession();
   const [webglBroken, setWebglBroken] = useState(false);
 
-  // Switching to the flat map unmounts the globe. The camera is kept out here
-  // so coming back lands on the view the user left, not on the default framing.
-  // A ref rather than state: the globe reads it once, at mount, and storing it
-  // would otherwise re-render the whole viewport on every drag.
+  // Switching to the flat map unmounts the globe, and so does a reload. The
+  // camera is kept out here — and written through to storage — so coming back
+  // lands on the view the user left, not on the default framing. A ref rather
+  // than state: the globe reads it once, at mount, and storing it would
+  // otherwise re-render the whole viewport on every drag.
   const camera = useRef<GlobeCameraPosition | undefined>(undefined);
+  const cameraRead = useRef(false);
+  if (!cameraRead.current) {
+    cameraRead.current = true;
+    camera.current = readStored(CAMERA_KEY, isCamera) ?? undefined;
+  }
 
   useEffect(() => {
     if (webglBroken && state.viewMode === '3d') {
@@ -106,6 +122,7 @@ export function Viewport({
               cameraPosition={camera.current}
               onCameraPositionChange={(position) => {
                 camera.current = position;
+                writeStored(CAMERA_KEY, position);
               }}
               onSatelliteClick={select}
               selectedSatellite={state.selectedSatelliteId}

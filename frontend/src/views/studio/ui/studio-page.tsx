@@ -63,8 +63,13 @@ export function StudioPage() {
   const panels = useLocalPanels();
 
   useEffect(() => {
-    if (!state.scenarioId && scenarios.data?.length) {
-      dispatch({ type: 'selectScenario', scenarioId: scenarios.data[0].id });
+    const catalog = scenarios.data;
+    if (!catalog?.length) return;
+    // A restored id can name a scenario the service no longer serves, so the
+    // catalog decides rather than the saved session.
+    const known = catalog.some((item) => item.id === state.scenarioId);
+    if (!state.scenarioId || !known) {
+      dispatch({ type: 'selectScenario', scenarioId: catalog[0].id });
     }
   }, [scenarios.data, state.scenarioId, dispatch]);
 
