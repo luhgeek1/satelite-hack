@@ -99,7 +99,9 @@ export function SatelliteDetails({
   // column: the configuration stays readable beside it, and the reveal wipes
   // out from under that edge rather than flying in over the globe. Height
   // follows the content — a fixed full-height sheet would claim space the
-  // readings do not need — and only a long node runs into the scroll.
+  // readings do not need — and only a long node runs into the scroll. A
+  // hairline gap on every side keeps it off the header, the timeline and
+  // the column it belongs to, so it reads as a sheet over them.
   const content = (
     <motion.div
       key="satellite-details"
@@ -110,7 +112,7 @@ export function SatelliteDetails({
       className={cn(
         'flex h-fit flex-col overflow-y-auto overscroll-contain bg-[#09090b] p-4',
         placement === 'overlay' &&
-          'absolute right-full top-0 z-20 w-[320px] max-h-full border-b border-l border-rule-strong shadow-2xl',
+          'absolute right-full top-2 z-20 mr-2 w-[320px] max-h-[calc(100%-1rem)] border border-rule-strong shadow-2xl',
       )}
     >
       <div className="flex items-center gap-3">
