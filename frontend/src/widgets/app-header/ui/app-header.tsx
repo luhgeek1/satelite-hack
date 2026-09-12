@@ -27,7 +27,7 @@ export function AppHeader({ status }: AppHeaderProps) {
   const indicator = STATUS_COPY[status];
 
   return (
-    <header className="z-10 grid h-14 flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-rule bg-black px-3 sm:gap-4 sm:px-6 lg:h-16">
+    <header className="relative z-40 grid h-14 flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-rule bg-black px-3 sm:gap-4 sm:px-6 lg:h-16">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center border border-rule-strong">
           <GlobeIcon className="h-4 w-4 text-zinc-300" />
