@@ -118,6 +118,13 @@ export const en = {
   'config.noSites': 'No ground sites in this scenario.',
   'config.sv': 'SV',
   'config.sitesObstructed': '{count} · {obstructed} obstructed',
+  'config.gatewayOutages': 'Gateway outages',
+  'config.gwDown': '{count} OFFLINE',
+  'config.stateOffline': 'OFF',
+  'config.gatewaysNominal':
+    'All {count} gateways up. Take one down to see how much of the network rests on it.',
+  'config.addGatewayOutage': 'Add gateway outage',
+  'gatewayOutage.which': 'Which gateway goes down?',
 
   'site.surroundings': 'Surroundings',
   'site.resetToFile': 'As in file',
@@ -398,6 +405,13 @@ export const ru: Record<TranslationKey, string> = {
   'config.noSites': 'В этом сценарии нет наземных объектов.',
   'config.sv': 'КА',
   'config.sitesObstructed': '{count} · с помехами: {obstructed}',
+  'config.gatewayOutages': 'Простои шлюза',
+  'config.gwDown': '{count} ОТКЛ',
+  'config.stateOffline': 'ОТКЛ',
+  'config.gatewaysNominal':
+    'Все шлюзы ({count}) работают. Отключите один, чтобы увидеть, сколько сети на нём держится.',
+  'config.addGatewayOutage': 'Добавить простой шлюза',
+  'gatewayOutage.which': 'Какой шлюз отключится?',
 
   'site.surroundings': 'Окружение',
   'site.resetToFile': 'Как в файле',

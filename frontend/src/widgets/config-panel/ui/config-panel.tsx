@@ -6,6 +6,7 @@ import { DeploymentControl } from '@/features/configure-deployment';
 import { PlaneControls } from '@/features/configure-planes';
 import { SiteConditionsControl } from '@/features/configure-site';
 import { FailureForm } from '@/features/inject-failure';
+import { GatewayOutageForm } from '@/features/inject-gateway-outage';
 import { OutageList } from '@/features/inspect-outages';
 import { SaveVariantButton } from '@/features/manage-variants';
 import { useSession } from '@/entities/session';
@@ -17,7 +18,7 @@ import { Button, ParamGroup } from '@/shared/ui';
 import type { ClientMetrics, ScenarioDocument } from '@/shared/api';
 import type { FailureRequest } from '@/features/inject-failure';
 
-type GroupId = 'deployment' | 'planes' | 'outages' | 'failures' | 'satellites' | 'sites';
+type GroupId = 'deployment' | 'planes' | 'outages' | 'failures' | 'gateway' | 'satellites' | 'sites';
 
 interface ConfigPanelProps {
   scenario: ScenarioDocument;
@@ -57,14 +58,17 @@ export function ConfigPanel({
     planes: true,
     outages: true,
     failures: false,
+    gateway: false,
     satellites: false,
     sites: true,
   });
   const [picking, setPicking] = useState(false);
+  const [pickingGateway, setPickingGateway] = useState(false);
 
   const toggle = (id: GroupId) => setOpen((current) => ({ ...current, [id]: !current[id] }));
 
   const failures = state.config.failures ?? [];
+  const gatewayOutages = state.config.gateway_outages ?? scenario.gateway_outages;
   const deployed = satellites.filter((satellite) => satellite.deployed);
   const gateways = sites.filter((site) => site.role === 'gateway');
   const clients = sites.filter((site) => site.role === 'client');
@@ -188,6 +192,68 @@ export function ConfigPanel({
                 className="mt-2 flex w-full items-center justify-center gap-1.5 border border-rule-strong py-1.5 font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none"
               >
                 <Plus size={12} /> {t('config.inject')}
+              </button>
+            )}
+          </div>
+        </ParamGroup>
+
+        <ParamGroup
+          code="GW"
+          title={t('config.gatewayOutages')}
+          alarm={gatewayOutages.length > 0}
+          value={
+            gatewayOutages.length
+              ? t('config.gwDown', { count: gatewayOutages.length })
+              : t('config.none')
+          }
+          open={open.gateway}
+          onToggle={() => toggle('gateway')}
+        >
+          <div className="mt-1 space-y-1.5">
+            {gatewayOutages.map((outage) => (
+              <div
+                key={`${outage.gateway_id}-${outage.start_s}`}
+                className="flex items-center gap-2.5 border-l-2 border-alarm bg-white/[0.03] py-1.5 pl-2.5 pr-2"
+              >
+                <span className="font-data text-[10px] text-alarm">{t('config.stateOffline')}</span>
+                <span className="font-data text-[11px] text-zinc-200">{outage.gateway_id}</span>
+                <span className="font-data text-[10px] tabular-nums text-zinc-600">
+                  {outage.start_s === 0 && outage.end_s >= horizonS
+                    ? t('config.allDay')
+                    : `${formatClock(outage.start_s)}–${formatClock(outage.end_s)}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: 'removeGatewayOutage', gatewayId: outage.gateway_id })}
+                  className="ml-auto font-label text-[11px] text-zinc-400 underline-offset-2 transition-colors hover:text-zinc-100 hover:underline focus-visible:outline-none"
+                >
+                  {t('config.restore')}
+                </button>
+              </div>
+            ))}
+
+            {gatewayOutages.length === 0 && !pickingGateway && (
+              <p className="font-label text-[11px] leading-relaxed text-zinc-500">
+                {t('config.gatewaysNominal', { count: gateways.length })}
+              </p>
+            )}
+
+            {pickingGateway ? (
+              <GatewayOutageForm
+                gateways={gateways}
+                currentTS={currentTS}
+                horizonS={horizonS}
+                stepS={stepS}
+                onDone={() => setPickingGateway(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPickingGateway(true)}
+                disabled={gateways.length === 0}
+                className="mt-2 flex w-full items-center justify-center gap-1.5 border border-rule-strong py-1.5 font-label text-[12px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none disabled:opacity-40"
+              >
+                <Plus size={12} /> {t('config.addGatewayOutage')}
               </button>
             )}
           </div>
