@@ -23,6 +23,26 @@ const toBounds = (locks: PlaneLock[]): PlaneBounds[] =>
     phase_deg: lock.phaseLocked ? null : [0, 22.5],
   }));
 
+/** Turns the optimizer's answer into the overrides the session config takes. */
+export const toPlaneOverrides = (
+  changed: Record<string, { raan_deg: number | null; phase_deg: number | null }>,
+): Record<string, { raan_deg?: number; phase_deg?: number }> =>
+  Object.fromEntries(
+    Object.entries(changed).map(([planeId, change]) => [
+      planeId,
+      {
+        ...(change.raan_deg !== null ? { raan_deg: change.raan_deg } : {}),
+        ...(change.phase_deg !== null ? { phase_deg: change.phase_deg } : {}),
+      },
+    ]),
+  );
+
+/** Every plane free to move: what the search assumes unless locks say otherwise. */
+export const freeLocks = (planeIds: string[]): PlaneLock[] =>
+  planeIds.map((planeId) => ({ planeId, raanLocked: false, phaseLocked: false }));
+
+export type Optimizer = ReturnType<typeof useOptimizer>;
+
 export function useOptimizer(input: RunInput) {
   const [jobId, setJobId] = useState<string | null>(null);
 

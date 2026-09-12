@@ -5,8 +5,8 @@ import { useSession, type ViewMode } from '@/entities/session';
 import { cn } from '@/shared/lib';
 
 const modes: Array<{ id: ViewMode; label: string; icon: typeof GlobeIcon }> = [
-  { id: '3d', label: '3D', icon: GlobeIcon },
-  { id: '2d', label: '2D', icon: MapIcon },
+  { id: '3d', label: 'Globe', icon: GlobeIcon },
+  { id: '2d', label: 'Map', icon: MapIcon },
 ];
 
 export function ViewToggle({ style }: { style?: React.CSSProperties }) {
@@ -25,13 +25,13 @@ export function ViewToggle({ style }: { style?: React.CSSProperties }) {
           aria-pressed={state.viewMode === id}
           title={`${label} view`}
           className={cn(
-            'flex h-7 items-center gap-1.5 border-l border-rule-strong px-2 font-data text-[11px] transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:outline-none',
+            'flex h-9 items-center gap-2 border-l border-rule-strong px-3.5 font-label text-[13px] transition-colors first:border-l-0 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none',
             state.viewMode === id
               ? 'bg-white/[0.12] text-zinc-100'
               : 'text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200',
           )}
         >
-          <Icon size={12} />
+          <Icon size={15} />
           {label}
         </button>
       ))}

@@ -110,16 +110,22 @@ export function PlaybackBar({
             className="group relative h-4 min-w-0 flex-1 cursor-pointer touch-none focus:outline-none"
           >
             <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 ring-offset-2 ring-offset-black group-focus-visible:ring-1 group-focus-visible:ring-zinc-400">
-              <div className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-zinc-600" />
+              {/* The baseline runs the whole day underneath, so an outage block
+                  reads as a mark *on* the timeline rather than as a gap in it —
+                  which would invert the meaning. */}
+              <div className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-zinc-700" />
               {visible.map((band, index) => (
                 <div
                   key={`${band.clientId}-${index}`}
                   title={`${band.clientId} · ${formatClock(band.startFraction * horizonS)} · ${formatDuration(
                     band.widthFraction * horizonS,
                   )} · ${band.state === 'no_satellite' ? 'no satellite in view' : 'satellite in view, no route'}`}
+                  /* Two causes, one ink: the strip is white-and-grey by
+                     design, so the harsher state is the brighter block rather
+                     than a second hue. */
                   className={cn(
                     'absolute inset-y-0',
-                    band.state === 'no_satellite' ? 'bg-alarm' : 'bg-zinc-400',
+                    band.state === 'no_satellite' ? 'bg-zinc-300' : 'bg-zinc-500',
                   )}
                   style={{
                     left: `${band.startFraction * 100}%`,
@@ -140,10 +146,10 @@ export function PlaybackBar({
 
         <div className="flex flex-shrink-0 items-center gap-3 font-data text-[9px] tracking-[0.08em] text-zinc-600">
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-2.5 bg-zinc-400" /> NO ROUTE
+            <span className="h-1.5 w-2.5 bg-zinc-500" /> NO ROUTE
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-2.5 bg-alarm" /> NO SATELLITE
+            <span className="h-1.5 w-2.5 bg-zinc-300" /> NO SATELLITE
           </span>
         </div>
       </div>
