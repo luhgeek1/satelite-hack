@@ -214,13 +214,6 @@ def parse_site_conditions(
     return SiteConditions.from_dict(raw, field_path=f"ground_sites[{where}].{SITE_CONDITIONS_KEY}")
 
 
-def validate_site_conditions(scenario: dict[str, Any]) -> None:
-    """Check every site's block; the official validator ignores unknown keys."""
-    for index, site in enumerate(scenario.get("ground_sites", [])):
-        if isinstance(site, dict):
-            parse_site_conditions(site, index=index)
-
-
 def active_site_conditions(scenario: dict[str, Any]) -> dict[str, SiteConditions]:
     """Sites whose conditions actually raise the horizon somewhere."""
     scenario_mask = float(scenario["environment"]["min_elevation_deg"])
