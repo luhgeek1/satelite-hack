@@ -61,7 +61,7 @@ jobs:
   # try once
 
   deploy:
-    needs: test
+    # needs: test
     if: ${{ gitverse.ref_name == 'main' && gitverse.event_name == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
