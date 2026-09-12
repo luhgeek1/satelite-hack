@@ -80,20 +80,21 @@ export function SatelliteDetails({
   const carried = tracesThrough(routes, satellite.id);
   const accent = satellite.failed ? '#e4483a' : satellite.color;
 
-  const telemetry = [
+  // Six readings in a three-wide grid rather than seven stacked rows: the
+  // panel is a readout, and a readout is read by scanning, not by scrolling.
+  // Traffic is the seventh and moves up to head the routes it describes.
+  const readout = [
     { label: t('sat.plane'), value: satellite.planeId },
     { label: t('sat.batch'), value: `${satellite.launchBatch}` },
     { label: t('sat.altitude'), value: t('sat.km', { value: satellite.altitudeKm.toFixed(0) }) },
     { label: t('sat.latitude'), value: formatLatitude(satellite.lat) },
     { label: t('sat.longitude'), value: formatLongitude(satellite.lon) },
     { label: t('sat.links'), value: `${neighbours.length}` },
-    {
-      label: t('sat.traffic'),
-      value: carried.length
-        ? t('sat.trafficCount', { carried: carried.length, total: routes.length })
-        : t('sat.trafficIdle'),
-    },
   ];
+
+  const traffic = carried.length
+    ? t('sat.trafficCount', { carried: carried.length, total: routes.length })
+    : t('sat.trafficIdle');
 
   // The panel is a column of its own, pinned to the left edge of the data
   // column: the configuration stays readable beside it, and the reveal wipes
@@ -110,14 +111,14 @@ export function SatelliteDetails({
       exit={placement === 'overlay' ? { opacity: 0, clipPath: 'inset(0 0 0 100%)' } : { opacity: 1 }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
       className={cn(
-        'flex h-fit flex-col overflow-y-auto overscroll-contain bg-[#09090b] p-4',
+        'flex h-fit flex-col overflow-y-auto overscroll-contain bg-[#09090b] p-3.5',
         placement === 'overlay' &&
           'absolute right-full top-2 z-20 mr-2 w-[320px] max-h-[calc(100%-1rem)] border border-rule-strong shadow-2xl',
       )}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         <motion.span
-          className="h-9 w-[3px] flex-shrink-0 origin-center"
+          className="h-6 w-[3px] flex-shrink-0 origin-center"
           style={{ background: accent }}
           initial={reduce ? false : { scaleY: 0 }}
           animate={{ scaleY: 1 }}
@@ -132,13 +133,20 @@ export function SatelliteDetails({
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: reduce ? 0 : 0.16, ease: EASE }}
             >
-              <div className="font-data text-xl leading-none text-zinc-50">{satellite.id}</div>
-              <div className={cn('mt-1.5 font-label text-[11px]', satellite.failed ? 'text-alarm' : 'text-zinc-400')}>
-                {satellite.failed
-                  ? t('sat.failed')
-                  : satellite.deployed
-                    ? t('sat.active')
-                    : t('sat.notDeployed')}
+              <div className="flex items-baseline gap-2">
+                <span className="font-data text-[18px] leading-none text-zinc-50">{satellite.id}</span>
+                <span
+                  className={cn(
+                    'truncate font-label text-[11px] leading-none',
+                    satellite.failed ? 'text-alarm' : 'text-zinc-400',
+                  )}
+                >
+                  {satellite.failed
+                    ? t('sat.failed')
+                    : satellite.deployed
+                      ? t('sat.active')
+                      : t('sat.notDeployed')}
+                </span>
               </div>
             </motion.div>
           </AnimatePresence>
@@ -146,42 +154,42 @@ export function SatelliteDetails({
         <button
           type="button"
           onClick={() => dispatch({ type: 'selectSatellite', satelliteId: null })}
-          className="flex h-7 w-7 flex-shrink-0 items-center justify-center text-zinc-500 transition-colors hover:text-zinc-200"
+          className="-mr-1 flex h-6 w-6 flex-shrink-0 items-center justify-center text-zinc-500 transition-colors hover:text-zinc-200"
           aria-label={t('sat.close')}
         >
-          <X size={16} />
+          <X size={15} />
         </button>
       </div>
 
       <AnimatePresence mode="wait">
       <motion.div key={satellite.id} variants={body} initial="hidden" animate="shown" exit="out">
 
-      <motion.div className="mt-5" variants={section}>
+      <motion.div className="mt-3.5" variants={section}>
         {hasResilience ? (
           <>
-            <div className="flex items-end justify-between gap-3">
+            <div className="flex items-baseline justify-between gap-3">
               <div className="flex items-baseline gap-1">
                 <motion.span
-                  className="font-data text-[40px] leading-none tracking-tight tabular-nums"
+                  className="font-data text-[30px] leading-none tracking-tight tabular-nums"
                   style={{ color: level.color }}
                 >
                   {reduce ? Math.round(satellite.criticality) : scoreLabel}
                 </motion.span>
-                <span className="font-data text-sm text-zinc-600">/100</span>
+                <span className="font-data text-[12px] text-zinc-600">/100</span>
               </div>
-              <div className="text-right leading-tight">
-                <div className="font-label text-[11px] text-zinc-500">{t('sat.criticality')}</div>
-                <div className="font-label text-[11px]" style={{ color: level.color }}>
+              <div className="flex items-baseline gap-1.5 leading-none">
+                <span className="font-label text-[11px] text-zinc-500">{t('sat.criticality')}</span>
+                <span className="font-label text-[11px]" style={{ color: level.color }}>
                   {t(`criticality.${level.tier}` as 'criticality.low')}
-                </div>
+                </span>
               </div>
             </div>
 
-            <div className="mt-3 flex gap-[2px]" aria-hidden="true">
+            <div className="mt-2 flex gap-[2px]" aria-hidden="true">
               {Array.from({ length: 24 }).map((_, index) => (
                 <motion.span
                   key={index}
-                  className="h-3 flex-1 origin-bottom"
+                  className="h-1.5 flex-1 origin-bottom"
                   style={{
                     background:
                       ((index + 1) / 24) * 100 <= satellite.criticality ? level.color : '#27272a',
@@ -197,38 +205,41 @@ export function SatelliteDetails({
               ))}
             </div>
 
-            <p className="mt-3 font-label text-xs leading-relaxed text-zinc-400">
+            <p className="mt-2 font-label text-[11px] leading-snug text-zinc-400">
               {satellite.failed
                 ? t('sat.downCopy')
                 : t('sat.costCopy', { amount: formatPercent(satellite.availabilityImpact) })}
             </p>
           </>
         ) : (
-          <p className="font-label text-xs leading-relaxed text-zinc-500">
-            {t('sat.scoreHint')}
-          </p>
+          <p className="font-label text-[11px] leading-snug text-zinc-500">{t('sat.scoreHint')}</p>
         )}
       </motion.div>
 
-      <motion.dl className="mt-5 border-t border-rule" variants={section}>
-        {telemetry.map((row) => (
-          <div key={row.label} className="flex items-baseline justify-between gap-4 border-b border-rule py-2">
-            <dt className="font-label text-xs text-zinc-500">{row.label}</dt>
-            <dd className="font-data text-[13px] tabular-nums text-zinc-200">{row.value}</dd>
+      <motion.dl className="mt-3.5 grid grid-cols-3 border-l border-t border-rule" variants={section}>
+        {readout.map((row) => (
+          <div key={row.label} className="border-b border-r border-rule px-2 py-1.5">
+            <dt className="font-label text-[10px] leading-none text-zinc-500">{row.label}</dt>
+            <dd className="mt-1 font-data text-[12.5px] leading-none tabular-nums text-zinc-200">
+              {row.value}
+            </dd>
           </div>
         ))}
       </motion.dl>
 
-      {carried.length > 0 && (
-        <motion.div className="mt-4" variants={section}>
-          <div className="font-label text-xs text-zinc-500">{t('sat.carrying')}</div>
-          <div className="mt-2 space-y-2.5">
+      <motion.div className="mt-3" variants={section}>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="font-label text-[11px] text-zinc-500">{t('sat.carrying')}</span>
+          <span className="font-data text-[11px] tabular-nums text-zinc-400">{traffic}</span>
+        </div>
+        {carried.length > 0 && (
+          <div className="mt-1.5 space-y-1.5">
             {carried.map((trace) => (
               <div key={trace.clientId}>
                 <button
                   type="button"
                   onClick={() => dispatch({ type: 'selectClient', clientId: trace.clientId })}
-                  className="flex items-center gap-1.5 font-data text-[11px] text-zinc-300 transition-colors hover:text-white"
+                  className="flex items-center gap-1.5 font-data text-[11px] leading-none text-zinc-300 transition-colors hover:text-white"
                 >
                   <span className="h-1.5 w-1.5 shrink-0" style={{ background: trace.color }} />
                   {trace.clientId}
@@ -238,19 +249,19 @@ export function SatelliteDetails({
               </div>
             ))}
           </div>
-        </motion.div>
-      )}
+        )}
+      </motion.div>
 
       {neighbours.length > 0 && (
-        <motion.div className="mt-4" variants={section}>
-          <div className="font-label text-xs text-zinc-500">{t('sat.connects')}</div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+        <motion.div className="mt-3" variants={section}>
+          <div className="font-label text-[11px] text-zinc-500">{t('sat.connects')}</div>
+          <div className="mt-1.5 flex flex-wrap gap-1">
             {neighbours.map((id) => (
               <motion.button
                 key={id}
                 type="button"
                 onClick={() => dispatch({ type: 'selectSatellite', satelliteId: id })}
-                className="border border-rule-strong px-1.5 py-0.5 font-data text-[11px] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
+                className="border border-rule-strong px-1.5 py-px font-data text-[11px] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
                 whileTap={reduce ? undefined : { scale: 0.94 }}
                 transition={{ duration: 0.12, ease: EASE }}
               >
@@ -261,15 +272,16 @@ export function SatelliteDetails({
         </motion.div>
       )}
 
-      <motion.div className="mt-6" variants={section}>
+      <motion.div className="mt-3.5" variants={section}>
         <motion.div whileTap={reduce || pending ? undefined : { scale: 0.99 }}>
           {satellite.failed ? (
-            <Button variant="outline" className="w-full" onClick={() => onRestore(satellite.id)}>
+            <Button variant="outline" size="sm" className="w-full" onClick={() => onRestore(satellite.id)}>
               {t('sat.restore')}
             </Button>
           ) : (
             <Button
               variant="danger"
+              size="sm"
               className="w-full"
               disabled={pending || !satellite.deployed}
               onClick={() => onInjectFailure(satellite.id)}
