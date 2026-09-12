@@ -1,0 +1,73 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", ".gitverse/workflows/backend-ci.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["backend/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Postgres and Redis
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends postgresql redis-server
+          service postgresql start
+          service redis-server start
+          su postgres -c "psql -c \"ALTER USER postgres PASSWORD 'secret';\""
+          su postgres -c "createdb orbitguard_test"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install "poetry==2.3.2"
+          poetry install --with dev --no-root
+
+      - name: Lint
+        working-directory: backend
+        run: poetry run ruff check src tests
+
+      - name: Apply migrations
+        working-directory: backend/src
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:secret@localhost:5432/orbitguard_test
+          PYTHONPATH: "."
+        run: poetry run alembic upgrade head
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:secret@localhost:5432/orbitguard_test
+          REDIS_URL: redis://localhost:6379/0
+        run: poetry run pytest -q
+
+  deploy:
+    needs: test
+    if: ${{ gitverse.ref_name == 'main' && gitverse.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Fly.io
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          curl -L https://fly.io/install.sh | sh
+          export PATH="$HOME/.fly/bin:$PATH"
+          flyctl deploy --remote-only

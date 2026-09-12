@@ -1,0 +1,27 @@
+# fly.toml app configuration for orbitguard-backend
+# See https://fly.io/docs/reference/configuration/ for details.
+
+app = 'orbitguard-backend'
+primary_region = 'fra'
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "15s"
+    method = "GET"
+    timeout = "5s"
+    path = "/api/ping"
+
+[[vm]]
+  memory = '1gb'
+  cpus = 1
+  cpu_kind = 'shared'
