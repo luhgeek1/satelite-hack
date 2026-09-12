@@ -3,8 +3,10 @@
 import { useRef, useState } from 'react';
 import { ChevronDown, Upload } from 'lucide-react';
 import { useImportScenario, useScenarios } from '@/entities/scenario';
+import { useVariants } from '@/entities/variant';
+import { hasConfigChanges } from '@/entities/simulation';
 import { useSession } from '@/entities/session';
-import { cn } from '@/shared/lib';
+import { cn, formatPercent } from '@/shared/lib';
 import { ErrorNote } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
 import type { ScenarioDocument } from '@/shared/api';
@@ -13,12 +15,16 @@ export function ScenarioPicker() {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
   const scenarios = useScenarios();
+  const variants = useVariants();
   const importScenario = useImportScenario();
   const fileInput = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
 
   const active = scenarios.data?.find((scenario) => scenario.id === state.scenarioId);
+  // The name alone stops being true the moment a slider moves, and an
+  // optimizer pass leaves no other mark on the header at all.
+  const modified = hasConfigChanges(state.config, state.strategy);
 
   const handleFile = async (file: File) => {
     setReadError(null);
@@ -41,6 +47,11 @@ export function ScenarioPicker() {
           className="flex h-9 items-center gap-2 border border-rule-strong px-2.5 font-data text-[12px] text-zinc-200 transition-colors hover:border-zinc-600 focus-visible:border-zinc-400 focus-visible:outline-none"
         >
           <span className="max-w-[11rem] truncate">{active?.id ?? t('scenario.select')}</span>
+          {modified && (
+            <span className="flex-shrink-0 border border-zinc-600 px-1 font-data text-[9px] tracking-[0.08em] text-zinc-300">
+              {t('changes.badge')}
+            </span>
+          )}
           <ChevronDown size={12} className="text-zinc-500" />
         </button>
 
@@ -48,6 +59,9 @@ export function ScenarioPicker() {
           <>
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
             <div className="absolute right-0 top-full z-50 mt-1 max-h-[60vh] w-[18rem] overflow-y-auto border border-rule-strong bg-black">
+              <div className="border-b border-rule px-3 py-1.5 font-data text-[9px] tracking-[0.08em] text-zinc-600">
+                {t('scenario.files')}
+              </div>
               {scenarios.data?.map((scenario) => (
                 <button
                   key={scenario.id}
@@ -73,6 +87,47 @@ export function ScenarioPicker() {
                   </span>
                 </button>
               ))}
+
+              {/* A saved variant is a scenario plus a configuration. Opening one
+                  restores both, which is the only way back to a search result
+                  once the panel has been touched. */}
+              <div className="border-y border-rule bg-white/[0.02] px-3 py-1.5 font-data text-[9px] tracking-[0.08em] text-zinc-600">
+                {t('scenario.variants')}
+              </div>
+              {variants.data?.length ? (
+                variants.data.map((variant) => (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    onClick={() => {
+                      if (!variant.scenario_id) return;
+                      dispatch({
+                        type: 'openVariant',
+                        scenarioId: variant.scenario_id,
+                        config: variant.config,
+                        strategy: variant.strategy,
+                      });
+                      setOpen(false);
+                    }}
+                    disabled={!variant.scenario_id}
+                    className="flex w-full flex-col gap-0.5 border-b border-rule px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-white/[0.04] disabled:opacity-40"
+                  >
+                    <span className="flex items-baseline gap-2">
+                      <span className="truncate font-data text-[12px] text-zinc-100">{variant.name}</span>
+                      <span className="ml-auto shrink-0 font-data text-[9px] tracking-[0.08em] text-zinc-600">
+                        {t('scenario.variant')}
+                      </span>
+                    </span>
+                    <span className="font-data text-[10px] tabular-nums text-zinc-500">
+                      {formatPercent(variant.worst_availability)} · {variant.scenario_id}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <p className="px-3 py-2 font-label text-[11px] text-zinc-600">
+                  {t('scenario.noVariants')}
+                </p>
+              )}
             </div>
           </>
         )}

@@ -12,10 +12,11 @@ import { SaveVariantButton } from '@/features/manage-variants';
 import { useSession } from '@/entities/session';
 import type { SatelliteView } from '@/entities/satellite';
 import { effectiveSiteConditions, type GroundSiteView } from '@/entities/ground-site';
+import { ChangeSummary } from './change-summary';
 import { cn, formatClock, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { Button, ParamGroup } from '@/shared/ui';
-import type { ClientMetrics, ScenarioDocument } from '@/shared/api';
+import type { ClientMetrics, ScenarioDocument, SimulationSummary } from '@/shared/api';
 import type { FailureRequest } from '@/features/inject-failure';
 
 type GroupId = 'deployment' | 'planes' | 'outages' | 'failures' | 'gateway' | 'satellites' | 'sites';
@@ -34,6 +35,9 @@ interface ConfigPanelProps {
   stepS: number;
   exportHref: string | null;
   scenarioHref: string | null;
+  summary: SimulationSummary | undefined;
+  /** The same scenario with nothing changed, so the panel can show what the changes bought. */
+  baseline: SimulationSummary | undefined;
 }
 
 export function ConfigPanel({
@@ -50,6 +54,8 @@ export function ConfigPanel({
   horizonS,
   exportHref,
   scenarioHref,
+  summary,
+  baseline,
 }: ConfigPanelProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
@@ -86,6 +92,8 @@ export function ConfigPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <ChangeSummary scenario={scenario} current={summary} baseline={baseline} />
+
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <ParamGroup
           code="DPL"

@@ -6,6 +6,11 @@ export {
   useSnapshotPrefetch,
 } from './api/queries';
 export { emptyConfig, normalizeConfig, type RunInput } from './model/run-input';
+export {
+  describeConfigChanges,
+  hasConfigChanges,
+  type ConfigChange,
+} from './model/config-diff';
 export { useDebouncedRunInput, isSettling } from './model/use-debounced-run';
 export {
   availabilityByClient,

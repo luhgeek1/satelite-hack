@@ -28,7 +28,9 @@ import { planeColorMap, readGeometry, useScenario, useScenarios } from '@/entiti
 import { allFailedIds, useSession } from '@/entities/session';
 import {
   buildRouteTraces,
+  emptyConfig,
   isSettling,
+  normalizeConfig,
   outageBands,
   useAvailabilitySeries,
   useDebouncedRunInput,
@@ -37,6 +39,7 @@ import {
   useSnapshotPrefetch,
   type RouteTrace,
 } from '@/entities/simulation';
+import { useSaveVariant, useVariants } from '@/entities/variant';
 import { buildLinkViews, buildSatelliteViews } from '@/entities/satellite';
 import { clientsOf, gatewaysOf, groundSitesOf } from '@/entities/ground-site';
 import {
@@ -114,6 +117,16 @@ export function StudioPage() {
   const simulation = useSimulation(runInput);
   const summary = simulation.data;
 
+  // The scenario exactly as the file describes it. When nothing has been
+  // changed this is the same content-addressed run as the one above, so it
+  // costs nothing; once something is changed it is the reference every delta
+  // in the panel is measured against.
+  const baselineInput = useMemo(
+    () => ({ scenarioId: state.scenarioId, config: emptyConfig, strategy: 'min_hops' as const }),
+    [state.scenarioId],
+  );
+  const baseline = useSimulation(baselineInput).data;
+
   const stepS = geometry?.stepS ?? 120;
   const horizonS = geometry?.horizonS ?? 86_400;
   const tS = snapToGrid(state.tS, stepS);
@@ -140,6 +153,88 @@ export function StudioPage() {
   const optimizer = useOptimizer(runInput, scenario);
   const [locks, setLocks] = useState<PlaneLock[]>([]);
   const [depth, setDepth] = useState<SearchDepth>('quick');
+  // A search takes tens of seconds, so its answer stays on screen after it is
+  // applied rather than vanishing with nothing to show it ever ran.
+  const [optimizerApplied, setOptimizerApplied] = useState(false);
+  const variants = useVariants();
+  const saveVariant = useSaveVariant();
+
+  const startOptimizer = useCallback(() => {
+    setOptimizerApplied(false);
+    optimizer.start.mutate({ locks, depth });
+  }, [optimizer.start, locks, depth]);
+
+  const dismissOptimizer = useCallback(() => {
+    setOptimizerApplied(false);
+    optimizer.dismiss();
+  }, [optimizer]);
+
+  const optimizedConfig = useCallback(() => {
+    const found = optimizer.result ? toPlaneOverrides(optimizer.result.changed_planes) : {};
+    return normalizeConfig({
+      ...state.config,
+      planes: { ...state.config.planes, ...found },
+    });
+  }, [optimizer.result, state.config]);
+
+  const applyOptimizerResult = useCallback(() => {
+    if (!optimizer.result) return;
+    dispatch({ type: 'applyPlanes', planes: toPlaneOverrides(optimizer.result.changed_planes) });
+    setOptimizerApplied(true);
+  }, [optimizer.result, dispatch]);
+
+  /**
+   * Save what the search found and open it next to the untouched file.
+   *
+   * A comparison needs two named variants, and the one nobody thinks to save is
+   * the baseline — so it is created here if it is missing rather than left as a
+   * step the engineer has to know about.
+   */
+  const saveOptimizerResult = useCallback(
+    async (name: string) => {
+      if (!optimizer.result || !state.scenarioId) return;
+      const scenarioId = state.scenarioId;
+
+      const existingBaseline = variants.data?.find(
+        (variant) =>
+          variant.scenario_id === scenarioId
+          && Object.keys(normalizeConfig(variant.config)).length === 0,
+      );
+      const baselineId =
+        existingBaseline?.id
+        ?? (
+          await saveVariant.mutateAsync({
+            scenario_id: scenarioId,
+            name: `${scenarioId} · ${t('optimizer.baselineSuffix')}`,
+            config: {},
+            strategy: 'min_hops',
+          })
+        ).id;
+
+      const saved = await saveVariant.mutateAsync({
+        scenario_id: scenarioId,
+        name,
+        config: optimizedConfig(),
+        strategy: state.strategy,
+      });
+
+      dispatch({ type: 'applyPlanes', planes: toPlaneOverrides(optimizer.result.changed_planes) });
+      dispatch({ type: 'setCompareSlots', slots: [baselineId, saved.id] });
+      dispatch({ type: 'setTab', tab: 'compare' });
+      dismissOptimizer();
+    },
+    [
+      optimizer.result,
+      state.scenarioId,
+      state.strategy,
+      variants.data,
+      saveVariant,
+      optimizedConfig,
+      dispatch,
+      dismissOptimizer,
+      t,
+    ],
+  );
   const planeIds = scenario?.design.planes.map((plane) => plane.id).join(',') ?? '';
 
   useEffect(() => {
@@ -338,6 +433,8 @@ export function StudioPage() {
       horizonS={horizonS}
       exportHref={exportHref}
       scenarioHref={scenarioHref}
+      summary={summary}
+      baseline={baseline}
     />
   );
 
@@ -349,6 +446,7 @@ export function StudioPage() {
       colors={colors}
       runInput={runInput}
       optimizer={optimizer}
+      onOptimize={startOptimizer}
       depth={depth}
       onDepthChange={setDepth}
       locks={locks}
@@ -394,7 +492,7 @@ export function StudioPage() {
                   onSelectClient={selectClient}
                   stale={settling || simulation.isFetching || snapshot.isFetching}
                   optimizing={optimizer.running || optimizer.start.isPending}
-                  onOptimize={() => optimizer.start.mutate({ locks, depth })}
+                  onOptimize={startOptimizer}
                 />
               )}
 
@@ -521,18 +619,11 @@ export function StudioPage() {
                 result={optimizer.result}
                 scenario={scenario}
                 colors={colors}
-                onApply={() => {
-                  dispatch({
-                    type: 'applyPlanes',
-                    planes: toPlaneOverrides(optimizer.result!.changed_planes),
-                  });
-                  optimizer.dismiss();
-                }}
-                onCompare={() => {
-                  optimizer.dismiss();
-                  dispatch({ type: 'setTab', tab: 'compare' });
-                }}
-                onDismiss={optimizer.dismiss}
+                applied={optimizerApplied}
+                saving={saveVariant.isPending}
+                onApply={applyOptimizerResult}
+                onSaveAndCompare={saveOptimizerResult}
+                onDismiss={dismissOptimizer}
               />
             ) : (
               <OptimizerProgress status={optimizer.status} remainingS={optimizer.remainingS} />
