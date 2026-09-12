@@ -14,8 +14,12 @@ RUN poetry install --only main --no-root
 COPY src ./src
 COPY entry.sh .
 
-# The official case scenarios are bind-mounted at /app/data by compose and
-# seeded into Postgres on startup.
+# Locally, compose bind-mounts the repo's data/ here instead. Standalone
+# deployments (Fly, this image) have no such mount, so a copy is vendored
+# into the build context — same call as the vendored geometry.py: small,
+# official, and not expected to change once the case is final.
+COPY data ./data
+
 ENV PYTHONPATH=/app/src \
     SCENARIO_SEED_DIR=/app/data
 
