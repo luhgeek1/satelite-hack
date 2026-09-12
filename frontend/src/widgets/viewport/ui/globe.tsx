@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import GlobeGL from 'react-globe.gl';
+import { flushSync } from 'react-dom';
 import * as THREE from 'three';
 import type { LinkView, SatelliteView } from '@/entities/satellite';
 import type { GroundSiteView } from '@/entities/ground-site';
@@ -29,6 +30,8 @@ const EARTH_RADIUS_KM = 6371;
 const COVERAGE_TWEEN_MS = 220;
 /** Long enough to see which way the globe turned, short enough not to wait. */
 const FOCUS_FLIGHT_MS = 700;
+/** How long the container has to hold still before the globe reframes. */
+const RESIZE_SETTLE_MS = 180;
 const COVERAGE_CAP_OPACITY = 0.22;
 const COVERAGE_SEGMENTS = 72;
 
@@ -455,7 +458,11 @@ export const Globe: React.FC<GlobeProps> = ({
     const observer = new ResizeObserver((entries) => {
       if (!entries[0]) return;
       const { width, height } = entries[0].contentRect;
-      setDimensions({ width: Math.round(width), height: Math.round(height) });
+      // Committed inside the callback, which runs after layout and before the
+      // paint that follows it. Left to React's own scheduling the canvas keeps
+      // the previous frame's size for a beat while the container already has
+      // the new one, and dragging the panel's edge squashes the globe.
+      flushSync(() => setDimensions({ width: Math.round(width), height: Math.round(height) }));
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
@@ -512,7 +519,9 @@ export const Globe: React.FC<GlobeProps> = ({
     };
   }, []);
 
-  // Keep the whole globe inside the viewport as the container resizes.
+  // Keep the whole globe inside the viewport as the container resizes — once
+  // the container has stopped. Refitting on every frame of a drag pumps the
+  // planet in and out under the pointer; a resize is over when it is over.
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || !dimensions.width || !dimensions.height) return;
@@ -520,18 +529,24 @@ export const Globe: React.FC<GlobeProps> = ({
     // A saved user view takes precedence over responsive default framing.
     if (hasSavedCameraPositionRef.current) return;
 
-    const target = fitAltitude(dimensions.width, dimensions.height);
-    const current = globe.pointOfView().altitude;
+    const timer = window.setTimeout(() => {
+      const target = fitAltitude(dimensions.width, dimensions.height);
+      const current = globe.pointOfView().altitude;
 
-    // Never fight a zoom level the user picked themselves.
-    if (appliedAltitudeRef.current !== null && Math.abs(current - appliedAltitudeRef.current) > 0.05) return;
-    if (Math.abs(current - target) < 0.01) {
+      // Never fight a zoom level the user picked themselves.
+      if (appliedAltitudeRef.current !== null && Math.abs(current - appliedAltitudeRef.current) > 0.05) {
+        return;
+      }
+      if (Math.abs(current - target) < 0.01) {
+        appliedAltitudeRef.current = target;
+        return;
+      }
+
+      globe.pointOfView({ altitude: target });
       appliedAltitudeRef.current = target;
-      return;
-    }
+    }, RESIZE_SETTLE_MS);
 
-    globe.pointOfView({ altitude: target });
-    appliedAltitudeRef.current = target;
+    return () => window.clearTimeout(timer);
   }, [dimensions.width, dimensions.height]);
 
   // Cap how far the wheel can pull the camera back. The ceiling follows the

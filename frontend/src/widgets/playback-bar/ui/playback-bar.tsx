@@ -477,14 +477,17 @@ function PlaybackBarView({
           </span>
         )}
 
+        {/* The row must never wrap: a second line doubles the height of the
+            bar, and on the screens where that hurts most there is least of it
+            to give. What goes first is what explains rather than reports. */}
         <span className="hidden items-baseline gap-2 sm:flex">
           <span className="font-label text-[12px] text-zinc-500">{t('playback.day')}</span>
-          <span className="font-data text-[10px] tabular-nums text-zinc-600">
+          <span className="hidden font-data text-[10px] tabular-nums text-zinc-600 2xl:inline">
             {t('health.target')} &ge; {formatPercent(target, 0)}
           </span>
         </span>
 
-        <div className="ml-auto flex items-center gap-3 font-data text-[9px] tracking-[0.08em] text-zinc-600">
+        <div className="ml-auto hidden items-center gap-3 font-data text-[9px] tracking-[0.08em] text-zinc-600 2xl:flex">
           {legend.map((item) => (
             <span key={item.key} className="flex items-center gap-1.5">
               <span className={cn('h-1.5 w-2.5 border border-rule-strong', item.tone)} /> {t(item.key)}
