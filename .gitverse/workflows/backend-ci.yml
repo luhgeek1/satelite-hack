@@ -52,6 +52,11 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:secret@localhost:5432/orbitguard_test
           REDIS_URL: redis://localhost:6379/0
+          # Shared CI cores get oversubscribed fast: an unset pool size lets
+          # ProcessPoolExecutor size itself to os.cpu_count(), which on a
+          # throttled runner starves every worker instead of speeding things up.
+          ANALYSIS_MAX_WORKERS: "2"
+          OPTIMIZER_MAX_WORKERS: "2"
         run: poetry run pytest -q
 
   deploy:
