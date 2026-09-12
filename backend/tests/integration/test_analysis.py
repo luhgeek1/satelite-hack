@@ -163,3 +163,64 @@ async def test_a_submitted_job_names_the_machine_that_owns_it(client, monkeypatc
     from service.analysis.jobs import owner_of
 
     assert owner_of(response.json()["id"]) == "cafe1234567890"
+
+
+async def test_the_exhaustive_grid_is_refused(client):
+    response = await client.post(
+        "/api/v1/analysis/optimize",
+        json={
+            "scenario_id": FULL,
+            "method": "grid",
+            "bounds": [{"plane_id": "P1", "raan_deg": [0, 360]}],
+        },
+    )
+    assert response.status_code == 400
+    assert "grid" in response.json()["detail"].lower()
+
+
+async def test_a_search_over_the_run_limit_is_refused(client):
+    response = await client.post(
+        "/api/v1/analysis/optimize",
+        json={
+            "scenario_id": FULL,
+            "passes": 8,
+            "starts": 8,
+            "bounds": [
+                {"plane_id": plane, "raan_deg": [0, 360], "phase_deg": [0, 360]}
+                for plane in ("P1", "P2", "P3")
+            ],
+        },
+    )
+    assert response.status_code == 400
+    assert "limit" in response.json()["detail"].lower()
+
+
+async def test_a_stopped_search_ends_cancelled_and_frees_its_slot(client):
+    """Stop is honoured promptly, and the job reports it rather than failing."""
+    started = await client.post(
+        "/api/v1/analysis/optimize",
+        json={
+            "scenario_id": FULL,
+            "bounds": [
+                {"plane_id": plane, "raan_deg": [0, 360], "phase_deg": [0, 7.5]}
+                for plane in ("P1", "P2", "P3")
+            ],
+        },
+    )
+    assert started.status_code == 202
+    job_id = started.json()["id"]
+
+    stopped = await client.delete(f"/api/v1/jobs/{job_id}")
+    assert stopped.status_code == 200
+
+    for _ in range(60):
+        status = (await client.get(f"/api/v1/jobs/{job_id}")).json()
+        if status["status"] in ("done", "failed", "cancelled"):
+            break
+        await asyncio.sleep(0.5)
+
+    assert status["status"] == "cancelled"
+    assert status["explored"] < status["total"] or status["total"] == 0
+
+    result = await client.get(f"/api/v1/jobs/{job_id}/result")
+    assert result.status_code == 400

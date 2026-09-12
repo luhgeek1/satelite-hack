@@ -407,6 +407,7 @@ POST /analysis/sensitivity    inline, ~0.4 s for 8 points
 POST /analysis/optimize       job → 202
 GET  /jobs/{job_id}           progress
 GET  /jobs/{job_id}/result
+DELETE /jobs/{job_id}         stop a running search
 ```
 
 ### Resilience
@@ -484,7 +485,7 @@ The only background operation. A `null` range means the parameter is **locked**:
 {
   "scenario_id": "01_full_constellation",
   "objective": "worst_first",        // | "mean_first"
-  "method": "coordinate_descent",    // | "grid"
+  "method": "coordinate_descent",    // "grid" is refused with 400, see below
   "axis_steps": 12,                  // descent: samples per axis sweep
   "passes": 3,                       // descent: sweeps over every axis
   "starts": 3,                       // descent: independent starting points
@@ -523,10 +524,21 @@ well as cheaper — see [DECISIONS.md](DECISIONS.md) C7. An early-stopping desce
 spends less than its quote, never more, so `total` in the job status is an upper
 bound and `explored` may finish below it.
 
+**Limits.** `method: "grid"` is refused with `400`: at six free angles it is
+four thousand full days, about half an hour of both production cores, and it
+scores worse than the descent. Any search whose quote exceeds
+`OPTIMIZER_MAX_RUNS` (default 1000, roughly 7.5 min on production) is refused
+the same way. On the production machine one run costs about 0.45 s.
+
+**Stopping.** `DELETE /jobs/{id}` asks the search to stop and answers with the
+job as it stands. The worker notices after its current configuration, drops the
+rest of its queue and the job settles on `status: "cancelled"`; its result is
+then a `400`. Cancelling a job that already finished changes nothing.
+
 `202` returns a job; poll `GET /jobs/{id}`:
 
 ```jsonc
-{ "id": "opt_3f8a…", "kind": "optimize", "status": "running",
+{ "id": "opt_3f8a…", "kind": "optimize", "status": "running",   // queued | running | done | failed | cancelled
   "progress": 0.42, "explored": 306, "total": 730, "error": null,
   "created_at": "…", "finished_at": null }
 ```

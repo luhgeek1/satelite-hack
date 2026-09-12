@@ -158,7 +158,7 @@ class JobStatusModel(WireModel):
 
     id: str
     kind: Literal["optimize"]
-    status: Literal["queued", "running", "done", "failed"]
+    status: Literal["queued", "running", "done", "failed", "cancelled"]
     progress: float = Field(..., ge=0, le=1)
     explored: int = 0
     total: int = 0
