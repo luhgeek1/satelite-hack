@@ -1,29 +1,26 @@
 'use client';
 
 import { useMemo } from 'react';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { VariantSelect } from '@/features/manage-variants';
 import { useComparison, useVariants } from '@/entities/variant';
+import { useScenarios } from '@/entities/scenario';
 import { useSession } from '@/entities/session';
-import { cn, formatPercent, formatPoints } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { EmptyState, ErrorNote } from '@/shared/ui';
-import type { ComparedMetric } from '@/shared/api';
-
-const SERIES_INK = ['#6b6b72', '#d9d9de'];
+import { TARGET_AVAILABILITY_FALLBACK } from '@/shared/config';
+import type { Variant } from '@/shared/api';
+import { siteRows } from '../model/scale';
+import { pickWinner, sitesBelowTarget } from '../model/verdict';
+import { ChangedParameters } from './changed-parameters';
+import { MetricStrip } from './metric-strip';
+import { SiteComparison } from './site-comparison';
+import { VariantBoard } from './variant-board';
+import { VariantColumn } from './variant-column';
+import { VerdictNote } from './verdict-note';
 
 export function CompareBoard() {
   const { t } = useI18n();
   const variants = useVariants();
+  const scenarios = useScenarios();
   // The pair lives in the session, so arriving here from an optimizer result
   // lands on the right two variants and a tab switch does not clear them.
   const { state, dispatch } = useSession();
@@ -36,69 +33,74 @@ export function CompareBoard() {
     [slots, variants.data],
   );
 
+  const openVariant = (variant: Variant) =>
+    dispatch({
+      type: 'openVariant',
+      scenarioId: variant.scenario_id as string,
+      config: variant.config,
+      strategy: variant.strategy,
+    });
+
+  // Assigning from the standings: the same variant clicked into the slot it
+  // already holds clears it, and one clicked into the other slot swaps the two
+  // rather than vanishing from the comparison.
+  const assign = (slot: 0 | 1, variantId: string) => {
+    const next: [string | null, string | null] = [slots[0], slots[1]];
+    const other = slot === 0 ? 1 : 0;
+    if (next[slot] === variantId) {
+      next[slot] = null;
+    } else {
+      if (next[other] === variantId) next[other] = next[slot];
+      next[slot] = variantId;
+    }
+    setSlots(next);
+  };
+
   const selectedIds = slots.filter((id): id is string => Boolean(id));
   const comparison = useComparison(selectedIds.length === 2 ? selectedIds : []);
 
-  const chartData = useMemo(() => {
-    const perClient = comparison.data?.per_client_availability;
-    if (!perClient) return [];
+  const sites = useMemo(
+    () => siteRows(comparison.data?.per_client_availability ?? {}),
+    [comparison.data],
+  );
 
-    return Object.entries(perClient).map(([clientId, values]) => ({
-      client: clientId,
-      a: Number((values[0] * 100).toFixed(2)),
-      b: Number((values[1] * 100).toFixed(2)),
-    }));
-  }, [comparison.data]);
+  // The threshold belongs to the scenario the variants were saved from, not to
+  // this screen; a jury file may set its own.
+  const target = useMemo(() => {
+    const fromScenario = resolved
+      .map((variant) => scenarios.data?.find((item) => item.id === variant?.scenario_id))
+      .find((item) => item !== undefined);
+    return fromScenario?.target_availability ?? TARGET_AVAILABILITY_FALLBACK;
+  }, [resolved, scenarios.data]);
+
+  const names: [string, string] = [resolved[0]?.name ?? 'A', resolved[1]?.name ?? 'B'];
+  const winner = comparison.data ? pickWinner(comparison.data.metrics) : null;
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-5xl space-y-6 lg:space-y-8">
-        <div className="flex items-stretch gap-3 sm:gap-4">
-          <VariantSelect
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-black p-3 sm:p-4 lg:p-6">
+      <div className="mx-auto max-w-6xl space-y-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 sm:gap-4">
+          <VariantColumn
             slot="A"
             value={resolved[0]}
             exclude={slots[1] ?? undefined}
             onSelect={(id) => setSlots([id, slots[1]])}
+            onOpen={openVariant}
           />
-          <div className="flex flex-shrink-0 items-center font-data text-[10px] tracking-[0.08em] text-zinc-600">
+          {/* Height-matched to the picker so the divider centres on it and not
+              on the whole column. */}
+          <div className="flex h-[2.375rem] items-center font-data text-[10px] tracking-[0.08em] text-zinc-600">
             {t('compare.vs')}
           </div>
-          <VariantSelect
+          <VariantColumn
             slot="B"
             value={resolved[1]}
             exclude={slots[0] ?? undefined}
             lead
             onSelect={(id) => setSlots([slots[0], id])}
+            onOpen={openVariant}
           />
         </div>
-
-        {/* A comparison answers "which one", and the next thing the engineer
-            wants is that one loaded back into the simulation. */}
-        {resolved.some(Boolean) && (
-          <div className="flex gap-3 sm:gap-4">
-            {resolved.map((variant, index) => (
-              <div key={variant?.id ?? index} className="min-w-0 flex-1">
-                {variant?.scenario_id && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      dispatch({
-                        type: 'openVariant',
-                        scenarioId: variant.scenario_id as string,
-                        config: variant.config,
-                        strategy: variant.strategy,
-                      })
-                    }
-                    className="w-full border border-rule-strong py-1.5 font-label text-[11px] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none"
-                  >
-                    {t('compare.open')}
-                  </button>
-                )}
-              </div>
-            ))}
-            <div className="w-[2.5rem] flex-shrink-0 sm:w-[2.75rem]" aria-hidden="true" />
-          </div>
-        )}
 
         {variants.data?.length === 0 && (
           <div className="border border-rule-strong">
@@ -110,164 +112,32 @@ export function CompareBoard() {
 
         {comparison.data && (
           <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-              {comparison.data.metrics.slice(0, 3).map((metric) => (
-                <MetricTile key={metric.key} metric={metric} />
-              ))}
-            </div>
+            <VerdictNote
+              winner={winner}
+              names={names}
+              below={sitesBelowTarget(sites, winner ?? 1, target)}
+              recommendation={comparison.data.recommendation}
+            />
 
-            {comparison.data.changed_parameters.length > 0 && (
-              <div className="border border-rule-strong">
-                <div className="border-b border-rule px-4 py-2.5 font-label text-[13px] text-zinc-300">
-                  {t('compare.changed')}
-                </div>
-                {comparison.data.changed_parameters.map((diff) => (
-                  <div
-                    key={diff.path}
-                    className="flex items-baseline gap-3 border-b border-rule px-4 py-2 last:border-b-0"
-                  >
-                    <span className="font-label text-[12px] text-zinc-400">{diff.label}</span>
-                    <span className="ml-auto font-data text-[11px] tabular-nums text-zinc-600">
-                      {String(diff.values[0] ?? '—')}
-                    </span>
-                    <span className="font-data text-[11px] text-zinc-700">→</span>
-                    <span className="font-data text-[12px] tabular-nums text-zinc-100">
-                      {String(diff.values[1] ?? '—')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <MetricStrip metrics={comparison.data.metrics} clientCount={sites.length} />
 
-            <div className="border border-rule-strong p-4 sm:p-5">
-              <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
-                <h3 className="font-label text-[13px] text-zinc-300">{t('compare.availability')}</h3>
-                <div className="flex items-center gap-4">
-                  {[
-                    { label: resolved[0]?.name ?? 'A', ink: SERIES_INK[0], dash: '4 3' },
-                    { label: resolved[1]?.name ?? 'B', ink: SERIES_INK[1], dash: undefined },
-                  ].map((series) => (
-                    <div key={series.label} className="flex items-center gap-1.5">
-                      <svg width="16" height="2" aria-hidden="true">
-                        <line
-                          x1="0"
-                          y1="1"
-                          x2="16"
-                          y2="1"
-                          stroke={series.ink}
-                          strokeWidth="2"
-                          strokeDasharray={series.dash}
-                        />
-                      </svg>
-                      <span className="truncate font-label text-[12px] text-zinc-400">{series.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 h-48 sm:h-56 lg:h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 6, right: 12, bottom: 0, left: 0 }}>
-                    <CartesianGrid stroke="#1f1f23" vertical={false} />
-                    <XAxis
-                      dataKey="client"
-                      stroke="#3f3f46"
-                      tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
-                      tickMargin={8}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      ticks={[0, 25, 50, 75, 100]}
-                      stroke="#3f3f46"
-                      tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
-                      width={40}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <Tooltip
-                      cursor={{ stroke: '#52525b', strokeWidth: 1 }}
-                      contentStyle={{
-                        backgroundColor: '#000',
-                        border: '1px solid #2e2e34',
-                        borderRadius: 0,
-                        fontFamily: 'IBM Plex Mono, monospace',
-                        fontSize: 11,
-                      }}
-                      labelStyle={{ color: '#a1a1aa', marginBottom: 4, fontSize: 11 }}
-                      formatter={(value: unknown, name: unknown) => [
-                        `${value}%`,
-                        name === 'a' ? (resolved[0]?.name ?? 'A') : (resolved[1]?.name ?? 'B'),
-                      ]}
-                    />
-                    <ReferenceLine
-                      y={(resolved[0]?.meets_target ? 90 : 90)}
-                      stroke="#52525b"
-                      strokeDasharray="2 3"
-                    />
-                    <Line type="monotone" dataKey="a" stroke={SERIES_INK[0]} strokeWidth={2} strokeDasharray="4 3" dot />
-                    <Line type="monotone" dataKey="b" stroke={SERIES_INK[1]} strokeWidth={2} dot />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="border border-rule-strong p-4 sm:p-5">
-              <h3 className="font-label text-[13px] text-zinc-300">{t('compare.recommendation')}</h3>
-              <p className="mt-2 font-label text-[12px] leading-relaxed text-zinc-400">
-                {comparison.data.recommendation}
-              </p>
+            {/* Evidence on the left, what was moved on the right: the page
+                stops being one tall column of half-empty panels. */}
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+              <SiteComparison rows={sites} target={target} names={names} />
+              <ChangedParameters diffs={comparison.data.changed_parameters} />
             </div>
           </>
         )}
-      </div>
-    </div>
-  );
-}
 
-function MetricTile({ metric }: { metric: ComparedMetric }) {
-  const { t, formatDuration } = useI18n();
-  const [before, after] = metric.values;
-  const format = (value: number | null) => {
-    if (value === null) return '—';
-    if (metric.unit === 'fraction') return formatPercent(value);
-    if (metric.unit === 'seconds') return formatDuration(value);
-    if (metric.unit === 'hops') return value.toFixed(2);
-    return String(value);
-  };
-
-  const delta =
-    before === null || after === null
-      ? null
-      : metric.unit === 'fraction'
-        ? formatPoints(after - before)
-        : `${after - before >= 0 ? '+' : '−'}${Math.abs(after - before).toFixed(metric.unit === 'hops' ? 2 : 0)}`;
-
-  const improved =
-    before === null || after === null
-      ? null
-      : metric.higher_is_better
-        ? after > before
-        : after < before;
-
-  return (
-    <div className="flex flex-col border border-rule-strong">
-      <div className="flex-1 px-3 pb-4 pt-3">
-        <div className="font-label text-[12px] text-zinc-400">{metric.label}</div>
-        <div className="mt-2 font-data text-[26px] leading-none tabular-nums text-zinc-100">
-          {format(after)}
-        </div>
-      </div>
-      <div className="flex items-baseline justify-between gap-2 border-t border-rule px-3 py-2">
-        <span className="font-data text-[11px] tabular-nums text-zinc-500">
-          <span className="text-zinc-600">{t('compare.was')}</span> {format(before)}
-        </span>
-        <span
-          className={cn(
-            'font-data text-[11px] tabular-nums',
-            improved === null ? 'text-zinc-500' : improved ? 'text-zinc-200' : 'text-alarm',
-          )}
-        >
-          {delta ?? '—'}
-        </span>
+        {variants.data && variants.data.length > 0 && (
+          <VariantBoard
+            variants={variants.data}
+            slots={slots}
+            hint={comparison.data ? undefined : t('compare.pickTwo')}
+            onAssign={assign}
+          />
+        )}
       </div>
     </div>
   );
