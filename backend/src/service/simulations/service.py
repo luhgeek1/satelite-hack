@@ -229,8 +229,16 @@ class SimulationService:
         return build_result(result)
 
     async def effective_scenario(self, run_id: str) -> dict[str, Any]:
-        """The scenario as actually run — re-importable, so a variant round-trips."""
-        return (await self._require_run(run_id)).effective_scenario
+        """The scenario as actually run — re-importable, so a variant round-trips.
+
+        `apply_override` never touches `meta`, so the stored document still
+        carries the base scenario's id/title. Re-stamp the id to `run_id` here
+        so importing it back never collides with that base scenario — without
+        this, `ScenarioService.import_scenario` silently mints a `-2` suffix
+        instead of the round-trip the case asks for.
+        """
+        scenario = (await self._require_run(run_id)).effective_scenario
+        return {**scenario, "meta": {**scenario["meta"], "id": run_id}}
 
     async def save_variant(self, request: VariantCreate) -> VariantModel:
         summary = await self.run(
