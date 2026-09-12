@@ -31,7 +31,7 @@ export function ChangeSummary({ scenario, current, baseline }: ChangeSummaryProp
   const { t, formatDuration } = useI18n();
 
   const changes = describeConfigChanges(scenario, state.config, state.strategy, t);
-  if (changes.length === 0) return null;
+  const untouched = changes.length === 0;
 
   const shown = changes.slice(0, VISIBLE_ROWS);
   const hidden = changes.length - shown.length;
@@ -46,11 +46,19 @@ export function ChangeSummary({ scenario, current, baseline }: ChangeSummaryProp
     <div className="flex-shrink-0 border-b border-rule bg-white/[0.02] px-3 py-2">
       <div className="flex items-baseline gap-2">
         <span className="font-label text-[11px] text-zinc-300">{t('changes.title')}</span>
-        <span className="font-data text-[10px] tabular-nums text-zinc-500">{changes.length}</span>
+        <span
+          className={cn(
+            'font-data text-[10px] tabular-nums',
+            untouched ? 'text-zinc-600' : 'text-zinc-500',
+          )}
+        >
+          {changes.length}
+        </span>
         <button
           type="button"
           onClick={() => dispatch({ type: 'resetConfig' })}
-          className="ml-auto flex items-center gap-1 font-label text-[10px] text-zinc-500 underline-offset-2 transition-colors hover:text-zinc-100 hover:underline focus-visible:outline-none"
+          disabled={untouched}
+          className="ml-auto flex items-center gap-1 font-label text-[10px] text-zinc-500 underline-offset-2 transition-colors hover:text-zinc-100 hover:underline focus-visible:outline-none disabled:pointer-events-none disabled:text-zinc-700 disabled:no-underline"
         >
           <RotateCcw size={10} />
           {t('changes.reset')}
@@ -61,6 +69,12 @@ export function ChangeSummary({ scenario, current, baseline }: ChangeSummaryProp
           grammar — label, before, after — and the delta column on the last two
           rows is enough to tell a setting from a result. */}
       <div className="mt-1.5 space-y-0.5">
+        {/* The block is always here, so the figures below have something to be
+            measured against even before anything is touched. */}
+        {untouched && (
+          <div className="font-label text-[10px] text-zinc-600">{t('changes.none')}</div>
+        )}
+
         {shown.map((change) => (
           <SummaryRow key={change.id} label={change.label} from={change.from} to={change.to} />
         ))}
@@ -111,12 +125,19 @@ function SummaryRow({
   delta?: string | null;
   better?: boolean;
 }) {
+  // A figure that has not moved is one figure, not the same one twice.
+  const moved = from !== to;
+
   return (
     <div className="flex items-baseline gap-2 font-data text-[10px] tabular-nums">
       <span className="truncate text-zinc-400">{label}</span>
-      <span className="ml-auto shrink-0 text-zinc-600">{from}</span>
-      <span className="shrink-0 text-zinc-700">&rarr;</span>
-      <span className="shrink-0 text-zinc-100">{to}</span>
+      {moved && (
+        <>
+          <span className="ml-auto shrink-0 text-zinc-600">{from}</span>
+          <span className="shrink-0 text-zinc-700">&rarr;</span>
+        </>
+      )}
+      <span className={cn('shrink-0 text-zinc-100', !moved && 'ml-auto')}>{to}</span>
       {/* Held open on every row so the figures line up down one edge. */}
       <span className={cn('w-14 shrink-0 text-right', better ? 'text-zinc-200' : 'text-alarm')}>
         {delta}
