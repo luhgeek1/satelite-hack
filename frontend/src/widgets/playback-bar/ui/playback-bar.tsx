@@ -40,7 +40,8 @@ interface PlaybackBarProps {
   onClearOutages: (window: OutageWindow) => void;
 }
 
-const SPEEDS = [1, 4, 16];
+/** Half speed for reading a gap open and close, then the two paces above it. */
+const SPEEDS = [0.5, 1, 4];
 /** Every sixth hour gets a label; the ruler is read, not measured. */
 const HOUR_MARKS = [0, 6, 12, 18, 24];
 /** Half the picker's width, so it can be centred and still clamped inside. */
