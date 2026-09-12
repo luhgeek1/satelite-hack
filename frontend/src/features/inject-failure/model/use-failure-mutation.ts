@@ -23,12 +23,18 @@ export interface FailureRequest {
   endS?: number;
 }
 
+/**
+ * `tS` is the timeline position and doubles as the default outage start: the
+ * flow the organisers described is "go to a moment, fail a satellite, watch
+ * the route rebuild", so a one-click failure begins where the engineer is
+ * looking rather than at midnight. The form still offers the whole day.
+ */
 export function useInjectFailure(runId: string | undefined, tS: number, horizonS: number) {
   const queryClient = useQueryClient();
   const { state, dispatch } = useSession();
 
   return useMutation<SimulationSummary, Error, FailureRequest, Context>({
-    mutationFn: ({ satelliteId, startS = 0, endS = horizonS }) => {
+    mutationFn: ({ satelliteId, startS = tS, endS = horizonS }) => {
       const failure: FailureDto = { satellite_id: satelliteId, start_s: startS, end_s: endS };
       const failures = [
         ...(state.config.failures ?? []).filter((item) => item.satellite_id !== satelliteId),
@@ -42,7 +48,7 @@ export function useInjectFailure(runId: string | undefined, tS: number, horizonS
       });
     },
 
-    onMutate: async ({ satelliteId, startS = 0, endS = horizonS }) => {
+    onMutate: async ({ satelliteId, startS = tS, endS = horizonS }) => {
       const snapshotKey = queryKeys.snapshot(runId ?? '', tS);
       await queryClient.cancelQueries({ queryKey: snapshotKey });
 

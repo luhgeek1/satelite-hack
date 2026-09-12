@@ -13,7 +13,7 @@ import {
 import { useSession } from '@/entities/session';
 import { neighboursOf, type LinkView, type SatelliteView } from '@/entities/satellite';
 import { RouteChain, tracesThrough, type RouteTrace } from '@/entities/simulation';
-import { cn, criticalityLevel, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
+import { cn, criticalityLevel, formatClock, formatLatitude, formatLongitude, formatPercent } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import { Button } from '@/shared/ui';
 
@@ -23,6 +23,8 @@ interface SatelliteDetailsProps {
   routes: RouteTrace[];
   hasResilience: boolean;
   pending: boolean;
+  /** Timeline position: a one-click failure starts here and runs to the end of the day. */
+  currentTS: number;
   onInjectFailure: (satelliteId: string) => void;
   onRestore: (satelliteId: string) => void;
   placement?: 'overlay' | 'sidebar';
@@ -37,6 +39,7 @@ export function SatelliteDetails({
   routes,
   hasResilience,
   pending,
+  currentTS,
   onInjectFailure,
   onRestore,
   placement = 'overlay',
@@ -277,7 +280,7 @@ export function SatelliteDetails({
                   exit={{ opacity: 0, y: -3 }}
                   transition={{ duration: reduce ? 0 : 0.14, ease: EASE }}
                 >
-                  {pending ? t('sat.recomputing') : t('sat.simulate')}
+                  {pending ? t('sat.recomputing') : t('sat.simulate', { time: formatClock(currentTS) })}
                 </motion.span>
               </AnimatePresence>
             </Button>

@@ -444,6 +444,7 @@ export function StudioPage() {
                   routes={routeTraces}
                   hasResilience={Boolean(resilience.data)}
                   pending={injectFailure.isPending}
+                  currentTS={tS}
                   onInjectFailure={(id) => injectFailure.mutate({ satelliteId: id })}
                   onRestore={restore}
                 />
@@ -464,6 +465,7 @@ export function StudioPage() {
                 routes={routeTraces}
                 hasResilience={Boolean(resilience.data)}
                 pending={injectFailure.isPending}
+                currentTS={tS}
                 onInjectFailure={(id) => injectFailure.mutate({ satelliteId: id })}
                 onRestore={restore}
                 placement="sidebar"

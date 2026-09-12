@@ -179,7 +179,7 @@ export const en = {
   'sat.hops': '{count} hops',
   'sat.connects': 'Connects to',
   'sat.restore': 'Restore node',
-  'sat.simulate': 'Simulate failure',
+  'sat.simulate': 'Fail from {time}',
   'sat.recomputing': 'Recomputing…',
   'sat.km': '{value} km',
 
@@ -439,7 +439,7 @@ export const ru: Record<TranslationKey, string> = {
   'sat.hops': 'перех.: {count}',
   'sat.connects': 'Связан с',
   'sat.restore': 'Вернуть узел',
-  'sat.simulate': 'Смоделировать отказ',
+  'sat.simulate': 'Отказ с {time}',
   'sat.recomputing': 'Пересчёт…',
   'sat.km': '{value} км',
 
