@@ -23,6 +23,7 @@ from .routing import (
     build_graph,
     find_route,
 )
+from .site_conditions import apply_site_conditions, prepare_horizons
 
 EARTH_RADIUS_KM = geometry.R
 
@@ -55,6 +56,8 @@ class Snapshot:
     routes: dict[str, RouteResult]
     elevation_deg: dict[str, dict[str, float]]
     offline_gateways: frozenset[str]
+    # Satellites above the scenario mask that a site's own surroundings hide.
+    masked_satellites: dict[str, tuple[str, ...]]
 
 
 @dataclass(slots=True)
@@ -115,6 +118,7 @@ def simulate(
     all_satellite_ids = scenario_mod.satellite_ids(scenario)
 
     visible: dict[str, list[bool]] = {cid: [] for cid in client_ids}
+    masked: dict[str, list[bool]] = {cid: [] for cid in client_ids}
     routed: dict[str, list[bool]] = {cid: [] for cid in client_ids}
     hop_counts: dict[str, list[int | None]] = {cid: [] for cid in client_ids}
     reasons: dict[str, list[NoRouteReason | None]] = {cid: [] for cid in client_ids}
@@ -122,8 +126,12 @@ def simulate(
     routes: dict[int, dict[str, RouteResult]] = {}
     positions: dict[int, tuple[SatelliteState, ...]] = {}
 
+    # Empty unless a site declares surroundings that raise its horizon, in
+    # which case the organisers' snapshot is filtered before routing sees it.
+    horizons = prepare_horizons(scenario)
+
     for t_s in grid:
-        snap = geometry.snapshot(scenario, t_s)
+        snap, masked_now = apply_site_conditions(geometry.snapshot(scenario, t_s), horizons)
         active_ids = {s["id"] for s in snap["satellites"] if s["active"]}
         graph = build_graph(
             snap["edges"],
@@ -138,7 +146,11 @@ def simulate(
             result = find_route(graph, client_id, strategy)
             step_routes[client_id] = result
 
-            visible[client_id].append(any(n in active_ids for n, _ in graph.neighbours(client_id)))
+            in_view = any(n in active_ids for n, _ in graph.neighbours(client_id))
+            visible[client_id].append(in_view)
+            # A satellite was above the scenario mask, but the site's own
+            # horizon hid every one of them: visibility lost to surroundings.
+            masked[client_id].append(not in_view and bool(masked_now.get(client_id)))
             routed[client_id].append(result.available)
             hop_counts[client_id].append(result.hops)
             reasons[client_id].append(result.reason)
@@ -153,6 +165,7 @@ def simulate(
             client_id,
             step_s=env["step_s"],
             visible_flags=visible[client_id],
+            masked_flags=masked[client_id],
             routed_flags=routed[client_id],
             hop_counts=hop_counts[client_id],
             reasons=reasons[client_id],
@@ -184,7 +197,9 @@ def snapshot_at(
     simulation response small: the full edge list for a day is ~8 MB, a single
     instant is ~13 KB.
     """
-    snap = geometry.snapshot(scenario, t_s)
+    snap, masked = apply_site_conditions(
+        geometry.snapshot(scenario, t_s), prepare_horizons(scenario)
+    )
     client_ids = [c["id"] for c in scenario_mod.clients(scenario)]
     gateway_ids = [g["id"] for g in scenario_mod.gateways(scenario)]
     offline = scenario_mod.offline_gateway_ids(scenario, t_s)
@@ -217,6 +232,7 @@ def snapshot_at(
         routes={cid: find_route(graph, cid, strategy) for cid in client_ids},
         elevation_deg=snap["elevation_deg"],
         offline_gateways=frozenset(offline),
+        masked_satellites={site_id: tuple(ids) for site_id, ids in masked.items() if ids},
     )
 
 

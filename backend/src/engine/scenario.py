@@ -19,18 +19,11 @@ from pathlib import Path
 from typing import Any
 
 from . import geometry
+from .errors import ScenarioError
+from .site_conditions import SITE_CONDITIONS_KEY, SiteConditions, validate_site_conditions
 
 SCHEMA_VERSION = "cosmo-A-1.0"
 RESULT_SCHEMA_VERSION = "cosmo-A-result-1.0"
-
-
-class ScenarioError(ValueError):
-    """Invalid input scenario. `field` points the user at what to fix."""
-
-    def __init__(self, message: str, field: str | None = None) -> None:
-        super().__init__(message)
-        self.message = message
-        self.field = field
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +59,9 @@ class ConfigOverride:
     planes: dict[str, PlaneOverride] = field(default_factory=dict)
     failures: list[FailureWindow] | None = None
     gateway_outages: list[GatewayOutage] | None = None
+    # Local conditions per ground site: a value sets them, `None` clears the
+    # block the scenario file carried. Sites not named keep whatever they had.
+    sites: dict[str, SiteConditions | None] = field(default_factory=dict)
     # Environment knobs. Out of scope for variant comparison per the case, but
     # needed for the sensitivity study (ISL range threshold) — every response
     # that uses them echoes the changed environment back.
@@ -84,6 +80,7 @@ class ConfigOverride:
                 self.planes,
                 self.failures,
                 self.gateway_outages,
+                self.sites,
                 self.isl_range_km,
                 self.min_elevation_deg,
                 self.altitude_km,
@@ -134,6 +131,10 @@ def validate_scenario(scenario: Any) -> None:
         ) from exc
     except (TypeError, ValueError) as exc:
         raise ScenarioError(str(exc), field=_guess_field(str(exc))) from exc
+
+    # Our own extension block: the official validator ignores unknown keys,
+    # so a malformed one has to be caught here or it fails deep in a run.
+    validate_site_conditions(scenario)
 
     # geometry.validate accepts a design with no satellites in the selected
     # stage; the simulation would then silently report 0% for everything, so
@@ -204,6 +205,17 @@ def apply_override(scenario: dict[str, Any], override: ConfigOverride) -> dict[s
             {"gateway_id": g.gateway_id, "start_s": int(g.start_s), "end_s": int(g.end_s)}
             for g in override.gateway_outages
         ]
+
+    if override.sites:
+        by_site = {site["id"]: site for site in effective["ground_sites"]}
+        for site_id, conditions in override.sites.items():
+            site = by_site.get(site_id)
+            if site is None:
+                raise ScenarioError(f"Unknown ground site {site_id!r}", field="ground_sites")
+            if conditions is None:
+                site.pop(SITE_CONDITIONS_KEY, None)
+            else:
+                site[SITE_CONDITIONS_KEY] = conditions.to_dict()
 
     env = effective["environment"]
     for attr, key in (

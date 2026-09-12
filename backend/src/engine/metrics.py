@@ -47,6 +47,10 @@ class ClientMetrics:
     routed_steps: int
     visibility: float
     availability: float
+    # Instants a satellite cleared the scenario mask but the site's own
+    # surroundings hid every one: what local conditions cost in visibility.
+    masked_steps: int
+    masked_share: float
     max_outage_s: int
     max_bounded_outage_s: int
     leading_outage_s: int
@@ -65,6 +69,7 @@ def summarise_client(
     step_s: int,
     visible_flags: list[bool],
     routed_flags: list[bool],
+    masked_flags: list[bool] | None = None,
     hop_counts: list[int | None],
     reasons: list[NoRouteReason | None],
     target_availability: float,
@@ -81,6 +86,7 @@ def summarise_client(
     hops = [h for h in hop_counts if h is not None]
     routed_steps = sum(routed_flags)
     availability = routed_steps / steps
+    masked_steps = sum(masked_flags) if masked_flags else 0
 
     reason_counts: dict[str, int] = {}
     for reason in reasons:
@@ -94,6 +100,8 @@ def summarise_client(
         routed_steps=routed_steps,
         visibility=sum(visible_flags) / steps,
         availability=availability,
+        masked_steps=masked_steps,
+        masked_share=masked_steps / steps,
         max_outage_s=max((w.duration_s for w in windows), default=0),
         max_bounded_outage_s=max(bounded, default=0),
         leading_outage_s=leading,
