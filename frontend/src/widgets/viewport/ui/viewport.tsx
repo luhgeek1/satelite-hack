@@ -94,13 +94,21 @@ export function Viewport({
   }, [focusClientId]);
 
   const selectSite = (siteId: string) => {
-    if (siteId === focusClientId) {
-      setDismissedSiteId((current) => (current === siteId ? null : siteId));
+    // One pick at a time: a node's own footprint and a terminal's missing ones
+    // are the same mark, and two sets of them at once read as one picture.
+    const nodePicked = Boolean(state.selectedSatelliteId);
+    if (nodePicked) dispatch({ type: 'selectSatellite', satelliteId: null });
+
+    if (siteId !== focusClientId) {
+      setDismissedSiteId(null);
+      dispatch({ type: 'selectClient', clientId: siteId });
       return;
     }
 
-    setDismissedSiteId(null);
-    dispatch({ type: 'selectClient', clientId: siteId });
+    // The terminal that is already focused: a click puts its footprints away
+    // and the next one brings them back — and so does the click that takes the
+    // picture back from a node, which is why that case never dismisses.
+    setDismissedSiteId((current) => (nodePicked || current === siteId ? null : siteId));
   };
 
   // Picking a terminal that has nothing in view draws the footprints that come
@@ -110,7 +118,7 @@ export function Viewport({
   // fresh one every render would have them rebuild it every render.
   const gaps = useMemo(
     () =>
-      dismissedSiteId === focusClientId
+      dismissedSiteId === focusClientId || state.selectedSatelliteId
         ? []
         : coverageGaps(
             clients.find((client) => client.id === focusClientId),
@@ -118,7 +126,15 @@ export function Viewport({
             satellites,
             contactRadiusKm,
           ),
-    [dismissedSiteId, clients, routes, focusClientId, satellites, contactRadiusKm],
+    [
+      dismissedSiteId,
+      state.selectedSatelliteId,
+      clients,
+      routes,
+      focusClientId,
+      satellites,
+      contactRadiusKm,
+    ],
   );
 
   const flatMap = (

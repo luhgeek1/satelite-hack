@@ -261,14 +261,22 @@ export const Globe: React.FC<GlobeProps> = ({
       cache.set(color, material);
     }
 
+    // Written on every pass, not only at creation: the reveal drives these
+    // materials straight, outside React, so a material rebuilt afterwards has
+    // to pick the reveal up where it stands rather than start from nothing.
+    material.opacity = gapOpacityRef.current;
+
     return material;
   };
 
+  // Disposed but never dropped from the cache. Strict mode runs this cleanup
+  // on a mount it then replays, and a cleared cache would leave the reveal
+  // writing opacity to materials nothing holds any more — which is what left
+  // a reloaded page showing the footprint edges and no footprints.
   useEffect(() => {
     const cache = gapCapMaterials.current;
     return () => {
       cache.forEach(material => material.dispose());
-      cache.clear();
     };
   }, []);
 
