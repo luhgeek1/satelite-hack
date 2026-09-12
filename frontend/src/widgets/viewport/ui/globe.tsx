@@ -35,16 +35,66 @@ const COVERAGE_TWEEN_MS = 220;
 /** Long enough to see which way the globe turned, short enough not to wait. */
 const FOCUS_FLIGHT_MS = 700;
 /**
- * The time constant the satellites chase their own data with.
+ * Flight between the instants the data actually describes.
  *
- * Positions arrive with the snapshot for each instant, which is a network
- * round trip, so during playback they land about four times a second and each
- * one is tens of pixels from the last. Easing towards the new position instead
- * of teleporting to it costs a beat of lag and buys continuous motion.
+ * Positions arrive with the snapshot for each instant — a network round trip —
+ * so during playback they land about four times a second, tens of pixels
+ * apart, and not on a metronome. Guessing where a node will be next means
+ * guessing from an interval the network chose, and every guess that misses is
+ * a correction the eye catches. So nothing is guessed: the loop draws the
+ * constellation a fraction of a second in the past, where both ends of every
+ * step are already known, and walks each node from one to the next. A segment
+ * ends exactly where the next one starts, which is what makes the motion
+ * continuous rather than merely frequent.
  */
-const MOTION_EASE_MS = 90;
-/** How long a plate takes to travel to a new position while the day runs. */
-const PLATE_GLIDE_MS = 220;
+const MIN_TRAIL_MS = 90;
+const MAX_TRAIL_MS = 500;
+/**
+ * How far behind the newest instant the constellation is drawn, as a share of
+ * the gap between arrivals.
+ *
+ * Just under one gap. Shorter and a node finishes its segment early and waits
+ * a moment at the end of it — which is still continuous, because the next
+ * segment begins exactly there. Longer and it never finishes one before the
+ * next replaces it, and every arrival drags it forward a whole segment, which
+ * is the jerk this exists to remove.
+ */
+const TRAIL_SHARE = 0.85;
+/** How quickly the trail follows the pace the snapshots are arriving at. */
+const GAP_BLEND = 0.2;
+/**
+ * A light filter over the walk itself.
+ *
+ * Two consecutive segments are rarely the same length in time, so the speed
+ * changes at every boundary even though the position does not. Rounding that
+ * corner off costs a few tens of milliseconds of lag and takes the last of
+ * the stepping out of it.
+ */
+const SMOOTH_MS = 45;
+/**
+ * How far past the end of a segment a node may keep going.
+ *
+ * Stopping dead at the end and waiting for the next snapshot is what is left
+ * of the stepping: a tenth of a second of stillness reads as a stutter even
+ * though nothing jumped. Carrying on at the same speed for a moment longer
+ * covers the wait, and the filter above absorbs the small step back when the
+ * next instant turns out to be a little behind the guess.
+ */
+const SEGMENT_OVERRUN = 1.35;
+/**
+ * What separates travel from a jump.
+ *
+ * How far a node moves between two updates depends on the speed and on how
+ * often the snapshots arrive, so no fixed distance can tell the two apart: at
+ * 4x a step is further than a whole continent. What does tell them apart is
+ * the node's own history — a step several times longer than the one before it
+ * is a seek, not an orbit. The distance is only the fallback for the first
+ * step, when there is no history to compare against.
+ */
+const TELEPORT_RATIO = 4;
+const TELEPORT_DISTANCE = 80;
+/** How often the flight loop looks for the plates the html layer has made. */
+const PLATE_SWEEP_MS = 400;
 /** How long the container has to hold still before the globe reframes. */
 const RESIZE_SETTLE_MS = 180;
 const COVERAGE_CAP_OPACITY = 0.22;
@@ -439,22 +489,11 @@ export const Globe: React.FC<GlobeProps> = ({
     };
   }, [sphereGeometry, hitMaterial]);
 
-  const satelliteSphere = (d: any) => {
+  const dressSatellite = useCallback((group: THREE.Group, d: any) => {
     let material = sphereMaterials.current.get(d.color);
     if (!material) {
       material = new THREE.MeshBasicMaterial({ color: d.color });
       sphereMaterials.current.set(d.color, material);
-    }
-
-    let group = satelliteGroups.current.get(d.id);
-    if (!group) {
-      group = new THREE.Group();
-      const dot = new THREE.Mesh(sphereGeometry, material);
-      dot.name = 'dot';
-      const hit = new THREE.Mesh(sphereGeometry, hitMaterial);
-      hit.name = 'hit';
-      group.add(dot, hit);
-      satelliteGroups.current.set(d.id, group);
     }
 
     const dot = group.getObjectByName('dot') as THREE.Mesh;
@@ -466,9 +505,31 @@ export const Globe: React.FC<GlobeProps> = ({
     // hit target only.
     dot.visible = d.sphereVisible;
     hit.scale.setScalar(d.sphereRadius * HIT_RADIUS_SCALE);
+  }, [hitMaterial]);
 
+  /**
+   * Held to one identity for the life of the globe. The objects layer treats a
+   * new accessor as a reason to throw away every container it has and build
+   * them all again — which an inline function gave it on every render, so each
+   * instant of playback tore all forty-eight nodes down. That is why they froze
+   * and then appeared somewhere else: nothing survived long enough to move.
+   */
+  const satelliteSphere = useCallback((d: any) => {
+    let group = satelliteGroups.current.get(d.id);
+
+    if (!group) {
+      group = new THREE.Group();
+      const dot = new THREE.Mesh(sphereGeometry, sphereMaterials.current.get(d.color) ?? hitMaterial);
+      dot.name = 'dot';
+      const hit = new THREE.Mesh(sphereGeometry, hitMaterial);
+      hit.name = 'hit';
+      group.add(dot, hit);
+      satelliteGroups.current.set(d.id, group);
+    }
+
+    dressSatellite(group, d);
     return group;
-  };
+  }, [dressSatellite, sphereGeometry, hitMaterial]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -488,6 +549,14 @@ export const Globe: React.FC<GlobeProps> = ({
   // Update globe POV on mount
   useEffect(() => {
     if (globeRef.current) {
+      // Three checks every shader it links by reading the driver's info log,
+      // and that read waits for the GPU. The link itself happens whenever a
+      // layer makes a material — which, with links redrawn on every instant of
+      // playback, is several times a second. Turning the check off is what
+      // takes the dropped frames out of the day running.
+      const renderer = globeRef.current.renderer?.();
+      if (renderer?.debug) renderer.debug.checkShaderErrors = false;
+
       globeRef.current.pointOfView(cameraPosition ?? { lat: 0, lng: 0, altitude: BASE_ALTITUDE });
       globeRef.current.controls().autoRotate = true;
       globeRef.current.controls().autoRotateSpeed = 0.5;
@@ -761,6 +830,47 @@ export const Globe: React.FC<GlobeProps> = ({
     });
   }, [satellites, selectedSatellite, routeNodes, mode, playing]);
 
+  /**
+   * The objects layer's data, with each node's datum kept for as long as the
+   * node exists.
+   *
+   * The layer wraps every datum in a container of its own and only makes a new
+   * one when it sees a datum it has not seen before. A freshly built list means
+   * forty-eight new containers on every instant of playback: the node is torn
+   * down and rebuilt where the data says it now is, which is a teleport, and
+   * nothing that reaches across the gap between two instants can survive it.
+   */
+  const objectDatums = useRef(new Map<string, any>());
+
+  const objectsData = useMemo(() => {
+    const store = objectDatums.current;
+    const live = new Set<string>();
+
+    const data = pointsData.map(point => {
+      live.add(point.id);
+      const datum = store.get(point.id) ?? {};
+      Object.assign(datum, point);
+      store.set(point.id, datum);
+      return datum;
+    });
+
+    store.forEach((_, id) => {
+      if (!live.has(id)) store.delete(id);
+    });
+
+    return data;
+  }, [pointsData]);
+
+  // The look no longer rides on the datum being new, so it is written to the
+  // groups that are already in the scene whenever the reading changes.
+  useEffect(() => {
+    objectsData.forEach(datum => {
+      const group = satelliteGroups.current.get(datum.id);
+      if (group) dressSatellite(group, datum);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objectsData]);
+
   const coverageColor = pointsData.find(sat => sat.id === coverageSatelliteId)?.color ?? '#ffffff';
 
   useEffect(() => {
@@ -805,55 +915,151 @@ export const Globe: React.FC<GlobeProps> = ({
       .filter((datum): datum is FailurePingDatum => datum !== null);
   }, [failurePings, satellites]);
 
-  // Nothing here goes through React: the loop reads where the layer has put
-  // each node, and writes back a position a little behind it. A React state
-  // per frame would re-render the globe sixty times a second.
+  // Nothing here goes through React: the loop reads where the layers have put
+  // each node and its plate, works out how fast they are travelling, and
+  // writes back where they should be right now. A React state per frame would
+  // re-render the globe sixty times a second.
   useEffect(() => {
     if (!playing) return;
 
     const groups = satelliteGroups.current;
-    const targets = new Map<string, THREE.Vector3>();
-    const written = new Map<string, THREE.Vector3>();
+    const flights = new Map<
+      THREE.Object3D,
+      {
+        prev: THREE.Vector3;
+        prevAt: number;
+        curr: THREE.Vector3;
+        currAt: number;
+        drawn: THREE.Vector3;
+      }
+    >();
+    const plates: THREE.Object3D[] = [];
+    const step = new THREE.Vector3();
+    let gapAverage = 0;
+    let trail = MIN_TRAIL_MS;
+    let sinceSweep = Infinity;
     let frame = 0;
     let last = performance.now();
 
-    const step = (now: number) => {
-      const delta = Math.min(80, now - last);
-      last = now;
-      const alpha = 1 - Math.exp(-delta / MOTION_EASE_MS);
-
-      groups.forEach((group, id) => {
-        const previous = written.get(id);
-
-        // A position we did not write is one the layer has just set, which
-        // makes it the new target rather than something to ease away from.
-        if (!previous || !group.position.equals(previous)) {
-          targets.set(id, group.position.clone());
-          if (!previous) {
-            written.set(id, group.position.clone());
-            return;
-          }
-        }
-
-        const target = targets.get(id);
-        if (!target) return;
-
-        group.position.lerp(target, alpha);
-        written.set(id, group.position.clone());
+    // The plates live in the html layer's own objects. Collected by a sweep of
+    // the scene a few times a second rather than every frame: the set only
+    // changes when the constellation does.
+    const sweep = () => {
+      const scene = globeRef.current?.scene?.();
+      if (!scene) return;
+      plates.length = 0;
+      scene.traverse((object: any) => {
+        if (object?.element?.dataset?.flyId) plates.push(object);
       });
-
-      frame = requestAnimationFrame(step);
     };
 
-    frame = requestAnimationFrame(step);
+    const fly = (object: THREE.Object3D, now: number, smooth: number) => {
+      const flight = flights.get(object);
+
+      if (!flight) {
+        flights.set(object, {
+          prev: object.position.clone(),
+          prevAt: now,
+          curr: object.position.clone(),
+          currAt: now,
+          // Where the node is actually drawn, kept apart from the position the
+          // layer writes: the layer teleports, and what is on screen must not.
+          drawn: object.position.clone(),
+        });
+        return;
+      }
+
+      // A position this loop did not write is one a layer has just set: a new
+      // instant, and the far end of the segment to walk next.
+      if (!object.position.equals(flight.drawn)) {
+        step.copy(object.position).sub(flight.curr);
+        const gap = Math.max(16, now - flight.currAt);
+        const travelled = flight.curr.distanceTo(flight.prev);
+        const jumped = travelled > 0
+          ? step.length() > TELEPORT_RATIO * travelled
+          : step.length() > TELEPORT_DISTANCE;
+
+        if (jumped) {
+          // A seek, a scenario change, a node that has just been deployed:
+          // there is nothing to walk, so it simply arrives.
+          flight.prev.copy(object.position);
+          flight.curr.copy(object.position);
+          flight.drawn.copy(object.position);
+          flight.prevAt = now;
+          flight.currAt = now;
+          return;
+        }
+
+        flight.prev.copy(flight.curr);
+        flight.prevAt = flight.currAt;
+        flight.curr.copy(object.position);
+        flight.currAt = now;
+
+        gapAverage = gapAverage === 0 ? gap : gapAverage + (gap - gapAverage) * GAP_BLEND;
+        trail = Math.min(MAX_TRAIL_MS, Math.max(MIN_TRAIL_MS, gapAverage * TRAIL_SHARE));
+      }
+
+      const span = flight.currAt - flight.prevAt;
+      const along = span > 0
+        ? Math.min(SEGMENT_OVERRUN, Math.max(0, (now - trail - flight.prevAt) / span))
+        : 1;
+
+      step.lerpVectors(flight.prev, flight.curr, along);
+      flight.drawn.lerp(step, smooth);
+      object.position.copy(flight.drawn);
+    };
+
+    const advance = () => {
+      const now = performance.now();
+      const delta = Math.min(80, now - last);
+      last = now;
+      sinceSweep += delta;
+
+      if (sinceSweep > PLATE_SWEEP_MS) {
+        sweep();
+        sinceSweep = 0;
+      }
+
+      const smooth = 1 - Math.exp(-delta / SMOOTH_MS);
+      // The objects layer wraps every custom object in a container of its own
+      // and moves the container, so the node's own group never moves at all —
+      // flying it was flying something the scene does not place.
+      groups.forEach(group => {
+        const placed = group.parent ?? group;
+        fly(placed, now, smooth);
+      });
+      plates.forEach(plate => fly(plate, now, smooth));
+    };
+
+    // Driven from just before each pass is drawn rather than from a frame
+    // callback of its own. A layer writes the position of the instant it has
+    // just received, and whatever is on screen when that happens is what gets
+    // painted: on its own schedule this loop corrects the jump one frame too
+    // late, and the jump is what the eye catches. Both the WebGL pass and the
+    // one that places the plates begin by bringing the scene's matrices up to
+    // date, which is the moment that belongs to this loop.
+    const scene = globeRef.current?.scene?.();
+    const updateMatrices = scene?.updateMatrixWorld?.bind(scene);
+
+    if (scene && updateMatrices) {
+      scene.updateMatrixWorld = (force?: boolean) => {
+        advance();
+        updateMatrices(force);
+      };
+    }
+
+    const tick = () => {
+      if (!updateMatrices) advance();
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
 
     return () => {
       cancelAnimationFrame(frame);
-      // Pausing lands every node on the instant the clock actually shows.
-      groups.forEach((group, id) => {
-        const target = targets.get(id);
-        if (target) group.position.copy(target);
-      });
+      if (scene && updateMatrices) scene.updateMatrixWorld = updateMatrices;
+      // Pausing lands everything on the instant the clock actually shows.
+      flights.forEach((flight, object) => object.position.copy(flight.curr));
     };
   }, [playing]);
 
@@ -1106,6 +1312,9 @@ export const Globe: React.FC<GlobeProps> = ({
     // Satellites: a small ID plate next to the dot drawn by the points
     // layer. Kept secondary so 48 of them never turn into noise.
     if (d.type === 'sat') {
+      // The flight loop moves the plate with its node; this is how it finds
+      // the object the html layer has wrapped this element in.
+      el.dataset.flyId = d.id;
       el.style.cssText = 'position:relative;width:0;height:0;overflow:visible;pointer-events:none;white-space:nowrap;font-family:\'IBM Plex Mono\', ui-monospace, SFMono-Regular, Menlo, monospace';
 
       const chip = document.createElement('div');
@@ -1317,7 +1526,7 @@ export const Globe: React.FC<GlobeProps> = ({
         onPointClick={(pt: any) => onPointClick(pt)}
         pointLabel={satelliteTooltip}
 
-        objectsData={isGlobeVisible ? pointsData : []}
+        objectsData={isGlobeVisible ? objectsData : []}
         objectLat="lat"
         objectLng="lon"
         objectAltitude="globeAltitude"
@@ -1338,6 +1547,12 @@ export const Globe: React.FC<GlobeProps> = ({
         arcDashAnimateTime="dashAnimateTime"
         arcStroke="stroke"
         arcAltitudeAutoScale={0.2}
+        // A link between two neighbours is a short, nearly straight hop, and
+        // the tube it is drawn as is rebuilt for every one of them on every
+        // instant of playback. At the default resolutions that rebuild is most
+        // of what a snapshot costs; at these it is still a smooth line.
+        arcCurveResolution={16}
+        arcCircularResolution={4}
         arcsTransitionDuration={0}
 
         polygonsData={isGlobeVisible ? (selectedCoverage ? [...gapCoverage, selectedCoverage] : gapCoverage) : []}
@@ -1374,7 +1589,7 @@ export const Globe: React.FC<GlobeProps> = ({
 
         htmlElementsData={isGlobeVisible ? htmlElementsData : []}
         htmlAltitude={(d: any) => d.alt ?? 0}
-        htmlTransitionDuration={playing ? PLATE_GLIDE_MS : 0}
+        htmlTransitionDuration={0}
         htmlElement={createHtmlElement}
       />
 
