@@ -8,3 +8,4 @@ export {
   type ScenarioGeometry,
   type LaunchStageInfo,
 } from './model/types';
+export { phasePeriodDeg } from './model/phase-period';

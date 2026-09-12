@@ -5,6 +5,15 @@ import { ScaleRow } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
 import type { ScenarioDocument } from '@/shared/api';
 
+/**
+ * Both angles run the full circle: the official validator takes [0, 360) and
+ * the organisers confirmed there is no further constraint on either. The
+ * upper bound stops one step short of 360 so a slider at the end still posts
+ * a value the validator accepts.
+ */
+const ANGLE_STEP_DEG = 0.1;
+const ANGLE_MAX_DEG = 360 - ANGLE_STEP_DEG;
+
 interface PlaneControlsProps {
   scenario: ScenarioDocument;
   colors: Record<string, string>;
@@ -36,8 +45,8 @@ export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
                   id={`${plane.id}-raan`}
                   label="RAAN"
                   value={raan}
-                  max={359}
-                  step={1}
+                  max={ANGLE_MAX_DEG}
+                  step={ANGLE_STEP_DEG}
                   ticks={13}
                   majorEvery={3}
                   onChange={(value) => dispatch({ type: 'setPlane', planeId: plane.id, raanDeg: value })}
@@ -47,9 +56,9 @@ export function PlaneControls({ scenario, colors }: PlaneControlsProps) {
                   id={`${plane.id}-phase`}
                   label="PHASE"
                   value={phase}
-                  max={22.5}
-                  step={0.5}
-                  ticks={10}
+                  max={ANGLE_MAX_DEG}
+                  step={ANGLE_STEP_DEG}
+                  ticks={13}
                   majorEvery={3}
                   onChange={(value) => dispatch({ type: 'setPlane', planeId: plane.id, phaseDeg: value })}
                   onCommit={() => dispatch({ type: 'commitConfig' })}

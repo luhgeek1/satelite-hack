@@ -7,8 +7,10 @@ import {
   queryKeys,
   type OptimizeRequest,
   type PlaneBounds,
+  type ScenarioDocument,
 } from '@/shared/api';
 import { normalizeConfig, type RunInput } from '@/entities/simulation';
+import { phasePeriodDeg } from '@/entities/scenario';
 
 export interface PlaneLock {
   planeId: string;
@@ -85,11 +87,30 @@ export const gridSize = (locks: PlaneLock[], depth: SearchDepth) => {
     : preset.starts * (1 + preset.passes * axes * preset.axisSteps) + refinement + 1;
 };
 
-const toBounds = (locks: PlaneLock[]): PlaneBounds[] =>
+/**
+ * RAAN always sweeps the full circle. Phase sweeps one period of the plane —
+ * a full turn unless the slots are uniform and unbroken, in which case one
+ * slot spacing already covers every distinct geometry (see `phasePeriodDeg`).
+ */
+export const toBounds = (
+  locks: PlaneLock[],
+  scenario: ScenarioDocument | undefined,
+  input: RunInput,
+): PlaneBounds[] =>
   locks.map((lock) => ({
     plane_id: lock.planeId,
     raan_deg: lock.raanLocked ? null : [0, 360],
-    phase_deg: lock.phaseLocked ? null : [0, 22.5],
+    phase_deg: lock.phaseLocked
+      ? null
+      : [
+          0,
+          scenario
+            ? phasePeriodDeg(scenario, lock.planeId, {
+                launchStage: input.config.launch_stage,
+                failures: input.config.failures,
+              })
+            : 360,
+        ],
   }));
 
 /** Turns the optimizer's answer into the overrides the session config takes. */
@@ -112,7 +133,7 @@ export const freeLocks = (planeIds: string[]): PlaneLock[] =>
 
 export type Optimizer = ReturnType<typeof useOptimizer>;
 
-export function useOptimizer(input: RunInput) {
+export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undefined) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
 
@@ -124,7 +145,7 @@ export function useOptimizer(input: RunInput) {
         config: normalizeConfig(input.config),
         strategy: input.strategy,
         objective: 'worst_first',
-        bounds: toBounds(locks),
+        bounds: toBounds(locks, scenario, input),
         method: preset.method,
         coarse_steps: preset.coarseSteps,
         refine_rounds: preset.refineRounds,

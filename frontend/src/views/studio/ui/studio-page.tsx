@@ -117,7 +117,7 @@ export function StudioPage() {
   // The search is owned here, not by a panel: it is started from the network
   // health card as well as from the resilience column, and it reports from a
   // fixed corner so the answer survives a tab change.
-  const optimizer = useOptimizer(runInput);
+  const optimizer = useOptimizer(runInput, scenario);
   const [locks, setLocks] = useState<PlaneLock[]>([]);
   const [depth, setDepth] = useState<SearchDepth>('quick');
   const planeIds = scenario?.design.planes.map((plane) => plane.id).join(',') ?? '';
