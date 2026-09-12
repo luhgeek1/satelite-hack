@@ -50,6 +50,9 @@ where the work stands.
 | Site surroundings UI | ✅ picker on every site card, effective horizon, share of the day hidden, dashed masked links on globe and map |
 | Gateway outages UI | ✅ whole day / from now / window, same as satellite failures |
 | Quick failure | ✅ the card's one-click failure starts at the timeline position |
+| Change tracking | ✅ the panel lists what differs from the file and what it bought, against a baseline run; MOD badge in the header |
+| Optimizer flow | ✅ the result survives being applied; Save and compare names the variant, creates the baseline one and opens the pair |
+| Saved variants | ✅ openable from the scenario picker and from the comparison; the compared pair lives in the session |
 | Localization | ✅ Russian and English through one dictionary |
 | Verified in a browser | ✅ real metrics render, failure injection flips the UI in 60 ms and reconciles at ~2.5 s |
 
@@ -102,12 +105,14 @@ What is left:
 3. A route inspector — `/simulations/{id}/routes/{client_id}` is typed and
    unused; it would let the whole day's paths be scrubbed without refetching
    snapshots.
-4. The two optimizer entry points carry different labels — "Optimize deployment"
-   on the simulation tab, "Optimize configuration" on the resilience tab — for
-   the same job with the same settings. Worth naming consistently before the
-   defence. A lock set on the resilience tab also silently applies to the
-   simulation button, with nothing on that tab to show it.
-5. Deployment. **A14 requires the link to stay up from code freeze until the
+4. A deployment planner: one set of angles scored at all three stages at once,
+   with an objective that is not only the end state. The trade-off is measured
+   and real — see [DECISIONS.md](DECISIONS.md) E8 — and the launch stage switch
+   currently shows one stage at a time, so nothing on screen says what a choice
+   costs the months before full deployment.
+5. A lock set on the resilience tab silently applies to the simulation tab's
+   optimize button too, with nothing there to show it.
+6. Deployment. **A14 requires the link to stay up from code freeze until the
    end of all defences.**
 
 ### Team deliverables

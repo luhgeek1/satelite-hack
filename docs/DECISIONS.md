@@ -403,6 +403,25 @@ constellation-level, route-level question, with the site-level realism (D9)
 borrowed from the toolbox vocabulary, in a browser the jury can open without
 installing anything. Not a replacement for either; the piece neither of them has.
 
+**E8. The launch angles are chosen once, and the choice is a trade-off across
+the whole campaign.** RAAN and phase are set when a plane is launched and cannot
+be changed afterwards (D6), while the constellation is flown in three launches
+three months apart. So one set of angles has to serve stage 1, stage 2 and the
+end state. Measured on `01_full_constellation`, worst-client availability:
+
+| Angles | Stage 1 | Stage 2 | Stage 3 |
+|---|---:|---:|---:|
+| As flown (0/60/120) | 12.6% | **61.8%** | 96.7% |
+| Tuned for the end state | 12.4% | 58.3% | **98.3%** |
+| Tuned for stage 1 alone | **13.9%** | 13.9% | 60.9% |
+
+Two things to say at the defence. Tuning for the end state buys 1.7 points there
+and costs 3.5 points through the three months of stage 2 — a real trade-off, not
+a rounding error. And tuning greedily stage by stage is a trap: the search moves
+P1 to RAAN 60°, where P2 already sits, the two planes collapse into one and the
+end state falls from 96.7% to 60.9%. A deployment plan has to be scored across
+every stage it will be flown in, not at the stage in front of you.
+
 ## O. Open questions
 
 Ask at the expert consultation — two slots per checkpoint, one tracker and one
@@ -433,7 +452,12 @@ path as a recommendation invites the question.
 **O6.** How large might the jury's scenario be? Guard rails currently allow 500
 satellites and 5000 steps; the official validator permits a 48-hour horizon.
 
-**O7.** What local horizon figures does the customer use for its own terminals
+**O7.** Is a deployment plan scored on the end state, on the worst stage, or
+weighted by how long each stage is flown? The case says only "не менее 90% для
+каждого наземного пункта" about the end state and is silent on the months in
+between. See E8 — the three answers give different angles.
+
+**O8.** What local horizon figures does the customer use for its own terminals
 in built-up and forested sites? Our profile defaults (15° / 25° / 30°) are typical
 values with a stated rationale, not measurements; a figure from the operator
 would replace them.
