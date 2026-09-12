@@ -682,12 +682,12 @@ export function StudioPage() {
             <div className="relative min-h-0 flex-1" data-tour="globe">
               <Viewport
                 satellites={visibleSatellites}
-                links={state.tab === 'simulation' ? links : []}
+                links={links}
                 clients={clients}
                 gateways={gateways}
                 routes={state.tab === 'simulation' ? routeTraces : []}
                 focusClientId={focusClientId}
-                orbits={state.tab === 'simulation' ? orbits : []}
+                orbits={orbits}
                 mode={state.tab === 'resilience' ? 'resilience' : 'simulation'}
                 contactRadiusKm={contactRadius}
               />
