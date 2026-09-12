@@ -137,46 +137,48 @@
 
 ### Требования
 
-- Docker Engine с Docker Compose;
-- Node.js 20+ и npm для интерфейса;
-- для разработки backend без Docker: Python 3.13 и
-  [`uv`](https://docs.astral.sh/uv/).
+- **Для быстрой проверки и демонстрации**: Docker Engine с Docker Compose;
+- **Для локальной разработки (опционально)**: Node.js 20+, Python 3.13 и [`uv`](https://docs.astral.sh/uv/).
 
-### 1. API, PostgreSQL и Redis
+### Запуск всего приложения одной командой
 
 ```bash
-cp .env.example .env
 docker compose up -d --build
 ```
+*Или `make up`.*
 
-Миграции применяются автоматически при старте контейнера. Четыре официальных
-сценария из [`data/`](data) загружаются в каталог при первом запуске.
-
-### 2. Интерфейс
-
-```bash
-cd frontend
-cp .env.example .env.local
-npm ci
-npm run dev
-```
+Команда автоматически соберет и запустит весь стек (PostgreSQL 17, Redis 8, FastAPI Backend и Next.js Frontend), применит миграции БД и загрузит 4 официальных сценария из [`data/`](data).
 
 | Сервис | Адрес |
 |---|---|
-| OrbitGuard | [http://localhost:3000](http://localhost:3000) |
+| OrbitGuard (Frontend) | [http://localhost:3000](http://localhost:3000) |
 | REST API | [http://localhost:8080](http://localhost:8080) |
 | Swagger UI | [http://localhost:8080/api/docs](http://localhost:8080/api/docs) |
 | ReDoc | [http://localhost:8080/api/redoc](http://localhost:8080/api/redoc) |
 | Health check | [http://localhost:8080/api/health](http://localhost:8080/api/health) |
 
-Остановить инфраструктуру:
+Остановить весь стек:
 
 ```bash
 docker compose down --remove-orphans
 ```
 
-### Локальная разработка backend
+---
 
+### Альтернативный вариант: Локальная разработка
+
+Если необходимо вносить изменения с hot reload:
+
+1. **Запустить бэкенд и инфраструктуру:**
+   ```bash
+   docker compose up -d --build backend db redis
+   ```
+2. **Запустить фронтенд локально:**
+   ```bash
+   cd frontend && npm ci && npm run dev
+   ```
+
+*Для работы без Docker совсем (чисто локальный Python):*
 ```bash
 make install                 # создать backend/.venv и установить зависимости
 make test-up                 # PostgreSQL :55432 и Redis :56379 для разработки
@@ -184,8 +186,6 @@ make migrate                 # применить Alembic-миграции
 make dev                     # API с hot reload на :8080
 ```
 
-Frontend проксирует `/api/*` на `API_ORIGIN`, поэтому браузер работает с одним
-origin. По умолчанию используется `http://localhost:8080`.
 
 ## API
 
