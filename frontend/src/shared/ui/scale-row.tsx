@@ -5,36 +5,36 @@ import { Lock } from 'lucide-react';
 import { cn, formatDegrees } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 
-/**
- * The grid the scale and its caption share. Stated once so a caption stop and
- * the cursor it names cannot drift apart.
- */
+
+
+
+
 export const SCALE_GRID = 'grid grid-cols-[2.9rem_minmax(0,1fr)_3.4rem] items-center gap-x-2';
 
-/** The slider thumb is 11px wide, so its travel is inset by half of it. */
+
 const TRAVEL_INSET = 5;
 
 interface ScaleCaptionProps {
   label: string;
-  /** The values an operator names — a third of a turn, a quarter, the end. */
+
   stops: number[];
   max: number;
 }
 
-/**
- * One ruler for the tracks below it. A scale that states where it starts, what
- * it counts in and where it ends needs no sentence underneath explaining the
- * same thing in prose.
- */
+
+
+
+
+
 export function ScaleCaption({ label, stops, max }: ScaleCaptionProps) {
   return (
     <>
       <span className="font-data text-[10px] tracking-[0.06em] text-zinc-500">{label}</span>
       <div className="relative h-3.5" aria-hidden="true">
         {stops.map((stop, index) => {
-          // A stop is pulled inside the track only when it sits on an end of
-          // it. Aligning the last label right whether or not it lands at the
-          // end dragged it back towards its neighbour.
+
+
+
           const at = stop / max;
           const shift = at <= 0.001 ? 'none' : at >= 0.999 ? 'translateX(-100%)' : 'translateX(-50%)';
 
@@ -61,7 +61,7 @@ export function ScaleCaption({ label, stops, max }: ScaleCaptionProps) {
 interface ScaleRowProps {
   id: string;
   label: string;
-  /** Identity colour of whatever the row measures, drawn as a spine. */
+
   accent?: string;
   value: number;
   max: number;
@@ -69,23 +69,23 @@ interface ScaleRowProps {
   ticks: number;
   majorEvery: number;
   disabled?: boolean;
-  /**
-   * Settled: the reading is a decision that has been taken, not a control.
-   * Inert and marked with a lock, because a value that must not move and a
-   * value that merely looks quiet are not the same thing to a hand on a mouse.
-   */
+
+
+
+
+
   locked?: boolean;
   onChange: (value: number) => void;
   onCommit?: (value: number) => void;
 }
 
-/**
- * A slide rule on one line: who is being set, the travel, and the reading.
- *
- * The reading is a readout rather than a form field — a bordered box with a
- * pencil in it shouted louder than the control it belongs to, six times over.
- * It still takes typing; the rule under it appears when the pointer is on it.
- */
+
+
+
+
+
+
+
 export function ScaleRow({
   id,
   label,

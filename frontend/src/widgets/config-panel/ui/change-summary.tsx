@@ -11,21 +11,21 @@ const VISIBLE_ROWS = 4;
 
 interface ChangeSummaryProps {
   scenario: ScenarioDocument;
-  /** The run as configured right now. */
+
   current: SimulationSummary | undefined;
-  /** The same scenario with nothing changed — the reference every delta is against. */
+
   baseline: SimulationSummary | undefined;
 }
 
-/**
- * What has been changed since the file was loaded, and what it bought.
- *
- * Without this the header keeps showing the scenario's name after an optimizer
- * pass or half an hour of sliders, and nothing on screen says the numbers no
- * longer describe the file. The reference is deliberately the file rather than
- * the previous run: "what have I changed" is the question, and its answer must
- * survive a reload.
- */
+
+
+
+
+
+
+
+
+
 export function ChangeSummary({ scenario, current, baseline }: ChangeSummaryProps) {
   const { state, dispatch } = useSession();
   const { t, formatDuration } = useI18n();
@@ -65,12 +65,12 @@ export function ChangeSummary({ scenario, current, baseline }: ChangeSummaryProp
         </button>
       </div>
 
-      {/* One list, not two blocks: what was changed and what it bought share a
-          grammar — label, before, after — and the delta column on the last two
-          rows is enough to tell a setting from a result. */}
+
+
+
       <div className="mt-1.5 space-y-0.5">
-        {/* The block is always here, so the figures below have something to be
-            measured against even before anything is touched. */}
+
+
         {untouched && (
           <div className="font-label text-[10px] text-zinc-600">{t('changes.none')}</div>
         )}
@@ -125,7 +125,7 @@ function SummaryRow({
   delta?: string | null;
   better?: boolean;
 }) {
-  // A figure that has not moved is one figure, not the same one twice.
+
   const moved = from !== to;
 
   return (
@@ -138,7 +138,7 @@ function SummaryRow({
         </>
       )}
       <span className={cn('shrink-0 text-zinc-100', !moved && 'ml-auto')}>{to}</span>
-      {/* Held open on every row so the figures line up down one edge. */}
+
       <span className={cn('w-14 shrink-0 text-right', better ? 'text-zinc-200' : 'text-alarm')}>
         {delta}
       </span>

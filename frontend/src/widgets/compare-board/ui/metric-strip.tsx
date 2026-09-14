@@ -6,11 +6,11 @@ import type { ComparedMetric } from '@/shared/api';
 
 interface MetricStripProps {
   metrics: ComparedMetric[];
-  /** Denominator for the "clients meeting target" count, from the scenario. */
+
   clientCount: number;
 }
 
-/** Every metric the compare endpoint returns, on one line of tiles. */
+
 export function MetricStrip({ metrics, clientCount }: MetricStripProps) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
@@ -21,11 +21,11 @@ export function MetricStrip({ metrics, clientCount }: MetricStripProps) {
   );
 }
 
-/**
- * Metric labels arrive worded by the compare endpoint, which speaks one
- * language. The keys are stable, so the five it returns get the interface
- * language and anything new falls back to what the service called it.
- */
+
+
+
+
+
 const TRANSLATED = [
   'worst_availability',
   'mean_availability',
@@ -59,7 +59,7 @@ function MetricTile({ metric, clientCount }: { metric: ComparedMetric; clientCou
     return `${sign}${size}`;
   })();
 
-  // Unchanged is its own answer: it should not be coloured like a regression.
+
   const verdict = diff === null || diff === 0 ? 'level' : metric.higher_is_better === (diff > 0) ? 'better' : 'worse';
 
   return (

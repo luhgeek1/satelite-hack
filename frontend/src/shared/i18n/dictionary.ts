@@ -1,14 +1,14 @@
-/**
- * The interface in two languages.
- *
- * English is the source of truth for the key set: `ru` is typed against it, so
- * a key added on one side and forgotten on the other will not compile. Values
- * take `{name}` placeholders, filled in by `t`.
- *
- * Prose written by the simulation service — the optimizer's verdict, scenario
- * ids, metric labels from the compare endpoint — arrives already worded and is
- * shown as it comes.
- */
+
+
+
+
+
+
+
+
+
+
+
 export const en = {
   'lang.ru': 'РУС',
   'lang.en': 'ENG',
@@ -1133,5 +1133,5 @@ export const ru: Record<TranslationKey, string> = {
 
 export const dictionaries = { en, ru };
 
-/** For keys built at runtime from a server code, which may be one this build lacks. */
+
 export const isTranslationKey = (key: string): key is TranslationKey => key in en;

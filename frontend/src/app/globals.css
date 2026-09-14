@@ -2,20 +2,20 @@
 @source "../";
 
 @theme {
-  /* Instrument palette: greyscale plus a single annunciator hue. Surfaces are
-     separated by rules, never by fill, so there is only one ground colour. */
+
+
   --color-rule: #1f1f23;
   --color-rule-strong: #2e2e34;
   --color-alarm: #e4483a;
 
-  /* Plex reads as engineering drawing rather than product UI. Mono carries
-     every number so columns align; condensed sans packs the label column. */
+
+
   --font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-label: "IBM Plex Sans Condensed", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* App shell locks to the viewport: the page itself never scrolls,
-   only the inner panels do. */
+
+
 html,
 body {
   height: 100%;
@@ -35,7 +35,7 @@ body {
   background: #000;
 }
 
-/* Thin, dark scrollbars for the inner scroll areas */
+
 * {
   scrollbar-width: thin;
   scrollbar-color: #27272a transparent;
@@ -59,17 +59,17 @@ body {
   background: #3f3f46;
 }
 
-/* Sliders stay usable on touch screens without scrolling the panel */
+
 input[type='range'] {
   touch-action: none;
 }
 
-/* ---------------------------------------------------------------------------
-   Parameter scale: a slide-rule control rather than a pill slider. The track
-   is a single hairline and the thumb is a transparent cursor window with two
-   bright edges, so the value is read off the tick scale drawn beneath it.
-   `--fill` carries the filled fraction, since a range track cannot compute it.
-   ------------------------------------------------------------------------ */
+
+
+
+
+
+
 input[type='range'].param-scale {
   -webkit-appearance: none;
   appearance: none;
@@ -144,7 +144,7 @@ input[type='range'].param-scale:focus-visible {
   outline-offset: 3px;
 }
 
-/* Native select chrome fights the hairline language; draw our own caret. */
+
 select.param-select {
   -webkit-appearance: none;
   appearance: none;
@@ -165,9 +165,9 @@ select.param-select {
   }
 }
 
-/* react-simple-maps makes every country a focusable target, so a stray click
-   puts the browser's focus ring around a whole landmass. The basemap is a
-   backdrop, not a control — the satellites are what can be picked. */
+
+
+
 .rsm-svg,
 .rsm-geography,
 .rsm-marker,

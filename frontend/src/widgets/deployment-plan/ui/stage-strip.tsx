@@ -5,14 +5,14 @@ import { cn } from '@/shared/lib';
 import { useI18n } from '@/shared/i18n';
 import type { SimulationSummary } from '@/shared/api';
 
-/**
- * A day of connectivity for one launch stage, in one line.
- *
- * Same reading as the strip under the timeline, and the same three states: a
- * lit ground means a route existed, the marks are where it did not. Put beside
- * the stage rows it answers the question a percentage cannot — whether the
- * missing time is one long gap or scattered minutes.
- */
+
+
+
+
+
+
+
+
 export function StageStrip({
   summary,
   loading,

@@ -9,23 +9,23 @@ import type { ScenarioDocument } from '@/shared/api';
 interface RingLegendProps {
   scenario: ScenarioDocument;
   colors: Record<string, string>;
-  /** The launch on screen, which decides which rings are in the picture. */
+
   stage: number;
-  /** Launches whose angles are settled. */
+
   committed: number[];
   onSelectStage: (stage: number) => void;
 }
 
-/**
- * Which ring is which, and why its scales do or do not move.
- *
- * The rulers below stack every plane under one axis, which answers how far the
- * planes sit from each other but says nothing about them one at a time. Three
- * things can be true of a ring, and each disables its scales for a different
- * reason: its launch is settled, it is the one being designed now, or it flies
- * later and is therefore designed on its own launch. Saying which, in the
- * ring's own row, is what keeps a dimmed slider from reading as a fault.
- */
+
+
+
+
+
+
+
+
+
+
 export function RingLegend({
   scenario,
   colors,

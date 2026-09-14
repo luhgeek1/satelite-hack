@@ -21,108 +21,108 @@ import { PlanetExplosionController, type ExplosionPhase, type ExplosionMode } fr
 
 export type OrbitTrack = {
   planeId: string;
-  /** Launched later than the stage on screen: drawn as a plan, not as traffic. */
+
   pending?: boolean;
   color: string;
   points: { lat: number; lng: number }[];
 };
 
-/** Altitude (in globe radii) the constellation is drawn at. */
+
 const SATELLITE_ALTITUDE = 0.05;
 const EARTH_RADIUS_KM = 6371;
-/** Short enough to feel instant, long enough to read as a reveal. */
+
 const COVERAGE_TWEEN_MS = 220;
-/** Long enough to see which way the globe turned, short enough not to wait. */
+
 const FOCUS_FLIGHT_MS = 700;
-/**
- * Flight between the instants the data actually describes.
- *
- * Positions arrive with the snapshot for each instant — a network round trip —
- * so during playback they land about four times a second, tens of pixels
- * apart, and not on a metronome. Guessing where a node will be next means
- * guessing from an interval the network chose, and every guess that misses is
- * a correction the eye catches. So nothing is guessed: the loop draws the
- * constellation a fraction of a second in the past, where both ends of every
- * step are already known, and walks each node from one to the next. A segment
- * ends exactly where the next one starts, which is what makes the motion
- * continuous rather than merely frequent.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
 const MIN_TRAIL_MS = 90;
 const MAX_TRAIL_MS = 500;
-/**
- * How far behind the newest instant the constellation is drawn, as a share of
- * the gap between arrivals.
- *
- * Just under one gap. Shorter and a node finishes its segment early and waits
- * a moment at the end of it — which is still continuous, because the next
- * segment begins exactly there. Longer and it never finishes one before the
- * next replaces it, and every arrival drags it forward a whole segment, which
- * is the jerk this exists to remove.
- */
+
+
+
+
+
+
+
+
+
+
 const TRAIL_SHARE = 0.85;
-/** How quickly the trail follows the pace the snapshots are arriving at. */
+
 const GAP_BLEND = 0.2;
-/**
- * A light filter over the walk itself.
- *
- * Two consecutive segments are rarely the same length in time, so the speed
- * changes at every boundary even though the position does not. Rounding that
- * corner off costs a few tens of milliseconds of lag and takes the last of
- * the stepping out of it.
- */
+
+
+
+
+
+
+
+
 const SMOOTH_MS = 45;
-/**
- * How far past the end of a segment a node may keep going.
- *
- * Stopping dead at the end and waiting for the next snapshot is what is left
- * of the stepping: a tenth of a second of stillness reads as a stutter even
- * though nothing jumped. Carrying on at the same speed for a moment longer
- * covers the wait, and the filter above absorbs the small step back when the
- * next instant turns out to be a little behind the guess.
- */
+
+
+
+
+
+
+
+
+
 const SEGMENT_OVERRUN = 1.35;
-/**
- * What separates travel from a jump.
- *
- * How far a node moves between two updates depends on the speed and on how
- * often the snapshots arrive, so no fixed distance can tell the two apart: at
- * 4x a step is further than a whole continent. What does tell them apart is
- * the node's own history — a step several times longer than the one before it
- * is a seek, not an orbit. The distance is only the fallback for the first
- * step, when there is no history to compare against.
- */
+
+
+
+
+
+
+
+
+
+
 const TELEPORT_RATIO = 4;
 const TELEPORT_DISTANCE = 80;
-/** How often the flight loop looks for the plates the html layer has made. */
+
 const PLATE_SWEEP_MS = 400;
-/** How long the container has to hold still before the globe reframes. */
+
 const RESIZE_SETTLE_MS = 180;
 const COVERAGE_CAP_OPACITY = 0.22;
 const COVERAGE_SEGMENTS = 72;
 
-/**
- * Brightest at the node, gone by the time the wave reaches the rim. The falloff
- * is held back at first: a WebGL line is one pixel wide whatever the zoom, so a
- * linear fade leaves most of the sweep too faint to read.
- */
+
+
+
+
+
 const failureRingFade = (t: number) => `rgba(239,68,68,${(0.92 * (1 - t * t)).toFixed(3)})`;
 
 type FailurePingDatum = { id: string; lat: number; lng: number };
 const NO_FAILURE_PINGS: FailurePingDatum[] = [];
 const NO_COVERAGE_GAPS: CoverageGap[] = [];
 
-/**
- * Degrees of arc between surface subdivisions in a footprint's cap. At the
- * finest setting a cap costs about 2.5 ms a frame to tessellate and is
- * indistinguishable from this one at the radius these are drawn at.
- */
+
+
+
+
+
 const GAP_CAP_CURVATURE = 4;
 
 const toRadians = (degrees: number) => degrees * (Math.PI / 180);
 const toDegrees = (radians: number) => radians * (180 / Math.PI);
 const normalizeLongitude = (longitude: number) => ((longitude + 540) % 360) - 180;
 
-/** Returns a closed geodesic ring around a satellite's current nadir point. */
+
 const coverageRing = (lat: number, lng: number, radiusKm: number) => {
   const startLat = toRadians(lat);
   const startLng = toRadians(lng);
@@ -149,58 +149,58 @@ export type GlobeCameraPosition = {
   altitude: number;
 };
 
-/** Camera defaults of globe.gl: 50° vertical FOV, globe radius in "altitude" units. */
+
 const FOV_HALF_TAN = Math.tan((50 / 2) * (Math.PI / 180));
-/** Design default — never zoom in closer than this on roomy screens. */
+
 const BASE_ALTITUDE = 2.5;
-/** Keep ~12% of padding around the globe when fitting it to a narrow container. */
+
 const FIT_MARGIN = 1.12;
 
-/**
- * Altitude at which the whole globe stays inside the container.
- * On narrow (portrait) containers the width is the limiting dimension, so the
- * camera has to pull back further than the desktop default.
- */
+
+
+
+
+
 const fitAltitude = (width: number, height: number) => {
   if (!width || !height) return BASE_ALTITUDE;
   const limitingAspect = Math.min(1, width / height);
   return Math.max(BASE_ALTITUDE, FIT_MARGIN / (FOV_HALF_TAN * limitingAspect) - 1);
 };
 
-/** globe.gl builds the globe at radius 100, and places the camera at R*(1+altitude). */
+
 const GLOBE_RADIUS = 100;
 const altitudeToDistance = (altitude: number) => GLOBE_RADIUS * (1 + altitude);
 
-/**
- * How far past the fitted framing the camera may pull back. Without a ceiling
- * OrbitControls lets the wheel run forever and the Earth ends up a speck among
- * the stars; 1.7x still shows every orbit track with room to spare.
- */
+
+
+
+
+
 const MAX_ZOOM_OUT_FACTOR = 1.7;
 
-/**
- * Closest approach. The globe is radius 1 in altitude units and the satellite
- * shell sits at 0.05, so anything below this puts the camera inside the Earth
- * and the view goes black.
- */
+
+
+
+
+
 const MIN_ALTITUDE = 0.35;
 
 const STAR_COUNT = 3200;
-/** Globe radius is 100 scene units and the camera far plane sits at 4000. */
+
 const STAR_SHELL_MIN = 700;
 const STAR_SHELL_MAX = 1600;
 
-/**
- * A starfield shell around the scene. Sitting in world space (rather than on
- * the camera) it parallaxes naturally as the globe auto-rotates, and the globe
- * mesh occludes the stars behind it.
- */
+
+
+
+
+
 const createStarfield = () => {
   const positions = new Float32Array(STAR_COUNT * 3);
   const colors = new Float32Array(STAR_COUNT * 3);
 
   for (let i = 0; i < STAR_COUNT; i++) {
-    // Evenly distributed directions: uniform z avoids clustering at the poles.
+
     const z = Math.random() * 2 - 1;
     const theta = Math.random() * Math.PI * 2;
     const ringRadius = Math.sqrt(1 - z * z);
@@ -210,7 +210,7 @@ const createStarfield = () => {
     positions[i * 3 + 1] = z * distance;
     positions[i * 3 + 2] = ringRadius * Math.sin(theta) * distance;
 
-    // Mostly faint white, a few brighter ones with a cold or warm tint.
+
     const brightness = 0.35 + Math.random() ** 2.2 * 0.65;
     const tint = Math.random();
     colors[i * 3] = brightness * (tint > 0.85 ? 1 : 0.92);
@@ -252,8 +252,8 @@ interface GlobeProps {
   onSiteClick?: (siteId: string) => void;
   focusClientId?: string | null;
   orbits?: OrbitTrack[];
-  /** While the timeline runs, satellites render as small spheres instead of the
-   *  default cylinder markers, which smear as they travel. */
+
+
   playing?: boolean;
   rotation?: [number, number, number];
   cameraPosition?: GlobeCameraPosition;
@@ -261,11 +261,11 @@ interface GlobeProps {
   onSatelliteClick?: (sat: SatelliteView) => void;
   selectedSatellite?: string | null;
   mode?: 'simulation' | 'resilience';
-  /** A request to turn the globe to a satellite; the nonce re-fires a repeat pick. */
+
   focusOn?: { id: string; nonce: number } | null;
-  /** Ground-contact radius derived from the scenario's elevation mask. */
+
   contactRadiusKm?: number;
-  /** Footprints that fall short of the selected terminal, drawn as they fall. */
+
   coverageGaps?: CoverageGap[];
   resetNonce?: number;
 }
@@ -280,7 +280,7 @@ export const Globe: React.FC<GlobeProps> = ({
   focusClientId = null,
   orbits = [],
   playing = false,
-  rotation = [0, -20, 0], // Kept for API compatibility, but react-globe handles its own view
+  rotation = [0, -20, 0],
   cameraPosition,
   onCameraPositionChange,
   onSatelliteClick,
@@ -318,9 +318,9 @@ export const Globe: React.FC<GlobeProps> = ({
 
   useEffect(() => () => coverageCapMaterial.dispose(), [coverageCapMaterial]);
 
-  // Footprints drawn for a stranded terminal are several at once, each in its
-  // own node's colour, so one shared material will not do. Cached by colour —
-  // there are as many as there are planes — and disposed with the globe.
+
+
+
   const gapCapMaterials = useRef(new Map<string, THREE.MeshBasicMaterial>());
   const gapOpacityRef = useRef(0);
 
@@ -339,18 +339,18 @@ export const Globe: React.FC<GlobeProps> = ({
       cache.set(color, material);
     }
 
-    // Written on every pass, not only at creation: the reveal drives these
-    // materials straight, outside React, so a material rebuilt afterwards has
-    // to pick the reveal up where it stands rather than start from nothing.
+
+
+
     material.opacity = gapOpacityRef.current;
 
     return material;
   };
 
-  // Disposed but never dropped from the cache. Strict mode runs this cleanup
-  // on a mount it then replays, and a cleared cache would leave the reveal
-  // writing opacity to materials nothing holds any more — which is what left
-  // a reloaded page showing the footprint edges and no footprints.
+
+
+
+
   useEffect(() => {
     const cache = gapCapMaterials.current;
     return () => {
@@ -358,12 +358,12 @@ export const Globe: React.FC<GlobeProps> = ({
     };
   }, []);
 
-  // The footprint fades in and out rather than growing. A grow is a geometry
-  // change, and a geometry change is a React render: the old tween re-rendered
-  // the whole globe on every one of its frames, rebuilt the cap at the finest
-  // curvature and re-created all forty-eight node datums with it. Picking a
-  // well-connected node was the worst case and it stuttered. The opacity is
-  // written straight onto the material instead, so a pick costs one render.
+
+
+
+
+
+
   const [coverageSatelliteId, setCoverageSatelliteId] = useState<string | null>(selectedSatellite ?? null);
   const coverageOpacityRef = useRef(selectedSatellite ? COVERAGE_CAP_OPACITY : 0);
 
@@ -383,8 +383,8 @@ export const Globe: React.FC<GlobeProps> = ({
       return;
     }
 
-    // Moving the pick straight to another node restarts the reveal, otherwise
-    // the new footprint arrives already faded in.
+
+
     const from = selectedSatellite ? 0 : coverageOpacityRef.current;
     apply(from);
 
@@ -392,16 +392,16 @@ export const Globe: React.FC<GlobeProps> = ({
     let frame = 0;
 
     const step = (now: number) => {
-      // rAF hands back the frame's own timestamp, which can predate the start
-      // captured just before it; an unclamped progress goes negative.
+
+
       const t = Math.max(0, Math.min(1, (now - start) / COVERAGE_TWEEN_MS));
       apply(from + (target - from) * (1 - Math.pow(1 - t, 3)));
 
       if (t < 1) {
         frame = requestAnimationFrame(step);
       } else if (target === 0) {
-        // Only now is the polygon safe to unmount: until the fade is done it
-        // is still on screen.
+
+
         setCoverageSatelliteId(null);
       }
     };
@@ -444,8 +444,8 @@ export const Globe: React.FC<GlobeProps> = ({
     return () => cancelAnimationFrame(frame);
   }, [gapFocus]);
 
-  // One geometry for every satellite sphere; materials are cached per color and
-  // meshes per satellite, so playback does not churn objects 10x a second.
+
+
   const sphereGeometry = useMemo(() => new THREE.SphereGeometry(1, 12, 12), []);
   const sphereMaterials = useRef(new Map<string, THREE.MeshBasicMaterial>());
   const satelliteGroups = useRef(new Map<string, THREE.Group>());
@@ -458,7 +458,7 @@ export const Globe: React.FC<GlobeProps> = ({
   const onPointClick = useCallback((pt: SatelliteView | null) => {
     if (!pt || !satelliteClickRef.current) return;
 
-    // The HTML plate and WebGL layers can report the same physical click.
+
     const now = Date.now();
     if (lastClickRef.current.id === pt.id && now - lastClickRef.current.at < 300) return;
     lastClickRef.current = { id: pt.id, at: now };
@@ -466,13 +466,13 @@ export const Globe: React.FC<GlobeProps> = ({
     satelliteClickRef.current(pt);
   }, []);
 
-  /**
-   * A satellite dot is about 1% of the globe radius — roughly three pixels at
-   * the default framing, which is near impossible to click. An invisible sphere
-   * around it widens the hit area without touching the picture. Doing this in
-   * the scene rather than with an HTML overlay matters: globe.gl raycasts on
-   * click only, so dragging the globe still works over every satellite.
-   */
+
+
+
+
+
+
+
   const HIT_RADIUS_SCALE = 4.5;
   const hitMaterial = useMemo(
     () => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
@@ -504,19 +504,19 @@ export const Globe: React.FC<GlobeProps> = ({
 
     dot.material = material;
     dot.scale.setScalar(d.sphereRadius);
-    // While paused the points layer draws the marker, so the group is then a
-    // hit target only.
+
+
     dot.visible = d.sphereVisible;
     hit.scale.setScalar(d.sphereRadius * HIT_RADIUS_SCALE);
   }, [hitMaterial]);
 
-  /**
-   * Held to one identity for the life of the globe. The objects layer treats a
-   * new accessor as a reason to throw away every container it has and build
-   * them all again — which an inline function gave it on every render, so each
-   * instant of playback tore all forty-eight nodes down. That is why they froze
-   * and then appeared somewhere else: nothing survived long enough to move.
-   */
+
+
+
+
+
+
+
   const satelliteSphere = useCallback((d: any) => {
     let group = satelliteGroups.current.get(d.id);
 
@@ -539,24 +539,24 @@ export const Globe: React.FC<GlobeProps> = ({
     const observer = new ResizeObserver((entries) => {
       if (!entries[0]) return;
       const { width, height } = entries[0].contentRect;
-      // Committed inside the callback, which runs after layout and before the
-      // paint that follows it. Left to React's own scheduling the canvas keeps
-      // the previous frame's size for a beat while the container already has
-      // the new one, and dragging the panel's edge squashes the globe.
+
+
+
+
       flushSync(() => setDimensions({ width: Math.round(width), height: Math.round(height) }));
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
 
-  // Update globe POV on mount
+
   useEffect(() => {
     if (globeRef.current) {
-      // Three checks every shader it links by reading the driver's info log,
-      // and that read waits for the GPU. The link itself happens whenever a
-      // layer makes a material — which, with links redrawn on every instant of
-      // playback, is several times a second. Turning the check off is what
-      // takes the dropped frames out of the day running.
+
+
+
+
+
       const renderer = globeRef.current.renderer?.();
       if (renderer?.debug) renderer.debug.checkShaderErrors = false;
 
@@ -581,9 +581,9 @@ export const Globe: React.FC<GlobeProps> = ({
     const satellite = satellitesRef.current.find(sat => sat.id === focusOn.id);
     if (!satellite) return;
 
-    // Altitude is carried over untouched: the pick says which node to look at,
-    // not how close to get. Auto-rotation has to stop, or the node drifts back
-    // out of frame the moment it arrives.
+
+
+
     const controls = globe.controls?.();
     if (controls) controls.autoRotate = false;
 
@@ -593,7 +593,7 @@ export const Globe: React.FC<GlobeProps> = ({
     );
   }, [focusOn]);
 
-  // Stars behind the Earth.
+
   useEffect(() => {
     const scene = globeRef.current?.scene?.();
     if (!scene) return;
@@ -608,7 +608,7 @@ export const Globe: React.FC<GlobeProps> = ({
     };
   }, []);
 
-  // Initialize 3D explosion controller in Three.js scene
+
   useEffect(() => {
     let controller: PlanetExplosionController | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -677,21 +677,21 @@ export const Globe: React.FC<GlobeProps> = ({
     explosionControllerRef.current?.start('reset');
   }, [resetNonce]);
 
-  // Keep the whole globe inside the viewport as the container resizes — once
-  // the container has stopped. Refitting on every frame of a drag pumps the
-  // planet in and out under the pointer; a resize is over when it is over.
+
+
+
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || !dimensions.width || !dimensions.height) return;
 
-    // A saved user view takes precedence over responsive default framing.
+
     if (hasSavedCameraPositionRef.current) return;
 
     const timer = window.setTimeout(() => {
       const target = fitAltitude(dimensions.width, dimensions.height);
       const current = globe.pointOfView().altitude;
 
-      // Never fight a zoom level the user picked themselves.
+
       if (appliedAltitudeRef.current !== null && Math.abs(current - appliedAltitudeRef.current) > 0.05) {
         return;
       }
@@ -707,9 +707,9 @@ export const Globe: React.FC<GlobeProps> = ({
     return () => window.clearTimeout(timer);
   }, [dimensions.width, dimensions.height]);
 
-  // Cap how far the wheel can pull the camera back. The ceiling follows the
-  // fitted framing, so a narrow container — which already starts further out —
-  // keeps the same amount of usable travel as a wide one.
+
+
+
   useEffect(() => {
     const controls = globeRef.current?.controls?.();
     if (!controls || !dimensions.width || !dimensions.height) return;
@@ -775,7 +775,7 @@ export const Globe: React.FC<GlobeProps> = ({
       }
     }, 50000);
 
-    // Wheel zoom resolves just after the browser's event; read the settled POV.
+
     finishUserInteraction();
   };
 
@@ -798,7 +798,7 @@ export const Globe: React.FC<GlobeProps> = ({
     queueCameraPersistence();
   };
 
-  // Prepare satellite data
+
   const routeEdges = useMemo(() => routeEdgeIndex(routes), [routes]);
 
   const routeNodes = useMemo(() => {
@@ -817,12 +817,12 @@ export const Globe: React.FC<GlobeProps> = ({
       const isSelected = selectedSatellite === sat.id;
       const isFailed = sat.failed;
       const routeColour = routeNodes.get(sat.id);
-      
-      let color = "#a1a1aa"; // zinc-400
+
+      let color = "#a1a1aa";
       let altitude = 0.05;
-      
+
       if (isFailed) {
-        color = "#ef4444"; // red-500
+        color = "#ef4444";
       } else if (mode === 'resilience') {
         color = criticalityLevel(sat.criticality).color;
       } else if (routeColour) {
@@ -831,13 +831,13 @@ export const Globe: React.FC<GlobeProps> = ({
         color = sat.color;
       }
 
-      // Selection is shown by size, the emphasized ID chip, the coverage
-      // footprint and the highlighted orbit — never by recoloring the node,
-      // which would hide which plane it belongs to.
+
+
+
       const emphasized = isFailed || isSelected;
 
-      // Only the picked node reads this; a layer-wide transition would animate
-      // all forty-eight.
+
+
       const grow = sat.id === selectedSatellite ? 1 : 0;
 
       return {
@@ -852,16 +852,16 @@ export const Globe: React.FC<GlobeProps> = ({
     });
   }, [satellites, selectedSatellite, routeNodes, mode, playing]);
 
-  /**
-   * The objects layer's data, with each node's datum kept for as long as the
-   * node exists.
-   *
-   * The layer wraps every datum in a container of its own and only makes a new
-   * one when it sees a datum it has not seen before. A freshly built list means
-   * forty-eight new containers on every instant of playback: the node is torn
-   * down and rebuilt where the data says it now is, which is a teleport, and
-   * nothing that reaches across the gap between two instants can survive it.
-   */
+
+
+
+
+
+
+
+
+
+
   const objectDatums = useRef(new Map<string, any>());
 
   const objectsData = useMemo(() => {
@@ -883,14 +883,14 @@ export const Globe: React.FC<GlobeProps> = ({
     return data;
   }, [pointsData]);
 
-  // The look no longer rides on the datum being new, so it is written to the
-  // groups that are already in the scene whenever the reading changes.
+
+
   useEffect(() => {
     objectsData.forEach(datum => {
       const group = satelliteGroups.current.get(datum.id);
       if (group) dressSatellite(group, datum);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [objectsData]);
 
   const coverageColor = pointsData.find(sat => sat.id === coverageSatelliteId)?.color ?? '#ffffff';
@@ -899,16 +899,16 @@ export const Globe: React.FC<GlobeProps> = ({
     coverageCapMaterial.color.set(coverageColor);
   }, [coverageCapMaterial, coverageColor]);
 
-  // Same footprint the coverage cap draws, in the degrees of arc the ring
-  // layer measures in — recomputed per scenario since contactRadiusKm is.
+
+
   const coverageDegrees = (contactRadiusKm / EARTH_RADIUS_KM) * (180 / Math.PI);
-  // Deg/s rather than a duration is what the ring layer takes, so the flight
-  // time to the node's own footprint is converted here.
+
+
   const failureRingSpeedDegS = coverageDegrees / (FAILURE_RING_FLIGHT_MS / 1000);
 
-  // Rings keep their datum identity for the whole burst: the layer animates the
-  // waves itself, and a replaced datum would tear the ones in flight down. Only
-  // the position is written through, so a burst travels with its node.
+
+
+
   const failurePings = useFailurePings(satellites);
   const failurePingStore = useRef(new Map<string, FailurePingDatum>());
 
@@ -937,10 +937,10 @@ export const Globe: React.FC<GlobeProps> = ({
       .filter((datum): datum is FailurePingDatum => datum !== null);
   }, [failurePings, satellites]);
 
-  // Nothing here goes through React: the loop reads where the layers have put
-  // each node and its plate, works out how fast they are travelling, and
-  // writes back where they should be right now. A React state per frame would
-  // re-render the globe sixty times a second.
+
+
+
+
   useEffect(() => {
     if (!playing) return;
 
@@ -963,9 +963,9 @@ export const Globe: React.FC<GlobeProps> = ({
     let frame = 0;
     let last = performance.now();
 
-    // The plates live in the html layer's own objects. Collected by a sweep of
-    // the scene a few times a second rather than every frame: the set only
-    // changes when the constellation does.
+
+
+
     const sweep = () => {
       const scene = globeRef.current?.scene?.();
       if (!scene) return;
@@ -984,15 +984,15 @@ export const Globe: React.FC<GlobeProps> = ({
           prevAt: now,
           curr: object.position.clone(),
           currAt: now,
-          // Where the node is actually drawn, kept apart from the position the
-          // layer writes: the layer teleports, and what is on screen must not.
+
+
           drawn: object.position.clone(),
         });
         return;
       }
 
-      // A position this loop did not write is one a layer has just set: a new
-      // instant, and the far end of the segment to walk next.
+
+
       if (!object.position.equals(flight.drawn)) {
         step.copy(object.position).sub(flight.curr);
         const gap = Math.max(16, now - flight.currAt);
@@ -1002,8 +1002,8 @@ export const Globe: React.FC<GlobeProps> = ({
           : step.length() > TELEPORT_DISTANCE;
 
         if (jumped) {
-          // A seek, a scenario change, a node that has just been deployed:
-          // there is nothing to walk, so it simply arrives.
+
+
           flight.prev.copy(object.position);
           flight.curr.copy(object.position);
           flight.drawn.copy(object.position);
@@ -1043,9 +1043,9 @@ export const Globe: React.FC<GlobeProps> = ({
       }
 
       const smooth = 1 - Math.exp(-delta / SMOOTH_MS);
-      // The objects layer wraps every custom object in a container of its own
-      // and moves the container, so the node's own group never moves at all —
-      // flying it was flying something the scene does not place.
+
+
+
       groups.forEach(group => {
         const placed = group.parent ?? group;
         fly(placed, now, smooth);
@@ -1053,13 +1053,13 @@ export const Globe: React.FC<GlobeProps> = ({
       plates.forEach(plate => fly(plate, now, smooth));
     };
 
-    // Driven from just before each pass is drawn rather than from a frame
-    // callback of its own. A layer writes the position of the instant it has
-    // just received, and whatever is on screen when that happens is what gets
-    // painted: on its own schedule this loop corrects the jump one frame too
-    // late, and the jump is what the eye catches. Both the WebGL pass and the
-    // one that places the plates begin by bringing the scene's matrices up to
-    // date, which is the moment that belongs to this loop.
+
+
+
+
+
+
+
     const scene = globeRef.current?.scene?.();
     const updateMatrices = scene?.updateMatrixWorld?.bind(scene);
 
@@ -1080,7 +1080,7 @@ export const Globe: React.FC<GlobeProps> = ({
     return () => {
       cancelAnimationFrame(frame);
       if (scene && updateMatrices) scene.updateMatrixWorld = updateMatrices;
-      // Pausing lands everything on the instant the clock actually shows.
+
       flights.forEach((flight, object) => object.position.copy(flight.curr));
     };
   }, [playing]);
@@ -1121,22 +1121,22 @@ export const Globe: React.FC<GlobeProps> = ({
         borderPoints: boundary.map(point => [point.lat, point.lng, 0.008] as [number, number, number]),
         color,
         material: gapCapMaterial(color),
-        // A cap is re-tessellated whenever its node moves, and a stranded
-        // terminal draws three of them. At the finest setting that costs
-        // about 2.5 ms a frame each, which is most of a frame during
-        // playback; the coarse mesh is indistinguishable at this radius.
+
+
+
+
         curvature: GAP_CAP_CURVATURE
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [coverageGaps, contactRadiusKm, pointsData]);
 
-  // Prepare links data
+
   const arcsData = useMemo(() => {
     return links.map(link => {
       const sourceNode = satellites.find(s => s.id === link.source) || groundStations.find(g => g.id === link.source) || gateways.find(g => g.id === link.source);
       const targetNode = satellites.find(s => s.id === link.target) || groundStations.find(g => g.id === link.target) || gateways.find(g => g.id === link.target);
-      
+
       if (!sourceNode || !targetNode) return null;
 
       const routeEdge = routeEdges.get(edgeKey(link.source, link.target));
@@ -1150,19 +1150,19 @@ export const Globe: React.FC<GlobeProps> = ({
       const samePlane = Boolean(sourcePlane) && sourcePlane === targetPlane;
       const inHighlightedPlane = highlightedPlane !== null && samePlane && sourcePlane === highlightedPlane;
 
-      // Baseline links used to be near-invisible; each class now has its own
-      // weight so inter-satellite links read at a glance without becoming a web.
-      // Links inside one plane take that plane's hue, which ties the group to
-      // its orbit line; cross-plane hops stay neutral cyan.
-      let color = 'rgba(125,211,252,0.5)'; // cross-plane ISL
+
+
+
+
+      let color = 'rgba(125,211,252,0.5)';
       let stroke = 0.26;
 
       if (routeEdge) {
         color = routeEdge.focused ? routeEdge.color : `${routeEdge.color}b3`;
         stroke = routeEdge.focused ? 0.62 : 0.42;
       } else if (link.kind === 'masked') {
-        // Above the terminal's mask, behind the site's own horizon: drawn so
-        // the eye can tell "no satellite" from "a satellite it cannot use".
+
+
         color = 'rgba(251,113,133,0.55)';
         stroke = 0.18;
       } else if (isFailed) {
@@ -1198,10 +1198,10 @@ export const Globe: React.FC<GlobeProps> = ({
     }).filter((arc): arc is NonNullable<typeof arc> => arc !== null);
   }, [links, satellites, groundStations, gateways, routeEdges, highlightedPlane]);
 
-  /**
-   * One closed line per orbital plane. The plane of the selected satellite is
-   * lifted out of the background so its whole group reads as a unit.
-   */
+
+
+
+
   const pathsData = useMemo(() => {
     const orbitPaths = orbits.map(orbit => {
       const isHighlighted = orbit.planeId === highlightedPlane;
@@ -1211,16 +1211,16 @@ export const Globe: React.FC<GlobeProps> = ({
         points: orbit.points.map(p => [p.lat, p.lng, SATELLITE_ALTITUDE] as [number, number, number]),
         color: orbit.pending ? `${base}33` : isHighlighted ? base : `${base}e6`,
         stroke: orbit.pending ? 0.2 : isHighlighted ? 0.55 : 0.42,
-        // Dashes are what separate an orbit track from the solid link arcs that
-        // run along the same path.
+
+
         dashLength: 0.016,
         dashGap: 0.01,
         dashAnimateTime: 0
       };
     });
 
-    // The edge of every footprint that misses the selected terminal, drawn the
-    // way a picked node's own edge is.
+
+
     const gapPaths = gapCoverage.map(gap => ({
       points: gap.borderPoints,
       color: `#${new THREE.Color(gap.color).getHexString()}e6`,
@@ -1246,22 +1246,22 @@ export const Globe: React.FC<GlobeProps> = ({
     ];
   }, [orbits, highlightedPlane, selectedCoverage, gapCoverage]);
 
-  /** One datum per satellite, reused for as long as that node is deployed. */
+
   const satelliteChipData = useRef(new Map<string, any>());
-  /** Restyle hooks for the plates already in the DOM, keyed by satellite id. */
+
   const satelliteChipStyles = useRef(new Map<string, (emphasized: boolean, accent: string) => void>());
 
-  // Ground sites are deliberately rendered above the satellite layer so their
-  // operational labels remain legible against the Earth and the starfield.
+
+
   const htmlElementsData = useMemo(() => {
     const data: any[] = [];
 
-    // The plates keep their datum identity for as long as the node exists. The
-    // html layer digests by object identity, so a freshly built datum tears the
-    // element down and builds it again — which, on the plate under the pointer,
-    // reads as the cursor and the plate twitching, and during playback churns
-    // all 48 of them on every tick. Only the fields move; emphasis is written
-    // to the live element by the effect below.
+
+
+
+
+
+
     const store = satelliteChipData.current;
     const live = new Set<string>();
 
@@ -1314,8 +1314,8 @@ export const Globe: React.FC<GlobeProps> = ({
     return data;
   }, [satellites, groundStations, gateways, selectedSatellite, routeNodes, routes, focusClientId]);
 
-  // Selection is written straight to the plates that are already on screen,
-  // because keeping their datum stable means the layer will not rebuild them.
+
+
   useEffect(() => {
     satellites.forEach(sat => {
       satelliteChipStyles.current.get(sat.id)?.(
@@ -1325,17 +1325,17 @@ export const Globe: React.FC<GlobeProps> = ({
     });
   }, [satellites, selectedSatellite, routeNodes]);
 
-  // three-globe clears every HTML object when this function changes identity.
-  // Keep it stable through selection and coverage frames; listeners read the
-  // latest callbacks via refs, and datum/style updates keep existing chips live.
+
+
+
   const createHtmlElement = useCallback((d: any) => {
     const el = document.createElement('div');
 
-    // Satellites: a small ID plate next to the dot drawn by the points
-    // layer. Kept secondary so 48 of them never turn into noise.
+
+
     if (d.type === 'sat') {
-      // The flight loop moves the plate with its node; this is how it finds
-      // the object the html layer has wrapped this element in.
+
+
       el.dataset.flyId = d.id;
       el.style.cssText = 'position:relative;width:0;height:0;overflow:visible;pointer-events:none;white-space:nowrap;font-family:\'IBM Plex Mono\', ui-monospace, SFMono-Regular, Menlo, monospace';
 
@@ -1357,9 +1357,9 @@ export const Globe: React.FC<GlobeProps> = ({
         'cursor:pointer'
       ].join(';');
 
-      // Idle appearance is kept here rather than re-read from the datum,
-      // so a pointer that is already resting on the plate when the
-      // selection changes does not get the idle colours written over it.
+
+
+
       let idleBorder = 'rgba(63,63,70,0.9)';
       let idleColor = '#a1a1aa';
       let hovered = false;
@@ -1391,8 +1391,8 @@ export const Globe: React.FC<GlobeProps> = ({
         chip.style.color = idleColor;
       });
 
-      // Only a tap counts. A drag that happens to start on a plate should
-      // not select anything.
+
+
       let downAt: { x: number; y: number } | null = null;
       chip.addEventListener('pointerdown', event => {
         downAt = { x: event.clientX, y: event.clientY };
@@ -1416,8 +1416,8 @@ export const Globe: React.FC<GlobeProps> = ({
         ? '#e4483a'
         : (d.routeColor ?? '#60a5fa');
     const accentDim = `${accent}38`;
-    // Sites cluster around the served region, so labels are fanned out by
-    // index rather than pinned to ids the jury's file will not contain.
+
+
     const labelOffset = d.labelOffset ?? { x: 0, y: 0 };
 
     el.style.cssText = [
@@ -1426,8 +1426,8 @@ export const Globe: React.FC<GlobeProps> = ({
       'font-family:ui-monospace, SFMono-Regular, Menlo, monospace'
     ].join(';');
 
-    // CSS2DRenderer owns the outer element's transform. The site itself
-    // uses a zero-size anchor, so marker and label stay rigidly grouped.
+
+
     const content = document.createElement('div');
     content.style.cssText = 'position:relative;width:0;height:0;overflow:visible;';
 
@@ -1442,14 +1442,14 @@ export const Globe: React.FC<GlobeProps> = ({
       marker.appendChild(core);
     }
 
-    // A site with no route says so in a glyph as well as in the hue, matching
-    // the warning sign the flat map draws for the same state.
+
+
     if (d.offline) {
       const warn = document.createElement('div');
       warn.textContent = '!';
       warn.style.cssText = [
         'position:absolute',
-        // Left of the dot: the id label already owns the space to its right.
+
         'left:-25px',
         'top:-6px',
         'width:12px',
@@ -1525,15 +1525,15 @@ export const Globe: React.FC<GlobeProps> = ({
         ref={globeRef}
         width={dimensions.width || 1}
         height={dimensions.height || 1}
-        /* Served from this app, not a CDN: fetched from unpkg the two images
-           cost ~1.8 MB over two redirects, and the Earth stayed blank for
-           several seconds on a first visit — or forever on a locked-down
-           network. */
+
+
+
+
         globeImageUrl="/textures/earth-blue-marble.jpg"
         bumpImageUrl="/textures/earth-topology.png"
         backgroundColor="rgba(0,0,0,0)"
         onZoom={handleZoom}
-        
+
         showGlobe={isGlobeVisible}
         showAtmosphere={isGlobeVisible}
 
@@ -1569,10 +1569,10 @@ export const Globe: React.FC<GlobeProps> = ({
         arcDashAnimateTime="dashAnimateTime"
         arcStroke="stroke"
         arcAltitudeAutoScale={0.2}
-        // A link between two neighbours is a short, nearly straight hop, and
-        // the tube it is drawn as is rebuilt for every one of them on every
-        // instant of playback. At the default resolutions that rebuild is most
-        // of what a snapshot costs; at these it is still a smooth line.
+
+
+
+
         arcCurveResolution={16}
         arcCircularResolution={4}
         arcsTransitionDuration={0}

@@ -1,7 +1,7 @@
-/* The globe unrolled: a flattened world with its equator and prime meridian.
-   Drawn as an oval rather than the equirectangular rectangle the view actually
-   renders — a rectangle with a straight graticule reads as a table at 15px.
-   Weighted to match the lucide globe it sits beside. */
+
+
+
+
 export function FlatMapIcon({ size = 24 }: { size?: number }) {
   return (
     <svg

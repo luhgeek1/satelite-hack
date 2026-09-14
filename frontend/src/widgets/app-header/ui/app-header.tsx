@@ -71,8 +71,8 @@ export function AppHeader() {
           className="h-7 w-7 border border-rule-strong hover:border-zinc-600"
         />
 
-        {/* Two words, not a dropdown: there are only ever two, and a menu would
-            hide the one the reader is looking for behind a click. */}
+
+
         <div
           className="flex flex-shrink-0 items-center border border-rule-strong"
           role="group"

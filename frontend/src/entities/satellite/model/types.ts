@@ -17,7 +17,7 @@ export interface SatelliteView {
   color: string;
 }
 
-/** `masked`: a ground link geometry admits but the site's surroundings hide. */
+
 export type SatelliteLinkKind = SnapshotEdge['type'] | 'masked';
 
 export interface LinkView {

@@ -30,14 +30,14 @@ const RESULT_SCHEMA_VERSION = 'cosmo-A-result-1.0';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/**
- * A placeholder row for the picker while the import is on its way.
- *
- * The file is whatever someone chose, and checking it is the server's job, so
- * nothing here may assume its shape: a file without `meta` or `design` has to
- * reach the server and come back with the field to fix, not fail in the
- * browser first. Anything that does not read cleanly simply gets no row.
- */
+
+
+
+
+
+
+
+
 const optimisticSummary = (upload: unknown): ScenarioSummary | null => {
   const document =
     isRecord(upload) && upload.schema_version === RESULT_SCHEMA_VERSION

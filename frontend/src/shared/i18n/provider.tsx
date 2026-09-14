@@ -5,7 +5,7 @@ import { readStored, writeStored } from '@/shared/lib/storage';
 import { dictionaries, type TranslationKey } from './dictionary';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE, isLanguage, type Language } from './language';
 
-/** Kept alongside the cookie so a choice made before it survives. */
+
 const STORAGE_KEY = 'orbitguard-language-v1';
 const YEAR_SECONDS = 60 * 60 * 24 * 365;
 
@@ -18,7 +18,7 @@ interface I18nValue {
   language: Language;
   setLanguage: (language: Language) => void;
   t: Translate;
-  /** Durations carry a unit word, so they are localised with everything else. */
+
   formatDuration: (seconds: number) => string;
 }
 
@@ -32,7 +32,7 @@ const fill = (template: string, vars?: Record<string, string | number>) =>
     : template;
 
 interface LanguageProviderProps {
-  /** Read from the cookie by the server, so the first paint is already right. */
+
   language?: Language;
   children: React.ReactNode;
 }
@@ -45,8 +45,8 @@ export function LanguageProvider({ language: initial, children }: LanguageProvid
     document.cookie = `${LANGUAGE_COOKIE}=${next};path=/;max-age=${YEAR_SECONDS};samesite=lax`;
   }, []);
 
-  // Carries a choice made before the cookie existed. It runs once, and only
-  // when the server had nothing to go on, so the usual load paints no flicker.
+
+
   React.useEffect(() => {
     if (initial) return;
     const saved = readStored(STORAGE_KEY, isLanguage);

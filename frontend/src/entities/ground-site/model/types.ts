@@ -12,7 +12,7 @@ export interface GroundSiteView {
   role: GroundSiteRole;
   lat: number;
   lon: number;
-  /** The surroundings block the scenario file itself carries, if any. */
+
   fileConditions: SiteConditionsDto | null;
 }
 
@@ -26,10 +26,10 @@ export const groundSitesOf = (scenario: ScenarioDocument | undefined): GroundSit
     fileConditions: site.site_conditions ?? null,
   }));
 
-/**
- * What a site's surroundings are for the run being configured: the session's
- * override when one is set (including an explicit `null`), else the file's.
- */
+
+
+
+
 export const effectiveSiteConditions = (
   site: GroundSiteView,
   config: SimulationConfig,

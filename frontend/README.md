@@ -6,8 +6,8 @@ Next.js App Router + Feature-Sliced Design, talking to the OrbitGuard API.
 
 ```bash
 npm install
-cp .env.example .env.local     # API_ORIGIN, defaults to http://localhost:8080
-npm run dev                    # http://localhost:3000
+cp .env.example .env.local
+npm run dev
 ```
 
 The backend must be up (`docker compose up -d` from the repository root).
@@ -15,7 +15,7 @@ The backend must be up (`docker compose up -d` from the repository root).
 talks to its own origin and CORS never enters the picture.
 
 ```bash
-npm run lint    # tsc --noEmit
+npm run lint
 npm run build
 ```
 
@@ -25,7 +25,7 @@ was half-resolved, and webpack kept serving the broken graph afterwards. The
 cache does not recover on its own:
 
 ```bash
-npm run dev:clean    # discards .next, then starts
+npm run dev:clean
 ```
 
 ## Layer map

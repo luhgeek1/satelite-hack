@@ -13,11 +13,11 @@ interface VariantColumnProps {
   onOpen: (variant: Variant) => void;
 }
 
-/**
- * One side of the comparison: the picker, and under it — in the same column,
- * at the same width — the way back into the simulation. The two controls read
- * as one stack, so which variant a button belongs to is never in doubt.
- */
+
+
+
+
+
 export function VariantColumn({ slot, value, exclude, lead, onSelect, onOpen }: VariantColumnProps) {
   const { t } = useI18n();
 
@@ -25,8 +25,8 @@ export function VariantColumn({ slot, value, exclude, lead, onSelect, onOpen }: 
     <div className="min-w-0">
       <VariantSelect slot={slot} value={value} exclude={exclude} lead={lead} onSelect={onSelect} />
 
-      {/* A comparison answers "which one", and the next thing the engineer
-          wants is that one loaded back into the simulation. */}
+
+
       {value?.scenario_id && (
         <button
           type="button"

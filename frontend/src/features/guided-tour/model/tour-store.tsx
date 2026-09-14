@@ -4,8 +4,8 @@ import * as React from 'react';
 import { readStored, writeStored } from '@/shared/lib';
 import { TOURS, type TourId } from './steps';
 
-/** Bumped when the studio tour changes enough that a returning visitor should
- *  see it again. */
+
+
 const SEEN_KEY = 'orbitguard-tour-v2';
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
@@ -14,7 +14,7 @@ interface TourValue {
   tour: TourId | null;
   index: number;
   start: (tour: TourId) => void;
-  /** Runs the studio tour on a first visit and never again by itself. */
+
   autoStart: () => void;
   next: () => void;
   back: () => void;
@@ -23,14 +23,14 @@ interface TourValue {
 
 const TourContext = React.createContext<TourValue | null>(null);
 
-/**
- * Which tour is running and where it has got to.
- *
- * Held above the studio rather than inside the overlay because two other
- * things reach for it: the header, which can replay the tour, and the
- * deployment group, which has a tour of its own. The overlay is then only a
- * renderer, and a step is a piece of data.
- */
+
+
+
+
+
+
+
+
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const [tour, setTour] = React.useState<TourId | null>(null);
   const [index, setIndex] = React.useState(0);
@@ -48,9 +48,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
   const autoStart = React.useCallback(() => {
     if (readStored(SEEN_KEY, isBoolean)) return;
-    // Marked as seen the moment it opens, not when it ends: a visitor who walks
-    // away from it has still been offered it, and being met by the same overlay
-    // on every reload is worse than missing a step.
+
+
+
     writeStored(SEEN_KEY, true);
     start('studio');
   }, [start]);

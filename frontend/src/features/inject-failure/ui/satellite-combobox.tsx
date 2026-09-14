@@ -14,15 +14,15 @@ interface SatelliteComboboxProps {
   onChange: (satelliteId: string) => void;
 }
 
-/**
- * Picking one node out of forty-eight.
- *
- * A native select made that a scroll: the ids are known, so typing two
- * characters should be enough. The field stays a list as well — focus it and
- * every candidate is there — because an operator who does not remember the id
- * still has to be able to find it. Matching runs over the id and the plane, so
- * "p2" narrows to a plane and "12" to a number.
- */
+
+
+
+
+
+
+
+
+
 export function SatelliteCombobox({ id, candidates, value, onChange }: SatelliteComboboxProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState('');
@@ -47,10 +47,10 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
     setActive(0);
   }, [query]);
 
-  // The panel this field sits in scrolls and clips, so the list is drawn at the
-  // document level and pinned to the field instead. It follows any scroll,
-  // which is what keeps "pinned" true rather than only true at the moment the
-  // list opened.
+
+
+
+
   useLayoutEffect(() => {
     if (!open) return;
 
@@ -63,12 +63,12 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
         left: box.left,
         top: box.bottom,
         width: box.width,
-        // Open upwards when the field sits too near the bottom to show a list.
+
         height: below < 140 ? -box.top : below,
-        // The panel this field sits in may be zoomed. A rect is in screen
-        // pixels and `offsetWidth` in the field's own, so their ratio is the
-        // zoom the list has to match — it is drawn outside the panel and would
-        // otherwise arrive at the right size in the wrong type.
+
+
+
+
         scale: element.offsetWidth > 0 ? box.width / element.offsetWidth : 1,
       });
     };
@@ -82,13 +82,13 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
     };
   }, [open]);
 
-  // Keep the highlighted row in view while the keyboard walks the list.
+
   useEffect(() => {
     if (!open) return;
     list.current?.children[active]?.scrollIntoView({ block: 'nearest' });
   }, [active, open]);
 
-  // A click anywhere else is a dismissal; the field keeps whatever it holds.
+
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
@@ -157,8 +157,8 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
           onChange={(event) => {
             setQuery(event.target.value);
             setOpen(true);
-            // Half-typed text is not a choice: the action stays disabled until
-            // a row is actually picked.
+
+
             if (value) onChange('');
           }}
           onFocus={() => setOpen(true)}
@@ -197,8 +197,8 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
           ref={list}
           id={`${id}-list`}
           role="listbox"
-          // Every figure below is in screen pixels, so each one is divided by
-          // the field's zoom and the list is drawn at that zoom instead.
+
+
           style={
             anchor.height > 0
               ? {
@@ -226,7 +226,7 @@ export function SatelliteCombobox({ id, candidates, value, onChange }: Satellite
                 id={`${id}-${satellite.id}`}
                 role="option"
                 aria-selected={satellite.id === value}
-                // The pointer must not blur the field before the click lands.
+
                 onMouseDown={(event) => event.preventDefault()}
                 onMouseEnter={() => setActive(index)}
                 onClick={() => commit(satellite)}

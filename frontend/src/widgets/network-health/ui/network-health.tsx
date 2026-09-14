@@ -52,9 +52,9 @@ export function NetworkHealth({
         </button>
       </div>
 
-      {/* Open by default, since the routes are what a newcomer should see
-          first; foldable, because a scenario with dozens of sites would
-          otherwise bury the map under the list. */}
+
+
+
       <button
         type="button"
         onClick={() => setRoutesOpen((open) => !open)}
@@ -81,9 +81,9 @@ export function NetworkHealth({
             const focused = client.client_id === selectedClientId;
 
             return (
-              // The row is a container, not a control: the hops inside the
-              // chain are buttons of their own, and a button cannot hold a
-              // button. Picking the client stays on the summary line.
+
+
+
               <div
                 key={client.client_id}
                 className={cn(

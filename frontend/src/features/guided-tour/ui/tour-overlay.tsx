@@ -22,13 +22,13 @@ interface Box {
   height: number;
 }
 
-/** Breathing room around the lit element, and between it and the bubble. */
+
 const PAD = 6;
 const GAP = 12;
 const EDGE = 12;
 const BUBBLE_W = 304;
 
-/** Frames a target may be absent before the step is given up on. */
+
 const PATIENCE = 40;
 
 const read = (target: string): Box | null => {
@@ -46,16 +46,16 @@ const settled = (a: Box | null, b: Box) =>
   && Math.abs(a.width - b.width) < 0.5
   && Math.abs(a.height - b.height) < 0.5;
 
-/**
- * One thing lit, everything else out of reach.
- *
- * The studio is dense on purpose, and density is exactly what a first visit
- * cannot read: every panel is equally loud, so nothing says where to start.
- * The tour answers that by taking the loudness away — four panes of dimming
- * around one rectangle, a sentence about it, and a way forward. Clicks outside
- * the rectangle are swallowed rather than merely discouraged, so the sequence
- * cannot be half-followed into a state the next sentence no longer describes.
- */
+
+
+
+
+
+
+
+
+
+
 export function TourOverlay() {
   const { tour, index, next, back, stop } = useTour();
   const { dispatch } = useSession();
@@ -77,17 +77,17 @@ export function TourOverlay() {
   const stepTab = step?.tab;
   const wandered = useRef(false);
 
-  // A step may name something on another tab, and the panel it lives in may
-  // still be mounting when the step arrives.
+
+
   useEffect(() => {
     if (!stepTab) return;
     if (stepTab !== 'simulation') wandered.current = true;
     dispatch({ type: 'setTab', tab: stepTab });
   }, [stepTab, dispatch]);
 
-  // However the tour ends — finished, skipped, Escape — it ends where the work
-  // is done. Left on the resilience tab, a newcomer's first real screen would
-  // be the one they were only shown in passing.
+
+
+
   useEffect(() => {
     if (tour !== null || !wandered.current) return;
     wandered.current = false;
@@ -101,11 +101,11 @@ export function TourOverlay() {
       ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [target]);
 
-  // Followed rather than measured once: the panel animates open, the globe
-  // resizes, and a highlight a beat behind its subject reads as a bug.
+
+
   useEffect(() => {
-    // Dropped rather than kept: a step whose target never appears would
-    // otherwise spend its patience lighting up the previous step's element.
+
+
     setBox(null);
     if (!target) return;
 
@@ -118,8 +118,8 @@ export function TourOverlay() {
         absent = 0;
         setBox((current) => (settled(current, next) ? current : next));
       } else if ((absent += 1) > PATIENCE) {
-        // Nothing to point at — a collapsed panel, a narrow screen — so the
-        // step is dropped rather than left pointing at a corner.
+
+
         skip.current();
         return;
       }
@@ -273,6 +273,6 @@ export function TourOverlay() {
   );
 }
 
-/** The forward button carries the row on the first step, where there is no Back. */
+
 const cnNext = (first: boolean) =>
   `${first ? 'ml-auto ' : ''}bg-white px-2.5 py-1 font-label text-[11px] font-semibold text-[#1d4ed8] transition-colors hover:bg-white/90 focus-visible:outline-none`;

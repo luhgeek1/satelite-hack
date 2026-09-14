@@ -23,14 +23,14 @@ interface SatelliteDetailsProps {
   routes: RouteTrace[];
   hasResilience: boolean;
   pending: boolean;
-  /** Timeline position: a one-click failure starts here and runs to the end of the day. */
+
   currentTS: number;
   onInjectFailure: (satelliteId: string) => void;
   onRestore: (satelliteId: string) => void;
   placement?: 'overlay' | 'sidebar';
 }
 
-/** One curve for the whole panel, so nothing moves on a timing of its own. */
+
 const EASE = [0.22, 0.61, 0.36, 1] as const;
 
 export function SatelliteDetails({
@@ -48,8 +48,8 @@ export function SatelliteDetails({
   const { t } = useI18n();
   const reduce = useReducedMotion();
 
-  // The score counts up to its reading rather than appearing at it, which is
-  // what makes the meter read as a measurement being taken.
+
+
   const score = useMotionValue(0);
   const settledScore = useSpring(score, { stiffness: 170, damping: 24, mass: 0.7 });
   const scoreLabel = useTransform(settledScore, (value) => Math.round(value));
@@ -60,8 +60,8 @@ export function SatelliteDetails({
 
   if (!satellite) return null;
 
-  // One orchestrated entrance: the sections arrive in reading order, and
-  // switching to another node replays it rather than cutting the content.
+
+
   const body = {
     hidden: {},
     shown: {
@@ -80,9 +80,9 @@ export function SatelliteDetails({
   const carried = tracesThrough(routes, satellite.id);
   const accent = satellite.failed ? '#e4483a' : satellite.color;
 
-  // Six readings in a three-wide grid rather than seven stacked rows: the
-  // panel is a readout, and a readout is read by scanning, not by scrolling.
-  // Traffic is the seventh and moves up to head the routes it describes.
+
+
+
   const readout = [
     { label: t('sat.plane'), value: satellite.planeId },
     { label: t('sat.batch'), value: `${satellite.launchBatch}` },
@@ -96,13 +96,13 @@ export function SatelliteDetails({
     ? t('sat.trafficCount', { carried: carried.length, total: routes.length })
     : t('sat.trafficIdle');
 
-  // The panel is a column of its own, pinned to the left edge of the data
-  // column: the configuration stays readable beside it, and the reveal wipes
-  // out from under that edge rather than flying in over the globe. Height
-  // follows the content — a fixed full-height sheet would claim space the
-  // readings do not need — and only a long node runs into the scroll. A
-  // hairline gap on every side keeps it off the header, the timeline and
-  // the column it belongs to, so it reads as a sheet over them.
+
+
+
+
+
+
+
   const content = (
     <motion.div
       key="satellite-details"
@@ -307,7 +307,7 @@ export function SatelliteDetails({
     </motion.div>
   );
 
-  // Exit is driven by the caller's AnimatePresence, so closing wipes out
-  // instead of vanishing the moment the selection clears.
+
+
   return content;
 }

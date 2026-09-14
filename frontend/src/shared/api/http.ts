@@ -5,9 +5,9 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly field?: string;
-  /** Every problem the server found, when it checked a document. */
+
   readonly issues: ScenarioIssue[];
-  /** The true number of problems; `issues` may be capped. */
+
   readonly issueCount: number;
 
   constructor(problem: ProblemDocument) {

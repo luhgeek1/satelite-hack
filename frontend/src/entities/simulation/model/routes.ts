@@ -51,8 +51,8 @@ export interface RouteEdge {
   clientId: string;
 }
 
-/** Edge → the route that runs over it. The focused route wins a shared edge so
- *  it stays legible when several clients converge on the same gateway hop. */
+
+
 export function routeEdgeIndex(traces: RouteTrace[]): Map<string, RouteEdge> {
   const index = new Map<string, RouteEdge>();
 
@@ -70,7 +70,7 @@ export function routeEdgeIndex(traces: RouteTrace[]): Map<string, RouteEdge> {
   return index;
 }
 
-/** Node → every route passing through it, so a satellite can name what it carries. */
+
 export function routeNodeIndex(traces: RouteTrace[]): Map<string, RouteTrace[]> {
   const index = new Map<string, RouteTrace[]>();
 

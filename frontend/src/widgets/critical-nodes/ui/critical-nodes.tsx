@@ -20,7 +20,7 @@ import type {
   ScenarioDocument,
 } from '@/shared/api';
 
-/** Below one two-minute step of a day, a client has lost nothing it could notice. */
+
 const NO_LOSS = 1 / 720;
 
 const RANKED = 10;
@@ -32,24 +32,24 @@ interface CriticalNodesProps {
   colors: Record<string, string>;
   runInput: RunInput;
   scenario: ScenarioDocument;
-  /** Switches the satellite off for the day and opens the simulation onto it. */
+
   onFailForDay: (satelliteId: string) => void;
-  /** Takes the engineer to where the angle search lives. */
+
   onOpenSearch: () => void;
 }
 
 const points = (drop: number) => (drop * 100).toFixed(2);
 
-/**
- * What the network loses, satellite by satellite.
- *
- * Every satellite is switched off for the whole day in turn and the day is run
- * again. The list is that answer ranked by the worst-served client, and a row
- * opens onto the part the criterion actually asks about: which directions are
- * hit, which keep their route, and how much longer their outages get. From
- * there the loss can be watched rather than read — one button fails the
- * satellite and opens the simulation onto it.
- */
+
+
+
+
+
+
+
+
+
+
 export function CriticalNodes({
   resilience,
   loading,
@@ -163,7 +163,7 @@ function ImpactRow({ impact, rank, color, open, selected, onToggle, onFailForDay
   const level = criticalityLevel(score);
   const clients = Object.entries(impact.per_client_drop).sort((a, b) => b[1] - a[1]);
   const [hardest, hardestDrop] = clients[0] ?? ['—', 0];
-  // Absent from a service older than the field; say nothing rather than "same".
+
   const outages = impact.per_client_outage_growth_s as Record<string, number> | undefined;
   const growth = outages?.[hardest] ?? 0;
 

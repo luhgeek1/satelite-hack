@@ -26,7 +26,7 @@ export function useLocalPanels() {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ hidden, healthHidden }));
     } catch {
-      /* a viewer with site data blocked simply loses the preference */
+
     }
   }, [hidden, healthHidden]);
 

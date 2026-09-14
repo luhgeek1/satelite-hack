@@ -42,7 +42,7 @@ interface ConfigPanelProps {
   exportHref: string | null;
   scenarioHref: string | null;
   summary: SimulationSummary | undefined;
-  /** The same scenario with nothing changed, so the panel can show what the changes bought. */
+
   baseline: SimulationSummary | undefined;
   runInput: RunInput;
   planning: boolean;
@@ -415,8 +415,8 @@ export function ConfigPanel({
                 </>
               );
 
-              // The card holds inputs of its own, so the clickable part is the
-              // header, not the whole card: a button cannot contain a button.
+
+
               return (
                 <div key={site.id} className={className}>
                   {isTerminal ? (

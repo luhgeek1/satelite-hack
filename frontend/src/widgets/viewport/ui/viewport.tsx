@@ -35,7 +35,7 @@ interface ViewportProps {
   contactRadiusKm: number;
 }
 
-/** Where the globe was left, so a reload keeps the framing the user set. */
+
 const CAMERA_KEY = 'orbitguard-globe-camera-v1';
 
 const isCamera = (value: unknown): value is GlobeCameraPosition =>
@@ -59,11 +59,11 @@ export function Viewport({
   const { t } = useI18n();
   const [webglBroken, setWebglBroken] = useState(false);
 
-  // Switching to the flat map unmounts the globe, and so does a reload. The
-  // camera is kept out here — and written through to storage — so coming back
-  // lands on the view the user left, not on the default framing. A ref rather
-  // than state: the globe reads it once, at mount, and storing it would
-  // otherwise re-render the whole viewport on every drag.
+
+
+
+
+
   const camera = useRef<GlobeCameraPosition | undefined>(undefined);
   const cameraRead = useRef(false);
   if (!cameraRead.current) {
@@ -80,27 +80,27 @@ export function Viewport({
   const select = (satellite: SatelliteView) =>
     dispatch({ type: 'selectSatellite', satelliteId: satellite.id });
 
-  // Clicking the terminal that is already picked puts its footprints away, and
-  // clicking it again brings them back. A terminal is focused even when nobody
-  // picked one — the first client stands in — so the dismissal is held here
-  // rather than by clearing the selection, which would not change anything.
+
+
+
+
   const [dismissedSiteId, setDismissedSiteId] = useState<string | null>(null);
 
-  // Footprints answer a pick, not a focus. A terminal is focused even when
-  // nobody picked one — the first client stands in, so the routes have someone
-  // to draw — and that stand-in must not start explaining itself the moment
-  // the timeline runs into its outage.
+
+
+
+
   const pickedSiteId = state.selectedClientId;
 
-  // The dismissal belongs to the terminal that was picked; picking another one
-  // starts it over, rather than that terminal arriving already dismissed.
+
+
   useEffect(() => {
     setDismissedSiteId(null);
   }, [pickedSiteId]);
 
   const selectSite = (siteId: string) => {
-    // One pick at a time: a node's own footprint and a terminal's missing ones
-    // are the same mark, and two sets of them at once read as one picture.
+
+
     const nodePicked = Boolean(state.selectedSatelliteId);
     if (nodePicked) dispatch({ type: 'selectSatellite', satelliteId: null });
 
@@ -110,17 +110,17 @@ export function Viewport({
       return;
     }
 
-    // The terminal that is already focused: a click puts its footprints away
-    // and the next one brings them back — and so does the click that takes the
-    // picture back from a node, which is why that case never dismisses.
+
+
+
     setDismissedSiteId((current) => (nodePicked || current === siteId ? null : siteId));
   };
 
-  // Picking a terminal that has nothing in view draws the footprints that come
-  // closest to it, so the reason it is red is on the map rather than only in
-  // the panel: the circles fall short, and by how much.
-  // Memoised: both views key their footprint geometry off this array, and a
-  // fresh one every render would have them rebuild it every render.
+
+
+
+
+
   const gaps = useMemo(
     () =>
       dismissedSiteId === pickedSiteId || state.selectedSatelliteId || !pickedSiteId

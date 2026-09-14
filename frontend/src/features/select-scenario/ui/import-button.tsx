@@ -7,7 +7,7 @@ import { cn } from '@/shared/lib';
 export type ImportButtonState = 'idle' | 'pending' | 'loaded' | 'failed';
 
 const ICON = 13;
-/** The check's own green: the one success in an interface that is otherwise grey and red. */
+
 const SUCCESS = '#34d399';
 
 const swap = {
@@ -66,14 +66,14 @@ interface ImportButtonProps {
   onClick: () => void;
 }
 
-/**
- * The JSON upload button, which answers for itself.
- *
- * The report under it says what happened in words; the button says it at a
- * glance, where the eye already is: it turns while the file travels, draws a
- * green check when the scenario is in, and shakes red when it is not — then
- * settles back to the upload icon on its own.
- */
+
+
+
+
+
+
+
+
 export function ImportButton({ state, label, title, onClick }: ImportButtonProps) {
   const reduce = Boolean(useReducedMotion());
   const loaded = state === 'loaded';
@@ -103,7 +103,7 @@ export function ImportButton({ state, label, title, onClick }: ImportButtonProps
             : 'border-rule-strong text-zinc-400 hover:border-zinc-600 hover:text-zinc-100',
       )}
     >
-      {/* A ring that leaves the button once, so success is seen from the corner of the eye. */}
+
       <AnimatePresence>
         {loaded && !reduce && (
           <motion.span

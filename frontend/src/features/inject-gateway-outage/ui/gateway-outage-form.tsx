@@ -16,14 +16,14 @@ interface GatewayOutageFormProps {
 
 type Span = 'horizon' | 'from-now' | 'custom';
 
-/**
- * Take a gateway down for part of the day.
- *
- * The engineer looks first for how much rests on the gateway, and the fourth
- * no-route reason — gateway unavailable — can only be seen by declaring an
- * outage. The window semantics match satellite failures: start inclusive,
- * end exclusive, snapped to the calculation grid.
- */
+
+
+
+
+
+
+
+
 export function GatewayOutageForm({ gateways, currentTS, horizonS, stepS, onDone }: GatewayOutageFormProps) {
   const { dispatch } = useSession();
   const { t } = useI18n();

@@ -23,12 +23,12 @@ export interface FailureRequest {
   endS?: number;
 }
 
-/**
- * `tS` is the timeline position and doubles as the default outage start: the
- * flow the organisers described is "go to a moment, fail a satellite, watch
- * the route rebuild", so a one-click failure begins where the engineer is
- * looking rather than at midnight. The form still offers the whole day.
- */
+
+
+
+
+
+
 export function useInjectFailure(runId: string | undefined, tS: number, horizonS: number) {
   const queryClient = useQueryClient();
   const { state, dispatch } = useSession();
@@ -36,8 +36,8 @@ export function useInjectFailure(runId: string | undefined, tS: number, horizonS
   return useMutation<SimulationSummary, Error, FailureRequest, Context>({
     mutationFn: ({ satelliteId, startS = tS, endS = horizonS }) => {
       const failure: FailureDto = { satellite_id: satelliteId, start_s: startS, end_s: endS };
-      // Windows that do not overlap this one survive: the same node can be
-      // taken down over several spans of the day.
+
+
       const failures = [
         ...(state.config.failures ?? []).filter(
           (item) =>
@@ -59,8 +59,8 @@ export function useInjectFailure(runId: string | undefined, tS: number, horizonS
 
       const previousSnapshot = queryClient.getQueryData<SnapshotResponse>(snapshotKey);
 
-      // Only predict the visible state when the outage actually covers the
-      // instant on screen; a window starting later must not blank the node now.
+
+
       if (startS <= tS && tS < endS) {
         queryClient.setQueryData<SnapshotResponse | undefined>(snapshotKey, (current) =>
           snapshotWithoutSatellite(current, satelliteId),
@@ -79,8 +79,8 @@ export function useInjectFailure(runId: string | undefined, tS: number, horizonS
       if (context?.previousSnapshot) {
         queryClient.setQueryData(context.snapshotKey, context.previousSnapshot);
       }
-      // Only the window this call added; the node's other outages were not ours
-      // to roll back.
+
+
       dispatch({ type: 'removeFailure', satelliteId, window: { startS, endS } });
     },
 

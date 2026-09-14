@@ -26,11 +26,11 @@ interface DepthPreset {
   refineRounds: number;
 }
 
-/**
- * Two descents, one cheap and one careful. The exhaustive grid used to be the
- * third option; the service refuses it now (half an hour of the production
- * machine, and it scored worse than the descent), so it is not offered.
- */
+
+
+
+
+
 export const SEARCH_DEPTHS: Record<SearchDepth, DepthPreset> = {
   quick: {
     method: 'coordinate_descent',
@@ -50,9 +50,9 @@ export const SEARCH_DEPTHS: Record<SearchDepth, DepthPreset> = {
   },
 };
 
-/** Measured on the production machine (two dedicated cores): a quick six-axis
- *  search of 158 runs took 72 s. Quoting the laptop's figure promised a quarter
- *  of the real wait, and a wait longer than promised reads as a hang. */
+
+
+
 const SECONDS_PER_RUN = 0.45;
 
 export const estimateSeconds = (runs: number) => Math.round(runs * SECONDS_PER_RUN);
@@ -60,8 +60,8 @@ export const estimateSeconds = (runs: number) => Math.round(runs * SECONDS_PER_R
 export const freeAxes = (locks: PlaneLock[]) =>
   locks.reduce((count, lock) => count + (lock.raanLocked ? 0 : 1) + (lock.phaseLocked ? 0 : 1), 0);
 
-/** Mirrors `planned_runs` in the engine: the count the search is allowed to
- *  spend, so the quote on the button matches the total on the progress bar. */
+
+
 export const gridSize = (locks: PlaneLock[], depth: SearchDepth) => {
   const axes = freeAxes(locks);
   if (axes === 0) return 0;
@@ -72,11 +72,11 @@ export const gridSize = (locks: PlaneLock[], depth: SearchDepth) => {
   return preset.starts * (1 + preset.passes * axes * preset.axisSteps) + refinement + 1;
 };
 
-/**
- * RAAN always sweeps the full circle. Phase sweeps one period of the plane —
- * a full turn unless the slots are uniform and unbroken, in which case one
- * slot spacing already covers every distinct geometry (see `phasePeriodDeg`).
- */
+
+
+
+
+
 export const toBounds = (
   locks: PlaneLock[],
   scenario: ScenarioDocument | undefined,
@@ -98,7 +98,7 @@ export const toBounds = (
         ],
   }));
 
-/** Turns the optimizer's answer into the overrides the session config takes. */
+
 export const toPlaneOverrides = (
   changed: Record<string, { raan_deg: number | null; phase_deg: number | null }>,
 ): Record<string, { raan_deg?: number; phase_deg?: number }> =>
@@ -115,11 +115,11 @@ export const toPlaneOverrides = (
 export interface SearchRequest {
   locks: PlaneLock[];
   depth: SearchDepth;
-  /**
-   * Overrides what the search is scored against. Planning a launch needs it:
-   * the angles are chosen at that launch but judged on the finished
-   * constellation, which is a different launch stage than the one on screen.
-   */
+
+
+
+
+
   config?: SimulationConfig;
 }
 
@@ -128,18 +128,18 @@ export type Optimizer = ReturnType<typeof useOptimizer>;
 export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undefined) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
-  // What the search was told to beat. The result's own baseline figures are
-  // measured against this configuration — the surroundings, failures and launch
-  // stage that were on screen — not against the file, so anything that reads
-  // the result has to compare it against this and not against the file either.
+
+
+
+
   const [searched, setSearched] = useState<RunInput | null>(null);
-  // Stop pressed before the service has even answered with a job id: the job is
-  // cancelled the moment the id arrives instead of being adopted.
+
+
   const abandoned = useRef(false);
 
   const start = useMutation({
-    // What was actually searched, which is not always what is on screen:
-    // planning a launch scores the finished constellation.
+
+
     onMutate: ({ config }: SearchRequest) => {
       abandoned.current = false;
       setSearched({
@@ -187,9 +187,9 @@ export function useOptimizer(input: RunInput, scenario: ScenarioDocument | undef
     },
   });
 
-  // Stopping is a request, not a teardown: the search notices after its
-  // current configuration and hands the cores back. The card goes at once —
-  // the person pressing Stop has already moved on — and the job is let go.
+
+
+
   const cancel = useMutation({
     mutationFn: (id: string) => analysisApi.cancelJob(id),
   });

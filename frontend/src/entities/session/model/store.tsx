@@ -12,17 +12,17 @@ import type {
 
 export type StudioTab = 'simulation' | 'resilience' | 'compare';
 
-/** Start inclusive, end exclusive, in seconds from the start of the day. */
+
 export interface OutageSpan {
   startS: number;
   endS: number;
 }
 
-/**
- * The engine reads its failure list as a set of spans per node, so one node can
- * be down over several of them. Two spans that overlap are one outage, though,
- * and the later one wins rather than being stacked on the earlier.
- */
+
+
+
+
+
 const clashes = (start: number, end: number, span: OutageSpan | undefined) =>
   span === undefined || (start < span.endS && end > span.startS);
 export type ViewMode = '3d' | '2d';
@@ -39,22 +39,22 @@ export interface SessionState {
   viewMode: ViewMode;
   tab: StudioTab;
   focusRequest: { id: string; nonce: number } | null;
-  /** Bumped when a control is released, so a run can start without waiting. */
+
   commitNonce: number;
-  /** Bumped by a reset, so views holding their own drawings can drop them. */
+
   resetNonce: number;
-  /** Which saved variants the Compare tab holds, so a tab switch does not clear them. */
+
   compareSlots: [string | null, string | null];
-  /**
-   * Launches whose angles are decided.
-   *
-   * A ring keeps the angles it was launched with, so a campaign is planned by
-   * settling one launch at a time. A settled launch is held against every
-   * search and against the sliders, and only an explicit withdrawal frees it —
-   * which is the whole point: a plan the tool can undo by accident is not a
-   * plan. Kept beside the configuration rather than inside it because the
-   * engine has no notion of it; it constrains what we may ask the engine.
-   */
+
+
+
+
+
+
+
+
+
+
   committedStages: number[];
 }
 
@@ -65,11 +65,11 @@ type Action =
   | { type: 'applyPlanes'; planes: Record<string, { raan_deg?: number; phase_deg?: number }> }
   | { type: 'commitConfig' }
   | { type: 'addFailure'; failure: FailureDto }
-  /** Without a window every outage of that node goes; with one, only the
-   *  windows it overlaps — a node can be down over more than one span. */
+
+
   | { type: 'removeFailure'; satelliteId: string; window?: OutageSpan }
   | { type: 'clearFailures' }
-  /** Everything switched off over a span, both kinds, in one step. */
+
   | { type: 'clearOutagesIn'; window: OutageSpan }
   | { type: 'addGatewayOutage'; outage: GatewayOutageDto }
   | { type: 'removeGatewayOutage'; gatewayId: string; window?: OutageSpan }
@@ -150,9 +150,9 @@ function reducer(state: SessionState, action: Action): SessionState {
         commitNonce: state.commitNonce + 1,
       };
 
-    // Letting go of a slider is the end of a gesture, not a pause in it. The
-    // value is already in `config`; this only tells the run pipeline that no
-    // further change is coming, so it need not sit out another settle window.
+
+
+
     case 'commitConfig':
       return { ...state, commitNonce: state.commitNonce + 1 };
 
@@ -226,7 +226,7 @@ function reducer(state: SessionState, action: Action): SessionState {
         },
       };
 
-    // `null` is a value here: it clears a block the scenario file carried.
+
     case 'setSiteConditions':
       return {
         ...state,
@@ -236,7 +236,7 @@ function reducer(state: SessionState, action: Action): SessionState {
         },
       };
 
-    // Back to whatever the file says, which may itself be a block or nothing.
+
     case 'resetSiteConditions': {
       const sites = { ...state.config.sites };
       delete sites[action.siteId];
@@ -299,8 +299,8 @@ function reducer(state: SessionState, action: Action): SessionState {
         committedStages: state.committedStages.filter((stage) => stage !== action.stage),
       };
 
-    // A saved variant is a scenario plus a configuration, so opening one
-    // restores both and lands on the simulation tab where they can be seen.
+
+
     case 'openVariant':
       return {
         ...state,
@@ -324,9 +324,9 @@ function reducer(state: SessionState, action: Action): SessionState {
         resetNonce: state.resetNonce + 1,
       };
 
-    // Whatever survived the last visit, merged over the defaults. Playback is
-    // deliberately not among the restored fields: a page that starts running
-    // by itself is a surprise, not a convenience.
+
+
+
     case 'restore':
       return {
         ...state,
@@ -341,7 +341,7 @@ function reducer(state: SessionState, action: Action): SessionState {
   }
 }
 
-/** Bumped whenever the persisted shape changes, so old entries are ignored. */
+
 const STORAGE_KEY = 'orbitguard-session-v1';
 
 type PersistedSession = Pick<
@@ -414,23 +414,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = React.useReducer(reducer, initialState);
   const [restored, setRestored] = React.useState(false);
 
-  // Read after mount rather than in the reducer's initialiser: the page is
-  // prerendered, and restoring during the first render would make the server's
-  // markup and the client's disagree.
+
+
+
   React.useEffect(() => {
     const saved = readStored(STORAGE_KEY, isSession);
     if (saved) dispatch({ type: 'restore', state: saved });
     setRestored(true);
   }, []);
 
-  // Writing before the restore has landed would save the defaults over the
-  // session we are about to read.
-  //
-  // The write also trails the state rather than riding it: a slider drag
-  // dispatches on every pointer frame, and localStorage is synchronous, so a
-  // write per frame puts a serialise in front of each repaint. The session
-  // only has to survive a reload, and a page that goes away before the timer
-  // fires is flushed below.
+
+
+
+
+
+
+
+
   const pending = React.useRef<SessionState>(state);
 
   React.useEffect(() => {

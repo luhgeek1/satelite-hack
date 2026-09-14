@@ -34,10 +34,10 @@ export interface SatelliteDto {
 
 export type SiteProfileName = 'open' | 'sea' | 'forest' | 'urban' | 'mountain' | 'custom';
 
-/**
- * What surrounds a ground site. The effective mask is the higher of the
- * scenario's mask and the local one, so conditions only ever remove links.
- */
+
+
+
+
 export interface SiteConditionsDto {
   profile: SiteProfileName;
   mask_deg?: number | null;
@@ -104,11 +104,11 @@ export interface ScenarioDetail {
   scenario: ScenarioDocument;
 }
 
-/**
- * One problem, or one warning, about a scenario document. `field` is the JSON
- * path to the value; `code` and `params` are stable so the text can be
- * localised, and `message` says the same in English.
- */
+
+
+
+
+
 export interface ScenarioIssue {
   code: string;
   field: string | null;
@@ -126,10 +126,10 @@ export interface ValidationReport {
   from_result_file: boolean;
 }
 
-/** The picker row for a scenario just imported, and what to tell its author. */
+
 export interface ScenarioImported extends ScenarioSummary {
   warnings: ScenarioIssue[];
-  /** The upload was an exported result, and its effective scenario was imported. */
+
   from_result_file: boolean;
 }
 
@@ -143,7 +143,7 @@ export interface SimulationConfig {
   planes?: Record<string, PlaneConfig>;
   failures?: FailureDto[];
   gateway_outages?: GatewayOutageDto[];
-  /** A value sets a site's surroundings; `null` clears the block its file carried. */
+
   sites?: Record<string, SiteConditionsDto | null>;
   isl_range_km?: number;
   min_elevation_deg?: number;
@@ -247,7 +247,7 @@ export interface SnapshotResponse {
   routes: RouteDto[];
   elevation_deg: Record<string, Record<string, number>>;
   offline_gateways: string[];
-  /** Per site: satellites above the scenario mask that its surroundings hide. */
+
   masked_satellites: Record<string, string[]>;
   active_satellites: number;
   total_satellites: number;

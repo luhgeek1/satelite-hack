@@ -19,14 +19,14 @@ interface SiteConditionsControlProps {
   metrics: ClientMetrics | undefined;
 }
 
-/**
- * What stands around one ground site.
- *
- * A named profile is a default mask with a reason attached; `custom` exposes
- * the number. The effective mask shown is the higher of the scenario's mask
- * and the local one, which is exactly what the engine applies — the control
- * never suggests a horizon lower than the terminal itself can use.
- */
+
+
+
+
+
+
+
+
 export function SiteConditionsControl({ site, scenarioMaskDeg, metrics }: SiteConditionsControlProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();
@@ -42,8 +42,8 @@ export function SiteConditionsControl({ site, scenarioMaskDeg, metrics }: SiteCo
 
   const choose = (next: SiteProfileName) => {
     if (next === 'open') {
-      // Open is the case's own assumption: clearing the block says so plainly
-      // instead of storing a profile that changes nothing.
+
+
       dispatch({ type: 'setSiteConditions', siteId: site.id, conditions: null });
       return;
     }

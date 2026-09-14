@@ -5,8 +5,8 @@ import { en, ru } from '@/shared/i18n/dictionary';
 import { Providers } from './providers';
 import './globals.css';
 
-/** Undefined when the visitor has not chosen yet, so the client can migrate a
- *  choice it may still hold from before the cookie existed. */
+
+
 const readLanguage = async () => {
   const store = await cookies();
   const value = store.get(LANGUAGE_COOKIE)?.value;
@@ -27,8 +27,8 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // The document arrives in the chosen language: the server knows it from the
-  // cookie, so nothing is painted in one language and swapped to the other.
+
+
   const language = await readLanguage();
 
   return (

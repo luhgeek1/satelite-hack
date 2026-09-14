@@ -82,7 +82,7 @@ import { usePanelWidth } from '../model/use-panel-width';
 
 const SPRING = { type: 'spring', stiffness: 360, damping: 36, mass: 0.9 } as const;
 
-/** Stable identity, so a run without a summary does not re-render the strip. */
+
 const NO_CLIENTS: ClientMetrics[] = [];
 
 export function StudioPage() {
@@ -98,10 +98,10 @@ export function StudioPage() {
   const panels = useLocalPanels();
   const panel = usePanelWidth();
 
-  // How much of the bottom the playback strip takes, so the optimizer card can
-  // clear it whatever the scenario puts in it. A callback ref rather than an
-  // effect: the strip appears only once a scenario has loaded, and an effect
-  // keyed on the tab had already run — and found nothing — by then.
+
+
+
+
   const [playbackHeight, setPlaybackHeight] = useState(0);
   const playbackObserver = useRef<ResizeObserver | null>(null);
 
@@ -113,8 +113,8 @@ export function StudioPage() {
       return;
     }
 
-    // The rendered height, not the laid-out one: the strip draws at the data
-    // column's scale, and the card above it clears what is on screen.
+
+
     const observer = new ResizeObserver(() => setPlaybackHeight(node.getBoundingClientRect().height));
     observer.observe(node);
     playbackObserver.current = observer;
@@ -123,8 +123,8 @@ export function StudioPage() {
   useEffect(() => {
     const catalog = scenarios.data;
     if (!catalog?.length) return;
-    // A restored id can name a scenario the service no longer serves, so the
-    // catalog decides rather than the saved session.
+
+
     const known = catalog.some((item) => item.id === state.scenarioId);
     if (!state.scenarioId || !known) {
       dispatch({ type: 'selectScenario', scenarioId: catalog[0].id });
@@ -134,8 +134,8 @@ export function StudioPage() {
   const scenarioQuery = useScenario(state.scenarioId);
   const scenario = scenarioQuery.data?.scenario;
 
-  // Only once the studio has something in it: a tour that lights up an empty
-  // frame explains nothing, and every step points at a real element.
+
+
   const offered = useRef(false);
 
   useEffect(() => {
@@ -166,10 +166,10 @@ export function StudioPage() {
   const simulation = useSimulation(runInput);
   const summary = simulation.data;
 
-  // The scenario exactly as the file describes it. When nothing has been
-  // changed this is the same content-addressed run as the one above, so it
-  // costs nothing; once something is changed it is the reference every delta
-  // in the panel is measured against.
+
+
+
+
   const baselineInput = useMemo(
     () => ({ scenarioId: state.scenarioId, config: emptyConfig, strategy: 'min_hops' as const }),
     [state.scenarioId],
@@ -190,14 +190,14 @@ export function StudioPage() {
     if (state.playing) prefetch(tS, 4);
   }, [state.playing, tS, prefetch]);
 
-  // Also while the studio tour runs: it visits this tab, and twenty seconds of
-  // spinner is not something to point a newcomer at.
+
+
   const resilience = useResilience(runInput, state.tab === 'resilience' || tour === 'studio');
 
-  // The sweeps for whatever is on screen when the page first settles, so the
-  // resilience tab opens onto answers rather than spinners. Once only: a sweep
-  // per slider move would queue three analyses behind every drag on a machine
-  // with two cores. Later configurations are swept when the tab is opened.
+
+
+
+
   const [firstSettled, setFirstSettled] = useState<typeof runInput | null>(null);
 
   useEffect(() => {
@@ -210,19 +210,19 @@ export function StudioPage() {
   const injectFailure = useInjectFailure(summary?.id, tS, horizonS);
   const restore = useRestoreSatellite();
 
-  /**
-   * What a window drawn on the strip does. Both kinds of node take the same
-   * window, and passing `null` puts the node back — the picker is a list of
-   * switches, not a one-way action. Held on the mutation's own `mutate` and on
-   * `dispatch`, both stable, so the strip stays memoised.
-   */
+
+
+
+
+
+
   const scheduleOutage = useCallback(
     (target: OutageTarget, window: OutageWindow, off: boolean) => {
       if (target.kind === 'satellite') {
         if (off) {
           injectFailure.mutate({ satelliteId: target.id, startS: window.startS, endS: window.endS });
         } else {
-          // Only this window: the node may be down over another one as well.
+
           dispatch({ type: 'removeFailure', satelliteId: target.id, window });
         }
         return;
@@ -240,33 +240,33 @@ export function StudioPage() {
     [injectFailure.mutate, dispatch],
   );
 
-  /** A window carries what was declared over it, so dropping one drops both. */
+
   const clearOutagesIn = useCallback(
     (window: OutageWindow) => dispatch({ type: 'clearOutagesIn', window }),
     [dispatch],
   );
 
-  // The search is owned here, not by a panel: it is started from the network
-  // health card as well as from the resilience column, and it reports from a
-  // fixed corner so the answer survives a tab change.
+
+
+
   const optimizer = useOptimizer(runInput, scenario);
   const [planOpen, setPlanOpen] = useState(false);
   const [planScoredAt, setPlanScoredAt] = useState<number | null>(null);
   const [depth, setDepth] = useState<SearchDepth>('quick');
-  // A search takes tens of seconds, so its answer stays on screen after it is
-  // applied rather than vanishing with nothing to show it ever ran.
+
+
   const [optimizerApplied, setOptimizerApplied] = useState(false);
   const variants = useVariants();
   const saveVariant = useSaveVariant();
 
-  /**
-   * Plan the campaign from one launch onwards.
-   *
-   * Everything already in orbit is held: its angles were fixed when it flew and
-   * an engineer cannot revisit them. This launch and every later one are chosen
-   * together and scored on the finished constellation, because choosing a
-   * launch for its own stage alone is measurably a trap — see DECISIONS E8.
-   */
+
+
+
+
+
+
+
+
   const planFromStage = useCallback(
     (stage: number) => {
       if (!scenario) return;
@@ -286,7 +286,7 @@ export function StudioPage() {
     [scenario, depth, optimizer.start, state.config, state.committedStages],
   );
 
-  /** From the resilience ranking into the simulation: the loss, watched. */
+
   const failForDay = useCallback(
     (satelliteId: string) => {
       dispatch({
@@ -294,7 +294,7 @@ export function StudioPage() {
         failure: { satellite_id: satelliteId, start_s: 0, end_s: horizonS },
       });
       dispatch({ type: 'setTab', tab: 'simulation' });
-      // Selecting toggles, and the row that offered this has usually selected it.
+
       if (state.selectedSatelliteId !== satelliteId) {
         dispatch({ type: 'selectSatellite', satelliteId, focus: true });
       }
@@ -308,10 +308,10 @@ export function StudioPage() {
     optimizer.dismiss();
   }, [optimizer]);
 
-  /** The configuration the search was measured against, and the same one plus
-   *  what it found. Both are built from the snapshot taken when the search
-   *  started, so the pair reproduces the figures on the result card even if the
-   *  angles have already been applied to the configuration on screen. */
+
+
+
+
   const searchedConfig = useCallback(
     () => normalizeConfig(optimizer.searched?.config ?? state.config),
     [optimizer.searched, state.config],
@@ -329,19 +329,19 @@ export function StudioPage() {
     setOptimizerApplied(true);
   }, [optimizer.result, dispatch]);
 
-  /**
-   * Save what the search found and open it next to what it was measured against.
-   *
-   * A comparison needs two named variants, and the one nobody thinks to save is
-   * the baseline — so it is created here if it is missing rather than left as a
-   * step the engineer has to know about.
-   *
-   * That baseline is the configuration the search started from, not the file as
-   * it was loaded. A terminal moved into a forest, a failed satellite or a
-   * different launch stage belongs on *both* sides: charging those to the
-   * optimizer made a search that gained a point and a half read as a thirteen
-   * point loss. The pair differs by the angles and nothing else.
-   */
+
+
+
+
+
+
+
+
+
+
+
+
+
   const saveOptimizerResult = useCallback(
     async (name: string) => {
       if (!optimizer.result || !state.scenarioId) return;
@@ -422,9 +422,9 @@ export function StudioPage() {
     () => buildLinkViews(snapshot.data?.edges, snapshot.data?.masked_satellites),
     [snapshot.data],
   );
-  // The picker's two lists. Read off the scenario rather than the snapshot:
-  // the strip is memoised, and a list rebuilt on every tick would re-render it
-  // sixteen times a second for nothing.
+
+
+
   const satelliteNodes = useMemo<OutageNode[]>(
     () =>
       (scenario?.design.satellites ?? [])
@@ -452,19 +452,19 @@ export function StudioPage() {
     [snapshot.data, clients, focusClientId],
   );
 
-  // The rings are the most expensive thing a slider touches: every move rebuilds
-  // a path per plane inside the globe. Deferring the value lets React drop the
-  // intermediate positions when it cannot keep up, so the control itself and the
-  // strip underneath stay at pointer speed while the rings follow a beat behind.
+
+
+
+
   const planeOverrides = useDeferredValue(state.config.planes);
 
   const orbits = useMemo<OrbitTrack[]>(() => {
     if (!scenario || !geometry) return [];
     const rotation = earthRotationDeg(tS, geometry.earthAngle0Deg);
 
-    // Rings that have not launched yet are drawn faintly rather than hidden:
-    // the campaign is easier to read when what is coming is visible, and a
-    // ghost ring with no satellites on it cannot be mistaken for one in orbit.
+
+
+
     return scenario.design.planes
       .map((plane) => ({
         planeId: plane.id,
@@ -511,9 +511,9 @@ export function StudioPage() {
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: panel.layoutWidth, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            // A drag is a direct manipulation: the edge belongs under the
-            // pointer, not a beat behind it. The spring is what opening and
-            // closing the panel is worth, and nothing else.
+
+
+
             transition={panel.resizing ? { duration: 0 } : SPRING}
             className="relative hidden min-h-0 flex-shrink-0 flex-col overflow-hidden border-l border-rule bg-black lg:flex"
           >
@@ -642,8 +642,8 @@ export function StudioPage() {
     );
   }
 
-  // What planning the launch on screen would cost at each depth. Quoted before
-  // the button is pressed, in full days simulated and in minutes on the server.
+
+
   const planningLocks = locksForPlanning(scenario, state.committedStages, launchStage);
   const findCosts = {
     quick: { runs: gridSize(planningLocks, 'quick'), seconds: estimateSeconds(gridSize(planningLocks, 'quick')) },
@@ -728,8 +728,8 @@ export function StudioPage() {
 
               {state.tab === 'simulation' && (
                 <>
-                  {/* The card goes the way the sidebar goes, off its own edge,
-                      and leaves the same kind of handle behind. */}
+
+
                   <AnimatePresence initial={false}>
                     {!panels.healthHidden && (
                       <motion.div
@@ -792,8 +792,8 @@ export function StudioPage() {
             </div>
 
             {state.tab === 'simulation' && (
-              // The strip keeps step with the data column: one scale for the
-              // two frames around the map, so neither reads as the odd one.
+
+
               <div ref={playbackRef} data-tour="timeline" style={{ zoom: panel.scale }}>
               <PlaybackBar
                 tS={tS}
@@ -819,9 +819,9 @@ export function StudioPage() {
             )}
           </motion.div>
 
-          {/* Zoom rather than a second set of sizes: the whole subtree — type,
-              rules, spacing and the detail panel that slides out of it — draws
-              at one scale, and the layout stays the one that was designed. */}
+
+
+
           <div
             className={cn('relative hidden lg:flex', !panels.hidden && 'flex-shrink-0')}
             style={{
@@ -901,16 +901,16 @@ export function StudioPage() {
         </div>
       )}
 
-      {/* The search runs against the whole scenario, so it reports from a fixed
-          corner rather than from whichever panel started it. On the simulation
-          tab it clears the playback strip. */}
+
+
+
       <AnimatePresence>
         {(optimizer.running || optimizer.start.isPending || optimizer.result) && (
           <motion.div
             className="fixed left-3 z-40 lg:left-6"
-            /* Measured rather than guessed: the strip grows a row per ground
-               site, and a fixed offset landed the card on top of it as soon as
-               a scenario had three. */
+
+
+
             style={{ bottom: playbackHeight + 12 }}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}

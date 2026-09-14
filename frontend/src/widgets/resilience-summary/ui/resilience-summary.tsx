@@ -16,16 +16,16 @@ interface ResilienceSummaryProps {
 
 const LEGEND = [100, 75, 50, 0];
 
-/**
- * The single-failure verdict, in one sentence.
- *
- * The list on the right is detail; what an engineer needs first is whether the
- * design survives losing any one satellite, and by how much. That is a yes or
- * no plus a margin, and it changes with the launch: the finished constellation
- * shrugs off any single loss, a half-built one may not. So the launch switch is
- * here too — the same one as on the simulation tab, the same moment in the
- * campaign — and the answer follows it.
- */
+
+
+
+
+
+
+
+
+
+
 export function ResilienceSummary({ scenario, resilience, loading }: ResilienceSummaryProps) {
   const { state, dispatch } = useSession();
   const { t } = useI18n();

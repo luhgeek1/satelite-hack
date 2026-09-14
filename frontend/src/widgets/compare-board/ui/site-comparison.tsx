@@ -11,12 +11,12 @@ interface SiteComparisonProps {
   names: [string, string];
 }
 
-/**
- * One row per ground site, each a dumbbell from where the site was to where it
- * ends up. Three clients are three categories, not a series — joining them with
- * a line implied a trend between C65 and C70 that does not exist. Site labels,
- * tracks, figures and the axis share one grid so every row measures the same.
- */
+
+
+
+
+
+
 export function SiteComparison({ rows, target, names }: SiteComparisonProps) {
   const { t } = useI18n();
   const domain = availabilityDomain(rows);
@@ -74,8 +74,8 @@ export function SiteComparison({ rows, target, names }: SiteComparisonProps) {
                     aria-hidden="true"
                   />
                 )}
-                {/* The distance travelled, drawn before the markers so the two
-                    ends sit on top of it. */}
+
+
                 <div
                   className="absolute top-1/2 h-px -translate-y-1/2 bg-zinc-600"
                   style={{ left: `${Math.min(at(a), at(b))}%`, width: `${Math.abs(at(b) - at(a))}%` }}

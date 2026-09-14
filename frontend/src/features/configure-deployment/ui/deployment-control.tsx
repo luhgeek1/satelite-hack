@@ -9,11 +9,11 @@ import { useI18n } from '@/shared/i18n';
 import type { ReactNode } from 'react';
 import type { ScenarioDocument, SimulationSummary } from '@/shared/api';
 
-/** Three months between launches, which is what turns a stage into a date. */
+
 const MONTHS_BETWEEN_LAUNCHES = 3;
 
-/** Named here rather than imported: the search belongs to another feature, and
- *  this one only needs to offer the choice and quote its price. */
+
+
 export type SearchDepth = 'quick' | 'standard';
 
 export interface FindCost {
@@ -30,28 +30,28 @@ interface DeploymentControlProps {
   onOpenPlan: () => void;
   depth: SearchDepth;
   onDepthChange: (depth: SearchDepth) => void;
-  /** What a search from the launch on screen costs at each depth. */
+
   findCosts: Record<SearchDepth, FindCost>;
-  /** Whatever offers the longer explanation — handed in, so this feature does
-   *  not have to know that a guided tour exists. */
+
+
   guide?: ReactNode;
 }
 
-/**
- * The campaign, and the one step being taken in it.
- *
- * A ring keeps the angles it launched with, so switching launch does not change
- * the design — it changes which rings have arrived. Showing one launch at a
- * time invited the opposite reading, that each stage carries its own settings,
- * which is both wrong and the thing that made this panel hard to follow. All
- * three launches are therefore on screen at once, with what each one actually
- * delivers, and the row is the switch.
- *
- * Under them is the step: what the selected launch is — a draft or a decision —
- * what that means, and the one or two things worth doing about it. A campaign
- * planned by settling one launch at a time needs somewhere to say which launch
- * is being settled, and this is it.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export function DeploymentControl({
   scenario,
   runInput,
@@ -237,14 +237,14 @@ interface StepCardProps {
   onGo: (stage: number) => void;
 }
 
-/**
- * The selected launch, said in words, with what can be done to it.
- *
- * Two buttons at most. A draft launch is a question — what angles — and the
- * two answers are the search and your own hand, both ending in the same place:
- * fixing it. A fixed launch is an answer, so what is offered instead is the
- * next launch and, quietly, the way back.
- */
+
+
+
+
+
+
+
+
 function StepCard({
   scenario,
   stage,
@@ -356,8 +356,8 @@ function StepCard({
               disabled={planning}
               title={t('deploy.findHint')}
               data-tour="deploy-find"
-              // The one filled button in the panel: the search is the thing this
-              // studio does that a spreadsheet cannot, and it should read so.
+
+
               className="flex flex-1 items-center justify-center gap-1.5 border border-zinc-100 bg-zinc-100 py-1.5 font-label text-[11px] font-semibold text-black transition-colors hover:bg-white focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-zinc-300 disabled:opacity-40"
             >
               <Sparkles size={11} />

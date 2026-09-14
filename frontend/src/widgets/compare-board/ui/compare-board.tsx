@@ -21,8 +21,8 @@ export function CompareBoard() {
   const { t } = useI18n();
   const variants = useVariants();
   const scenarios = useScenarios();
-  // The pair lives in the session, so arriving here from an optimizer result
-  // lands on the right two variants and a tab switch does not clear them.
+
+
   const { state, dispatch } = useSession();
   const slots = state.compareSlots;
   const setSlots = (next: [string | null, string | null]) =>
@@ -41,9 +41,9 @@ export function CompareBoard() {
       strategy: variant.strategy,
     });
 
-  // Assigning from the standings: the same variant clicked into the slot it
-  // already holds clears it, and one clicked into the other slot swaps the two
-  // rather than vanishing from the comparison.
+
+
+
   const assign = (slot: 0 | 1, variantId: string) => {
     const next: [string | null, string | null] = [slots[0], slots[1]];
     const other = slot === 0 ? 1 : 0;
@@ -64,8 +64,8 @@ export function CompareBoard() {
     [comparison.data],
   );
 
-  // The threshold belongs to the scenario the variants were saved from, not to
-  // this screen; a jury file may set its own.
+
+
   const target = useMemo(() => {
     const fromScenario = resolved
       .map((variant) => scenarios.data?.find((item) => item.id === variant?.scenario_id))
@@ -91,8 +91,8 @@ export function CompareBoard() {
             onSelect={(id) => setSlots([id, slots[1]])}
             onOpen={openVariant}
           />
-          {/* Height-matched to the picker so the divider centres on it and not
-              on the whole column. */}
+
+
           <div className="flex h-[2.375rem] items-center font-data text-[10px] tracking-[0.08em] text-zinc-600">
             {t('compare.vs')}
           </div>
@@ -120,8 +120,8 @@ export function CompareBoard() {
 
             <MetricStrip metrics={comparison.data.metrics} clientCount={sites.length} />
 
-            {/* Evidence on the left, what was moved on the right: the page
-                stops being one tall column of half-empty panels. */}
+
+
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
               <SiteComparison rows={sites} target={target} names={names} />
               <ChangedParameters diffs={comparison.data.changed_parameters} />

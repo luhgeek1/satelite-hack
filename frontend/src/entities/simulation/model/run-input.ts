@@ -48,7 +48,7 @@ export function normalizeConfig(config: SimulationConfig): SimulationConfig {
   return normalized;
 }
 
-/** Sorts every key at every depth, so a configuration has one spelling. */
+
 const canonical = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(canonical);
   if (value !== null && typeof value === 'object') {
@@ -61,14 +61,14 @@ const canonical = (value: unknown): unknown => {
   return value;
 };
 
-/**
- * One string per configuration, for asking whether a variant already holds it.
- *
- * `normalizeConfig` settles which keys are present and the order of the lists;
- * this settles the order of the keys, which depends on how the object happened
- * to be built — a plane written as `{raan_deg, phase_deg}` and one written the
- * other way round are the same orbit.
- */
+
+
+
+
+
+
+
+
 export const configKey = (config: SimulationConfig) =>
   JSON.stringify(canonical(normalizeConfig(config)));
 

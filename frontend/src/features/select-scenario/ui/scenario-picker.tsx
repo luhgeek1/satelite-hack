@@ -12,7 +12,7 @@ import { ApiError, type ScenarioIssue } from '@/shared/api';
 import { ImportButton, type ImportButtonState } from './import-button';
 import { ImportReport, type ImportOutcome } from './import-report';
 
-/** How long the button shows how the import went before it is a button again. */
+
 const BUTTON_SETTLE_MS = 2400;
 
 const failure = (issue: Omit<ScenarioIssue, 'params'> & { params?: ScenarioIssue['params'] }) => ({
@@ -46,8 +46,8 @@ export function ScenarioPicker() {
     reading || importScenario.isPending ? 'pending' : (flash ?? 'idle');
 
   const active = scenarios.data?.find((scenario) => scenario.id === state.scenarioId);
-  // The name alone stops being true the moment a slider moves, and an
-  // optimizer pass leaves no other mark on the header at all.
+
+
   const modified = hasConfigChanges(state.config, state.strategy);
 
   const handleFile = async (file: File) => {
@@ -151,9 +151,9 @@ export function ScenarioPicker() {
                 </div>
               ))}
 
-              {/* A saved variant is a scenario plus a configuration. Opening one
-                  restores both, which is the only way back to a search result
-                  once the panel has been touched. */}
+
+
+
               <div className="border-y border-rule bg-white/[0.02] px-3 py-1.5 font-data text-[9px] tracking-[0.08em] text-zinc-600">
                 {t('scenario.variants')}
               </div>

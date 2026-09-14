@@ -9,32 +9,32 @@ import type { OptimizeResult, ScenarioDocument, SimulationConfig } from '@/share
 interface OptimizerResultProps {
   result: OptimizeResult;
   scenario: ScenarioDocument;
-  /** The configuration the search ran against, whose angles it moved away from. */
+
   searchedConfig: SimulationConfig;
   colors: Record<string, string>;
-  /** True once the found angles are in the configuration on screen. */
+
   applied: boolean;
   saving: boolean;
-  /**
-   * Launch stage the search was scored at, when that is not the stage on
-   * screen. Planning a launch judges the finished constellation, so without
-   * this the readings below silently describe a different network.
-   */
+
+
+
+
+
   scoredAtStage: number | null;
   onApply: () => void;
   onSaveAndCompare: (name: string) => void;
   onDismiss: () => void;
 }
 
-/**
- * What the search found, in the same corner it ran in.
- *
- * Every reading is stated as a move — the value it had, then the value it would
- * have — so the recommendation can be judged without opening anything else.
- * The card deliberately survives being applied: a search costs tens of seconds,
- * and a result that vanishes the moment it is used leaves nothing on screen to
- * say the configuration is no longer the file.
- */
+
+
+
+
+
+
+
+
+
 export function OptimizerResult({
   result,
   scenario,
@@ -65,8 +65,8 @@ export function OptimizerResult({
     },
   ];
 
-  // Where each angle stood when the search started, which is the file's value
-  // only until something has been moved by hand or by an earlier search.
+
+
   const changes = Object.entries(result.changed_planes).flatMap(([planeId, change]) =>
     (['raan_deg', 'phase_deg'] as const)
       .filter((key) => change[key] !== null)
@@ -169,8 +169,8 @@ export function OptimizerResult({
           </button>
         )}
 
-        {/* Saving is what makes the result durable: the configuration alone is
-            one editable thing, and the comparison needs two named ones. */}
+
+
         {naming ? (
           <div className="space-y-2">
             <label htmlFor="optimizer-variant-name" className="block font-label text-[11px] text-zinc-400">

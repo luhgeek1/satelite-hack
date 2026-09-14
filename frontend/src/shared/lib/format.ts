@@ -13,8 +13,8 @@ export const formatDuration = (seconds: number) => {
   return `${hours.toFixed(hours < 10 ? 1 : 0)} h`;
 };
 
-/** Waits, not outages. Outage lengths land on the scenario's step and read
- *  naturally in minutes; a search that finishes in seconds must not say 0 min. */
+
+
 export const formatWait = (seconds: number) => {
   if (seconds < 1) return '< 1 s';
   if (seconds < 90) return `${Math.round(seconds)} s`;

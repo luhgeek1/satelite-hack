@@ -9,18 +9,18 @@ import { SWEEPS, useSensitivitySweeps, type SweepParameter } from '../model/use-
 
 interface SensitivityPanelProps {
   runInput: RunInput;
-  /** The scenario's own value per parameter, marked on its row. */
+
   currentValues?: Partial<Record<SweepParameter, number>>;
-  /** Target availability, drawn as the line every bar is read against. */
+
   target?: number;
 }
 
-/**
- * How far the hardware can be pushed before the target is lost.
- *
- * The three sweeps run as soon as the tab has a configuration, so a tab is a
- * view onto an answer that already exists rather than a button to press.
- */
+
+
+
+
+
+
 export function SensitivityPanel({ runInput, currentValues, target = 0.9 }: SensitivityPanelProps) {
   const { t } = useI18n();
   const sweeps = useSensitivitySweeps(runInput, true);

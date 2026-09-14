@@ -10,9 +10,9 @@ export type ImportOutcome =
   | { kind: 'failed'; issues: ScenarioIssue[]; count: number }
   | { kind: 'loaded'; scenario: ScenarioImported };
 
-/** Long enough to read the contents line, short enough not to linger. */
+
 const LOADED_VISIBLE_MS = 8000;
-/** A file wrong in forty places is fixed from the top; the rest can wait. */
+
 const VISIBLE_ISSUES = 8;
 
 function IssueList({ issues }: { issues: ScenarioIssue[] }) {
@@ -34,20 +34,20 @@ function IssueList({ issues }: { issues: ScenarioIssue[] }) {
   );
 }
 
-/**
- * What came of loading a file: every problem with the field it is in, or what
- * was loaded and anything worth a second look.
- *
- * The case asks the service to say which data needs fixing, and the person
- * loading the file did not write it — so the path to each value is shown
- * under its sentence, in the same notation the file uses.
- */
+
+
+
+
+
+
+
+
 export function ImportReport({ outcome, onDismiss }: { outcome: ImportOutcome; onDismiss: () => void }) {
   const { t } = useI18n();
   const quiet = outcome.kind === 'loaded' && outcome.scenario.warnings.length === 0;
 
-  // A clean import confirms itself and gets out of the way; anything that
-  // needs reading stays until it is closed.
+
+
   useEffect(() => {
     if (!quiet) return;
     const timer = window.setTimeout(onDismiss, LOADED_VISIBLE_MS);

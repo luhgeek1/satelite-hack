@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Minus, RotateCcw, Sun, Moon } from 'lucide-react';
@@ -13,638 +12,360 @@ import { cn, criticalityLevel, isFiniteNumber, isRecord, readStored, writeStored
 import { useI18n } from '@/shared/i18n';
 import { FALLBACK_CONTACT_RADIUS_KM } from '@/shared/config';
 import type { CoverageGap } from '../model/coverage-gaps';
-import {
-  useFailurePings,
-  FAILURE_RING_COUNT,
-  FAILURE_RING_FLIGHT_MS,
-  FAILURE_RING_INTERVAL_MS
-} from '../model/use-failure-pings';
-
+import { useFailurePings, FAILURE_RING_COUNT, FAILURE_RING_FLIGHT_MS, FAILURE_RING_INTERVAL_MS } from '../model/use-failure-pings';
 const EARTH_RADIUS_KM_EXPORT = 6371;
-
-/** Where the map was left, so a reload does not throw the view away. */
 const MAP_VIEW_KEY = 'orbitguard-map-view-v1';
-type MapView = { coordinates: [number, number]; zoom: number };
+type MapView = {
+    coordinates: [
+        number,
+        number
+    ];
+    zoom: number;
+};
 const DEFAULT_MAP_VIEW: MapView = { coordinates: [0, 0], zoom: 1 };
-
-const isMapView = (value: unknown): value is MapView =>
-  isRecord(value)
-  && Array.isArray(value.coordinates)
-  && value.coordinates.length === 2
-  && value.coordinates.every(isFiniteNumber)
-  && isFiniteNumber(value.zoom)
-  && value.zoom >= 1
-  && value.zoom <= 8;
-
+const isMapView = (value: unknown): value is MapView => isRecord(value)
+    && Array.isArray(value.coordinates)
+    && value.coordinates.length === 2
+    && value.coordinates.every(isFiniteNumber)
+    && isFiniteNumber(value.zoom)
+    && value.zoom >= 1
+    && value.zoom <= 8;
 interface Map2DProps {
-  satellites: SatelliteView[];
-  links: LinkView[];
-  groundStations: GroundSiteView[];
-  gateways: GroundSiteView[];
-  routes?: RouteTrace[];
-  onSiteClick?: (siteId: string) => void;
-  focusClientId?: string | null;
-  onSatelliteClick?: (sat: SatelliteView) => void;
-  selectedSatellite?: string | null;
-  mode?: 'simulation' | 'resilience';
-  /** Ground-contact radius derived from the scenario's elevation mask. */
-  contactRadiusKm?: number;
-  /** Footprints that fall short of the selected terminal, drawn as they fall. */
-  coverageGaps?: CoverageGap[];
+    satellites: SatelliteView[];
+    links: LinkView[];
+    groundStations: GroundSiteView[];
+    gateways: GroundSiteView[];
+    routes?: RouteTrace[];
+    onSiteClick?: (siteId: string) => void;
+    focusClientId?: string | null;
+    onSatelliteClick?: (sat: SatelliteView) => void;
+    selectedSatellite?: string | null;
+    mode?: 'simulation' | 'resilience';
+    contactRadiusKm?: number;
+    coverageGaps?: CoverageGap[];
 }
-
-/** Bundled rather than fetched, so the map also draws with no network. */
 const geography = countries110m as any;
-
 const ALARM = '#e4483a';
 const NO_COVERAGE_GAPS: CoverageGap[] = [];
-/** A ground link the site's own horizon hides: present in geometry, unusable on the ground. */
 const MASKED_LINK = '#fb7185';
-
-/**
- * Two grounds for the same chart. The schematic one belongs to the console
- * around it. The relief one is the globe's own imagery laid flat: the same
- * texture, and an equirectangular projection is exactly the frame it was drawn
- * in, so it lands on the graticule without a seam. Land reads as land there —
- * the near-black basemap made it hard to tell where a terminal actually sits.
- */
 interface MapPalette {
-  /** Behind the world rectangle, and the whole ground when there is no imagery. */
-  surface: string;
-  /** Drawn instead of the imagery; null when the imagery carries the ground. */
-  land: string | null;
-  rule: string;
-  /** Links that carry no client route; dimmer than a route, brighter than a border. */
-  linkIdle: string;
-  graticule: string;
-  label: string;
-  /** Dark outline behind labels, so they survive ice and desert alike. */
-  labelHalo: string | null;
-  /**
-   * Dark casing drawn under lines and around dots. Imagery is busy in a way a
-   * flat ground is not: a thin coloured run crosses ocean, desert and ice in
-   * one span, and nothing but its own outline keeps it readable across all
-   * three. Null where the ground is quiet enough to need none.
-   */
-  casing: string | null;
-  site: string;
-  selection: string;
-  routeHalo: string;
-  coverageFill: number;
-  coverageStroke: number;
+    surface: string;
+    land: string | null;
+    rule: string;
+    linkIdle: string;
+    graticule: string;
+    label: string;
+    labelHalo: string | null;
+    casing: string | null;
+    site: string;
+    selection: string;
+    routeHalo: string;
+    coverageFill: number;
+    coverageStroke: number;
 }
-
 const SCHEMATIC_MAP: MapPalette = {
-  surface: '#000000',
-  land: '#131316',
-  rule: '#2e2e34',
-  linkIdle: '#2e2e34',
-  graticule: 'rgba(255,255,255,0.05)',
-  label: '#a1a1aa',
-  labelHalo: null,
-  casing: null,
-  site: '#a1a1aa',
-  selection: '#fafafa',
-  routeHalo: '#d4d4d8',
-  coverageFill: 0.1,
-  coverageStroke: 0.45
+    surface: '#000000',
+    land: '#131316',
+    rule: '#2e2e34',
+    linkIdle: '#2e2e34',
+    graticule: 'rgba(255,255,255,0.05)',
+    label: '#a1a1aa',
+    labelHalo: null,
+    casing: null,
+    site: '#a1a1aa',
+    selection: '#fafafa',
+    routeHalo: '#d4d4d8',
+    coverageFill: 0.1,
+    coverageStroke: 0.45
 };
-
 const RELIEF_MAP: MapPalette = {
-  surface: '#040a12',
-  land: null,
-  rule: 'rgba(255,255,255,0.22)',
-  linkIdle: 'rgba(255,255,255,0.5)',
-  graticule: 'rgba(255,255,255,0.13)',
-  label: '#ffffff',
-  labelHalo: 'rgba(0,0,0,0.75)',
-  casing: 'rgba(0,0,0,0.7)',
-  site: '#ffffff',
-  selection: '#ffffff',
-  routeHalo: '#ffffff',
-  coverageFill: 0.14,
-  coverageStroke: 0.65
+    surface: '#040a12',
+    land: null,
+    rule: 'rgba(255,255,255,0.22)',
+    linkIdle: 'rgba(255,255,255,0.5)',
+    graticule: 'rgba(255,255,255,0.13)',
+    label: '#ffffff',
+    labelHalo: 'rgba(0,0,0,0.75)',
+    casing: 'rgba(0,0,0,0.7)',
+    site: '#ffffff',
+    selection: '#ffffff',
+    routeHalo: '#ffffff',
+    coverageFill: 0.14,
+    coverageStroke: 0.65
 };
-
 const MAP_RELIEF_KEY = 'orbitguard-map-relief-v1';
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
-
-/** Matches the globe's coverage reveal, so the two views feel like one tool. */
 const COVERAGE_TWEEN_MS = 220;
-
-/**
- * Map units per degree of arc, read off the projection itself rather than
- * assumed: ComposableMap builds an unscaled geoEquirectangular, and everything
- * drawn in map units has to agree with it.
- */
 const MAP_UNITS_PER_DEGREE = geoEquirectangular().scale() * (Math.PI / 180);
-
-/**
- * The world rectangle in map units. ComposableMap builds an unscaled
- * geoEquirectangular on an 800x600 frame, so the imagery spans 360 degrees
- * across and 180 down from that centre.
- */
 const WORLD_WIDTH = 360 * MAP_UNITS_PER_DEGREE;
 const WORLD_HEIGHT = 180 * MAP_UNITS_PER_DEGREE;
 const WORLD_LEFT = 400 - WORLD_WIDTH / 2;
 const WORLD_TOP = 300 - WORLD_HEIGHT / 2;
-
-/**
- * Equirectangular view of the same constellation the globe shows: ground track
- * instead of a sphere, which is how coverage over a service area is actually
- * read. Colour follows the globe exactly — plane identity and nothing else,
- * with the one alarm hue reserved for failed nodes.
- */
-export const Map2D: React.FC<Map2DProps> = ({
-  satellites,
-  links,
-  groundStations,
-  gateways,
-  routes = [],
-  onSiteClick,
-  focusClientId = null,
-  onSatelliteClick,
-  selectedSatellite,
-  mode = 'simulation',
-  contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM,
-  coverageGaps = NO_COVERAGE_GAPS
-}) => {
-  const { t } = useI18n();
-  const failurePings = useFailurePings(satellites);
-  const coverageDegrees = (contactRadiusKm / EARTH_RADIUS_KM_EXPORT) * (180 / Math.PI);
-  // A failure wave stops at the node's own footprint, same as on the globe.
-  const failureRingUnits = coverageDegrees * MAP_UNITS_PER_DEGREE;
-  // Equirectangular stretches longitude towards the poles, so a circular
-  // footprint projects as an oval. The clamp keeps a near-polar node's wave
-  // from running off across the whole map.
-  const failureRingWidth = (lat: number) =>
-    failureRingUnits / Math.max(0.28, Math.cos(lat * (Math.PI / 180)));
-  const [tooltip, setTooltip] = useState<{ content: React.ReactNode; x: number; y: number } | null>(null);
-  // Read straight in the initialiser: this component is client-only, so there
-  // is no server markup for a restored view to disagree with.
-  const [position, setPosition] = useState<MapView>(
-    () => readStored(MAP_VIEW_KEY, isMapView) ?? DEFAULT_MAP_VIEW
-  );
-  const [liveZoom, setLiveZoom] = useState(() => position.zoom);
-  const [relief, setRelief] = useState(() => readStored(MAP_RELIEF_KEY, isBoolean) ?? false);
-
-  // The buttons and the recentre set the zoom outright rather than through a
-  // gesture, so the live figure follows them too.
-  useEffect(() => {
-    setLiveZoom(position.zoom);
-  }, [position.zoom]);
-  const palette = relief ? RELIEF_MAP : SCHEMATIC_MAP;
-
-  useEffect(() => {
-    writeStored(MAP_RELIEF_KEY, relief);
-  }, [relief]);
-
-  useEffect(() => {
-    writeStored(MAP_VIEW_KEY, position);
-  }, [position]);
-
-  // Shown at full size and faded in, rather than grown. A growing radius is a
-  // new circle on every frame of the reveal, and on this view that means
-  // re-rendering every country path with it — the pick stuttered for as long
-  // as the animation lasted. Two renders now do what sixty did.
-  const [revealed, setRevealed] = useState(false);
-  const revealing = selectedSatellite ?? (coverageGaps.length ? focusClientId : null);
-
-  useEffect(() => {
-    if (!revealing) {
-      setRevealed(false);
-      return;
-    }
-    setRevealed(false);
-    const frame = requestAnimationFrame(() => setRevealed(true));
-    return () => cancelAnimationFrame(frame);
-  }, [revealing]);
-
-  const coverageSat = selectedSatellite ? satellites.find(s => s.id === selectedSatellite) : undefined;
-  const coverageShape = coverageSat
-    ? {
-        type: 'FeatureCollection' as const,
-        features: [
-          {
-            type: 'Feature' as const,
-            properties: {},
-            geometry: geoCircle()
-              .center([coverageSat.lon, coverageSat.lat])
-              .radius(coverageDegrees)()
-          }
-        ]
-      }
-    : null;
-
-  const handleZoomIn = () => setPosition(pos => (pos.zoom >= 8 ? pos : { ...pos, zoom: pos.zoom * 1.5 }));
-  const handleZoomOut = () => setPosition(pos => (pos.zoom <= 1 ? pos : { ...pos, zoom: pos.zoom / 1.5 }));
-  const handleReset = () => setPosition({ coordinates: [0, 0], zoom: 1 });
-
-  const handleMoveEnd = (pos: { coordinates: [number, number]; zoom: number }) => {
-    setPosition({ coordinates: pos.coordinates, zoom: pos.zoom });
-  };
-
-  // Markers live inside the zoom transform, so everything drawn in map units
-  // has to be divided by the zoom to hold a constant size on screen. Without
-  // this a satellite becomes a blob at 4x and the route line a ribbon.
-  //
-  // It has to be the live figure rather than the settled one: d3-zoom moves
-  // the transform on every frame of a gesture while onMoveEnd only reports
-  // where it stopped, so dividing by the settled zoom left the marks swelling
-  // with the map for the length of a wheel spin and snapping back at the end.
-  const k = 1 / liveZoom;
-
-  const satelliteColor = (sat: SatelliteView) => {
-    if (sat.failed) return ALARM;
-    if (mode === 'resilience') return criticalityLevel(sat.criticality).color;
-    return sat.color;
-  };
-
-  // The footprints that miss the selected terminal, each drawn where it
-  // actually falls and looking exactly like the footprint a picked node
-  // draws — same circle, same fill, same edge, in that node's own colour.
-  // A footprint that swallows a pole projects as a band across the full width
-  // of an equirectangular map, which reads as a huge zone rather than as a
-  // circle that misses. Those are left to the globe, where they are a circle.
-  const drawableGaps = coverageGaps.filter(gap => Math.abs(gap.lat) + coverageDegrees < 88);
-
-  const gapShape = drawableGaps.length
-    ? {
-        type: 'FeatureCollection' as const,
-        features: drawableGaps.map(gap => {
-          const satellite = satellites.find(s => s.id === gap.id);
-
-          return {
-            type: 'Feature' as const,
-            properties: { color: satellite ? satelliteColor(satellite) : '#ffffff' },
-            geometry: geoCircle()
-              .center([gap.lon, gap.lat])
-              .radius(coverageDegrees)()
-          };
-        })
-      }
-    : null;
-
-  /**
-   * The backdrop, held as one element between renders.
-   *
-   * A hundred and eighty country outlines are most of what this view costs to
-   * render, and they change only with the palette and the zoom. Keeping the
-   * element itself identical lets React skip the whole subtree on every render
-   * that is about something else — picking a node, a playback tick, a window
-   * drawn on the strip.
-   */
-  const land = useMemo(
-    () => (
-      <>
-        <Graticule stroke={palette.graticule} strokeWidth={0.4 * k} />
+export const Map2D: React.FC<Map2DProps> = ({ satellites, links, groundStations, gateways, routes = [], onSiteClick, focusClientId = null, onSatelliteClick, selectedSatellite, mode = 'simulation', contactRadiusKm = FALLBACK_CONTACT_RADIUS_KM, coverageGaps = NO_COVERAGE_GAPS }) => {
+    const { t } = useI18n();
+    const failurePings = useFailurePings(satellites);
+    const coverageDegrees = (contactRadiusKm / EARTH_RADIUS_KM_EXPORT) * (180 / Math.PI);
+    const failureRingUnits = coverageDegrees * MAP_UNITS_PER_DEGREE;
+    const failureRingWidth = (lat: number) => failureRingUnits / Math.max(0.28, Math.cos(lat * (Math.PI / 180)));
+    const [tooltip, setTooltip] = useState<{
+        content: React.ReactNode;
+        x: number;
+        y: number;
+    } | null>(null);
+    const [position, setPosition] = useState<MapView>(() => readStored(MAP_VIEW_KEY, isMapView) ?? DEFAULT_MAP_VIEW);
+    const [liveZoom, setLiveZoom] = useState(() => position.zoom);
+    const [relief, setRelief] = useState(() => readStored(MAP_RELIEF_KEY, isBoolean) ?? false);
+    useEffect(() => {
+        setLiveZoom(position.zoom);
+    }, [position.zoom]);
+    const palette = relief ? RELIEF_MAP : SCHEMATIC_MAP;
+    useEffect(() => {
+        writeStored(MAP_RELIEF_KEY, relief);
+    }, [relief]);
+    useEffect(() => {
+        writeStored(MAP_VIEW_KEY, position);
+    }, [position]);
+    const [revealed, setRevealed] = useState(false);
+    const revealing = selectedSatellite ?? (coverageGaps.length ? focusClientId : null);
+    useEffect(() => {
+        if (!revealing) {
+            setRevealed(false);
+            return;
+        }
+        setRevealed(false);
+        const frame = requestAnimationFrame(() => setRevealed(true));
+        return () => cancelAnimationFrame(frame);
+    }, [revealing]);
+    const coverageSat = selectedSatellite ? satellites.find(s => s.id === selectedSatellite) : undefined;
+    const coverageShape = coverageSat
+        ? {
+            type: 'FeatureCollection' as const,
+            features: [
+                {
+                    type: 'Feature' as const,
+                    properties: {},
+                    geometry: geoCircle()
+                        .center([coverageSat.lon, coverageSat.lat])
+                        .radius(coverageDegrees)()
+                }
+            ]
+        }
+        : null;
+    const handleZoomIn = () => setPosition(pos => (pos.zoom >= 8 ? pos : { ...pos, zoom: pos.zoom * 1.5 }));
+    const handleZoomOut = () => setPosition(pos => (pos.zoom <= 1 ? pos : { ...pos, zoom: pos.zoom / 1.5 }));
+    const handleReset = () => setPosition({ coordinates: [0, 0], zoom: 1 });
+    const handleMoveEnd = (pos: {
+        coordinates: [
+            number,
+            number
+        ];
+        zoom: number;
+    }) => {
+        setPosition({ coordinates: pos.coordinates, zoom: pos.zoom });
+    };
+    const k = 1 / liveZoom;
+    const satelliteColor = (sat: SatelliteView) => {
+        if (sat.failed)
+            return ALARM;
+        if (mode === 'resilience')
+            return criticalityLevel(sat.criticality).color;
+        return sat.color;
+    };
+    const drawableGaps = coverageGaps.filter(gap => Math.abs(gap.lat) + coverageDegrees < 88);
+    const gapShape = drawableGaps.length
+        ? {
+            type: 'FeatureCollection' as const,
+            features: drawableGaps.map(gap => {
+                const satellite = satellites.find(s => s.id === gap.id);
+                return {
+                    type: 'Feature' as const,
+                    properties: { color: satellite ? satelliteColor(satellite) : '#ffffff' },
+                    geometry: geoCircle()
+                        .center([gap.lon, gap.lat])
+                        .radius(coverageDegrees)()
+                };
+            })
+        }
+        : null;
+    const land = useMemo(() => (<>
+        <Graticule stroke={palette.graticule} strokeWidth={0.4 * k}/>
 
         <Geographies geography={geography}>
-          {({ geographies }: { geographies: any[] }) =>
-            geographies.map(geo => (
-              <Geography
-                key={geo.rsmKey}
-                geography={geo}
-                fill={palette.land ?? 'transparent'}
-                stroke={palette.rule}
-                strokeWidth={0.4 * k}
-                tabIndex={-1}
-                /* Land is a backdrop. Leaving it focusable meant a stray click
-                   put a focus ring around a whole country. */
-                style={{
-                  default: { outline: 'none', pointerEvents: 'none' },
-                  hover: { outline: 'none', pointerEvents: 'none' },
-                  pressed: { outline: 'none', pointerEvents: 'none' }
-                } as any}
-              />
-            ))
-          }
+          {({ geographies }: {
+            geographies: any[];
+        }) => geographies.map(geo => (<Geography key={geo.rsmKey} geography={geo} fill={palette.land ?? 'transparent'} stroke={palette.rule} strokeWidth={0.4 * k} tabIndex={-1} style={{
+                default: { outline: 'none', pointerEvents: 'none' },
+                hover: { outline: 'none', pointerEvents: 'none' },
+                pressed: { outline: 'none', pointerEvents: 'none' }
+            } as any}/>))}
         </Geographies>
-      </>
-    ),
-    [palette.graticule, palette.land, palette.rule, k],
-  );
-
-  const routeEdges = useMemo(() => routeEdgeIndex(routes), [routes]);
-
-  const routeNodes = useMemo(() => {
-    const carried = new Map<string, string>();
-    for (const trace of routes) {
-      if (!trace.available) continue;
-      for (const node of trace.path) {
-        if (trace.focused || !carried.has(node)) carried.set(node, trace.color);
-      }
-    }
-    return carried;
-  }, [routes]);
-
-  const renderLink = (
-    source: { lat: number; lon: number },
-    target: { lat: number; lon: number },
-    route: { color: string; focused: boolean } | undefined,
-    key: string,
-    masked = false,
-  ) => {
-    const stroke = route ? route.color : masked ? MASKED_LINK : palette.linkIdle;
-    const overImagery = Boolean(palette.casing);
-    const strokeWidth = (route ? (route.focused ? 1.4 : 1) : overImagery ? 0.55 : 0.5) * k;
-    const strokeOpacity = route
-      ? route.focused
-        ? 1
-        : overImagery
-          ? 0.8
-          : 0.7
-      : overImagery
-        ? 0.7
-        : 0.55;
-    const diffLon = target.lon - source.lon;
-
-    // A link that crosses the antimeridian has to be drawn as two runs, or it
-    // sweeps back across the whole map.
-    const runs: Array<[[number, number], [number, number]]> =
-      Math.abs(diffLon) > 180
-        ? [
+      </>), [palette.graticule, palette.land, palette.rule, k]);
+    const routeEdges = useMemo(() => routeEdgeIndex(routes), [routes]);
+    const routeNodes = useMemo(() => {
+        const carried = new Map<string, string>();
+        for (const trace of routes) {
+            if (!trace.available)
+                continue;
+            for (const node of trace.path) {
+                if (trace.focused || !carried.has(node))
+                    carried.set(node, trace.color);
+            }
+        }
+        return carried;
+    }, [routes]);
+    const renderLink = (source: {
+        lat: number;
+        lon: number;
+    }, target: {
+        lat: number;
+        lon: number;
+    }, route: {
+        color: string;
+        focused: boolean;
+    } | undefined, key: string, masked = false) => {
+        const stroke = route ? route.color : masked ? MASKED_LINK : palette.linkIdle;
+        const overImagery = Boolean(palette.casing);
+        const strokeWidth = (route ? (route.focused ? 1.4 : 1) : overImagery ? 0.55 : 0.5) * k;
+        const strokeOpacity = route
+            ? route.focused
+                ? 1
+                : overImagery
+                    ? 0.8
+                    : 0.7
+            : overImagery
+                ? 0.7
+                : 0.55;
+        const diffLon = target.lon - source.lon;
+        const runs: Array<[
             [
-              [source.lon, source.lat],
-              [Math.sign(source.lon) * 180, (source.lat + target.lat) / 2],
+                number,
+                number
             ],
             [
-              [-Math.sign(source.lon) * 180, (source.lat + target.lat) / 2],
-              [target.lon, target.lat],
-            ],
-          ]
-        : [
-            [
-              [source.lon, source.lat],
-              [target.lon, target.lat],
-            ],
-          ];
-
-    return (
-      <g key={key}>
+                number,
+                number
+            ]
+        ]> = Math.abs(diffLon) > 180
+            ? [
+                [
+                    [source.lon, source.lat],
+                    [Math.sign(source.lon) * 180, (source.lat + target.lat) / 2],
+                ],
+                [
+                    [-Math.sign(source.lon) * 180, (source.lat + target.lat) / 2],
+                    [target.lon, target.lat],
+                ],
+            ]
+            : [
+                [
+                    [source.lon, source.lat],
+                    [target.lon, target.lat],
+                ],
+            ];
+        return (<g key={key}>
         {palette.casing
-          && runs.map((run, index) => (
-            <Line
-              key={`casing-${index}`}
-              from={run[0]}
-              to={run[1]}
-              stroke={palette.casing as string}
-              strokeWidth={strokeWidth + 1.3 * k}
-              strokeOpacity={route ? 0.75 : 0.5}
-            />
-          ))}
-        {runs.map((run, index) => (
-          <Line
-            key={index}
-            from={run[0]}
-            to={run[1]}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeOpacity={strokeOpacity}
-            strokeDasharray={masked ? `${2 * k} ${1.5 * k}` : undefined}
-          />
-        ))}
-      </g>
-    );
-  };
-
-  const siteLabel = (id: string) => (
-    <text
-      x={6 * k}
-      y={2.5 * k}
-      fontSize={5 * k}
-      fill={palette.label}
-      fontFamily="'IBM Plex Mono', monospace"
-      stroke={palette.labelHalo ?? undefined}
-      strokeWidth={palette.labelHalo ? 1.4 * k : undefined}
-      paintOrder="stroke"
-      style={{ pointerEvents: 'none' }}
-    >
+                && runs.map((run, index) => (<Line key={`casing-${index}`} from={run[0]} to={run[1]} stroke={palette.casing as string} strokeWidth={strokeWidth + 1.3 * k} strokeOpacity={route ? 0.75 : 0.5}/>))}
+        {runs.map((run, index) => (<Line key={index} from={run[0]} to={run[1]} stroke={stroke} strokeWidth={strokeWidth} strokeOpacity={strokeOpacity} strokeDasharray={masked ? `${2 * k} ${1.5 * k}` : undefined}/>))}
+      </g>);
+    };
+    const siteLabel = (id: string) => (<text x={6 * k} y={2.5 * k} fontSize={5 * k} fill={palette.label} fontFamily="'IBM Plex Mono', monospace" stroke={palette.labelHalo ?? undefined} strokeWidth={palette.labelHalo ? 1.4 * k : undefined} paintOrder="stroke" style={{ pointerEvents: 'none' }}>
       {id}
-    </text>
-  );
+    </text>);
+    return (<div className="relative h-full w-full overflow-hidden" style={{ background: palette.surface }} onMouseMove={event => {
+            const { clientX, clientY } = event;
+            setTooltip(current => (current ? { ...current, x: clientX, y: clientY } : current));
+        }} onMouseLeave={() => setTooltip(null)} onPointerDown={() => setTooltip(null)}>
+      <ComposableMap projection="geoEquirectangular" style={{ width: '100%', height: '100%', background: palette.surface, outline: 'none' }}>
+        <ZoomableGroup center={position.coordinates} zoom={position.zoom} onMove={(props) => setLiveZoom(props.zoom ?? 1)} onMoveEnd={(props) => handleMoveEnd({ coordinates: props.coordinates ?? [0, 0], zoom: props.zoom ?? 1 })} minZoom={1} maxZoom={8}>
+          {relief && (<g style={{ pointerEvents: 'none' }}>
+              <image href="/textures/earth-blue-marble.jpg" x={WORLD_LEFT} y={WORLD_TOP} width={WORLD_WIDTH} height={WORLD_HEIGHT} preserveAspectRatio="none"/>
 
-  return (
-    <div
-      className="relative h-full w-full overflow-hidden"
-      style={{ background: palette.surface }}
-      // Functional update on purpose. Leaving a marker fires mouseleave and
-      // mousemove inside the same gesture; reading `tooltip` from the closure
-      // here would see the pre-clear value and resurrect the tooltip, which
-      // then trails the cursor forever.
-      onMouseMove={event => {
-        const { clientX, clientY } = event;
-        setTooltip(current => (current ? { ...current, x: clientX, y: clientY } : current));
-      }}
-      onMouseLeave={() => setTooltip(null)}
-      onPointerDown={() => setTooltip(null)}
-    >
-      <ComposableMap
-        projection="geoEquirectangular"
-        style={{ width: '100%', height: '100%', background: palette.surface, outline: 'none' }}
-      >
-        <ZoomableGroup
-          center={position.coordinates}
-          zoom={position.zoom}
-          onMove={(props) => setLiveZoom(props.zoom ?? 1)}
-          onMoveEnd={(props) => handleMoveEnd({ coordinates: props.coordinates ?? [0, 0], zoom: props.zoom ?? 1 })}
-          minZoom={1}
-          maxZoom={8}
-        >
-          {relief && (
-            <g style={{ pointerEvents: 'none' }}>
-              <image
-                href="/textures/earth-blue-marble.jpg"
-                x={WORLD_LEFT}
-                y={WORLD_TOP}
-                width={WORLD_WIDTH}
-                height={WORLD_HEIGHT}
-                preserveAspectRatio="none"
-              />
-              {/* The globe's bump map, laid over its own colours: the same
-                  height data that shades the sphere, so the flat chart reads
-                  with the same relief rather than as a flat print. */}
-              <image
-                href="/textures/earth-topology.png"
-                x={WORLD_LEFT}
-                y={WORLD_TOP}
-                width={WORLD_WIDTH}
-                height={WORLD_HEIGHT}
-                preserveAspectRatio="none"
-                opacity={0.32}
-                style={{ mixBlendMode: 'overlay' }}
-              />
-            </g>
-          )}
+              <image href="/textures/earth-topology.png" x={WORLD_LEFT} y={WORLD_TOP} width={WORLD_WIDTH} height={WORLD_HEIGHT} preserveAspectRatio="none" opacity={0.32} style={{ mixBlendMode: 'overlay' }}/>
+            </g>)}
 
           {land}
 
-          {gapShape && (
-            <Geographies geography={gapShape}>
-              {({ geographies }: { geographies: any[] }) =>
-                geographies.map((geo, index) => (
-                  <Geography
-                    key={`gap-${index}`}
-                    geography={geo}
-                    tabIndex={-1}
-                    fill={geo.properties?.color ?? '#ffffff'}
-                    fillOpacity={palette.coverageFill}
-                    stroke={geo.properties?.color ?? '#ffffff'}
-                    strokeOpacity={palette.coverageStroke}
-                    strokeWidth={0.6 * k}
-                    opacity={revealed ? 1 : 0}
-                    style={{
-                      default: {
+          {gapShape && (<Geographies geography={gapShape}>
+              {({ geographies }: {
+                geographies: any[];
+            }) => geographies.map((geo, index) => (<Geography key={`gap-${index}`} geography={geo} tabIndex={-1} fill={geo.properties?.color ?? '#ffffff'} fillOpacity={palette.coverageFill} stroke={geo.properties?.color ?? '#ffffff'} strokeOpacity={palette.coverageStroke} strokeWidth={0.6 * k} opacity={revealed ? 1 : 0} style={{
+                    default: {
                         outline: 'none',
                         pointerEvents: 'none',
                         transition: `opacity ${COVERAGE_TWEEN_MS}ms ease-out`,
-                      },
-                      hover: { outline: 'none', pointerEvents: 'none' },
-                      pressed: { outline: 'none', pointerEvents: 'none' }
-                    } as any}
-                  />
-                ))
-              }
-            </Geographies>
-          )}
+                    },
+                    hover: { outline: 'none', pointerEvents: 'none' },
+                    pressed: { outline: 'none', pointerEvents: 'none' }
+                } as any}/>))}
+            </Geographies>)}
 
-          {coverageShape && coverageSat && (
-            <Geographies geography={coverageShape}>
-              {({ geographies }: { geographies: any[] }) =>
-                geographies.map((geo, index) => (
-                  <Geography
-                    key={`coverage-${index}`}
-                    geography={geo}
-                    tabIndex={-1}
-                    fill={satelliteColor(coverageSat)}
-                    fillOpacity={palette.coverageFill}
-                    stroke={satelliteColor(coverageSat)}
-                    strokeOpacity={palette.coverageStroke}
-                    strokeWidth={0.6 * k}
-                    opacity={revealed ? 1 : 0}
-                    style={{
-                      default: {
+          {coverageShape && coverageSat && (<Geographies geography={coverageShape}>
+              {({ geographies }: {
+                geographies: any[];
+            }) => geographies.map((geo, index) => (<Geography key={`coverage-${index}`} geography={geo} tabIndex={-1} fill={satelliteColor(coverageSat)} fillOpacity={palette.coverageFill} stroke={satelliteColor(coverageSat)} strokeOpacity={palette.coverageStroke} strokeWidth={0.6 * k} opacity={revealed ? 1 : 0} style={{
+                    default: {
                         outline: 'none',
                         pointerEvents: 'none',
                         transition: `opacity ${COVERAGE_TWEEN_MS}ms ease-out`,
-                      },
-                      hover: { outline: 'none', pointerEvents: 'none' },
-                      pressed: { outline: 'none', pointerEvents: 'none' }
-                    } as any}
-                  />
-                ))
-              }
-            </Geographies>
-          )}
+                    },
+                    hover: { outline: 'none', pointerEvents: 'none' },
+                    pressed: { outline: 'none', pointerEvents: 'none' }
+                } as any}/>))}
+            </Geographies>)}
 
           {links.map((link, index) => {
-            const find = (id: string) =>
-              satellites.find(s => s.id === id) || groundStations.find(g => g.id === id) || gateways.find(g => g.id === id);
+            const find = (id: string) => satellites.find(s => s.id === id) || groundStations.find(g => g.id === id) || gateways.find(g => g.id === id);
             const source = find(link.source);
             const target = find(link.target);
-            if (!source || !target) return null;
-
+            if (!source || !target)
+                return null;
             const route = routeEdges.get(edgeKey(link.source, link.target));
             const isRoute = Boolean(route);
-
-            const touchesFailedNode =
-              Boolean((source as SatelliteView).failed) || Boolean((target as SatelliteView).failed);
-            if (touchesFailedNode && isRoute) return null;
-
+            const touchesFailedNode = Boolean((source as SatelliteView).failed) || Boolean((target as SatelliteView).failed);
+            if (touchesFailedNode && isRoute)
+                return null;
             return renderLink(source, target, route, `link-${index}`, link.kind === 'masked');
-          })}
+        })}
 
-          {gateways.map(gateway => (
-            <Marker key={gateway.id} coordinates={[gateway.lon, gateway.lat]}>
-              <polygon
-                points={`0,${-4 * k} ${4 * k},0 0,${4 * k} ${-4 * k},0`}
-                fill={palette.site}
-                stroke={palette.casing ?? undefined}
-                strokeWidth={palette.casing ? 1 * k : undefined}
-              />
+          {gateways.map(gateway => (<Marker key={gateway.id} coordinates={[gateway.lon, gateway.lat]}>
+              <polygon points={`0,${-4 * k} ${4 * k},0 0,${4 * k} ${-4 * k},0`} fill={palette.site} stroke={palette.casing ?? undefined} strokeWidth={palette.casing ? 1 * k : undefined}/>
               {siteLabel(gateway.id)}
-            </Marker>
-          ))}
+            </Marker>))}
 
           {groundStations.map(station => {
             const trace = routes.find(item => item.clientId === station.id);
             const tint = trace ? (trace.available ? trace.color : ALARM) : palette.site;
-            // A site with no route reads as a warning sign rather than as a
-            // marker that happens to be red: the glyph says what the colour
-            // means, which the colour alone never does.
             const stranded = Boolean(trace && !trace.available);
             const size = stranded ? 5.2 : 4;
-
-            return (
-              <Marker
-                key={station.id}
-                coordinates={[station.lon, station.lat]}
-                onClick={onSiteClick ? () => onSiteClick(station.id) : undefined}
-                style={onSiteClick ? { cursor: 'pointer' } : undefined}
-              >
-                {palette.casing && (
-                  <polygon
-                    points={`0,${-size * k} ${size * k},${size * 0.78 * k} ${-size * k},${size * 0.78 * k}`}
-                    fill="none"
-                    stroke={palette.casing}
-                    strokeWidth={2.6 * k}
-                    strokeOpacity={0.75}
-                  />
-                )}
-                <polygon
-                  points={`0,${-size * k} ${size * k},${size * 0.78 * k} ${-size * k},${size * 0.78 * k}`}
-                  fill={
-                    station.id === focusClientId || stranded
-                      ? `${tint}33`
-                      : palette.casing
+            return (<Marker key={station.id} coordinates={[station.lon, station.lat]} onClick={onSiteClick ? () => onSiteClick(station.id) : undefined} style={onSiteClick ? { cursor: 'pointer' } : undefined}>
+                {palette.casing && (<polygon points={`0,${-size * k} ${size * k},${size * 0.78 * k} ${-size * k},${size * 0.78 * k}`} fill="none" stroke={palette.casing} strokeWidth={2.6 * k} strokeOpacity={0.75}/>)}
+                <polygon points={`0,${-size * k} ${size * k},${size * 0.78 * k} ${-size * k},${size * 0.78 * k}`} fill={station.id === focusClientId || stranded
+                    ? `${tint}33`
+                    : palette.casing
                         ? 'rgba(0,0,0,0.35)'
-                        : 'transparent'
-                  }
-                  stroke={tint}
-                  strokeWidth={
-                    (station.id === focusClientId || stranded
-                      ? palette.casing
+                        : 'transparent'} stroke={tint} strokeWidth={(station.id === focusClientId || stranded
+                    ? palette.casing
                         ? 1.8
                         : 1.6
-                      : palette.casing
+                    : palette.casing
                         ? 1.2
-                        : 1) * k
-                  }
-                />
-                {stranded && (
-                  <g style={{ pointerEvents: 'none' }}>
+                        : 1) * k}/>
+                {stranded && (<g style={{ pointerEvents: 'none' }}>
                     <title>{t('map.offline', { site: station.id })}</title>
-                    <line
-                      x1={0}
-                      y1={-1.4 * k}
-                      x2={0}
-                      y2={1.6 * k}
-                      stroke={ALARM}
-                      strokeWidth={1.1 * k}
-                      strokeLinecap="butt"
-                    />
-                    <circle cx={0} cy={3 * k} r={0.62 * k} fill={ALARM} />
-                  </g>
-                )}
+                    <line x1={0} y1={-1.4 * k} x2={0} y2={1.6 * k} stroke={ALARM} strokeWidth={1.1 * k} strokeLinecap="butt"/>
+                    <circle cx={0} cy={3 * k} r={0.62 * k} fill={ALARM}/>
+                  </g>)}
                 {siteLabel(station.id)}
-              </Marker>
-            );
-          })}
+              </Marker>);
+        })}
 
           {satellites.map(sat => {
             const isFailed = sat.failed;
             const isSelected = selectedSatellite === sat.id;
             const isActiveRoute = routeNodes.has(sat.id);
             const isPinging = failurePings.has(sat.id);
-
-            return (
-              <Marker
-                key={sat.id}
-                coordinates={[sat.lon, sat.lat]}
-                onMouseEnter={(event: React.MouseEvent) =>
-                  setTooltip({
-                    content: (
-                      <div className="min-w-[132px] border border-rule-strong bg-[black] p-2 font-data text-[11px] shadow-xl">
+            return (<Marker key={sat.id} coordinates={[sat.lon, sat.lat]} onMouseEnter={(event: React.MouseEvent) => setTooltip({
+                    content: (<div className="min-w-[132px] border border-rule-strong bg-[black] p-2 font-data text-[11px] shadow-xl">
                         <div className="mb-1 flex items-center justify-between gap-3 border-b border-rule pb-1">
                           <span className="text-zinc-100">{sat.id}</span>
                           <span className={isFailed ? 'text-alarm' : 'text-zinc-500'}>
@@ -663,143 +384,65 @@ export const Map2D: React.FC<Map2DProps> = ({
                           <span>{t('map.lon')}</span>
                           <span className="text-zinc-300">{sat.lon.toFixed(2)}&deg;</span>
                         </div>
-                      </div>
-                    ),
+                      </div>),
                     x: event.clientX,
                     y: event.clientY
-                  })
-                }
-                onMouseLeave={() => setTooltip(null)}
-                onClick={() => onSatelliteClick?.(sat)}
-                onDoubleClickCapture={(event: React.MouseEvent) => event.stopPropagation()}
-                style={{ cursor: onSatelliteClick ? 'pointer' : 'default', outline: 'none' } as any}
-              >
-                {/* Waves out to the footprint the node has just stopped
-                    serving. Drawn first so they pass under the marker, and
-                    scaled rather than re-pathed so the burst costs one
-                    transform per frame instead of a re-render of the map. */}
-                {isPinging && (
-                  <g style={{ pointerEvents: 'none' }}>
-                    {Array.from({ length: FAILURE_RING_COUNT }, (_, index) => (
-                      <motion.ellipse
-                        key={index}
-                        rx={failureRingWidth(sat.lat)}
-                        ry={failureRingUnits}
-                        fill="transparent"
-                        stroke={ALARM}
-                        strokeWidth={1.4}
-                        vectorEffect="non-scaling-stroke"
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: [0, 0.95, 0.6, 0] }}
-                        transition={{
-                          duration: FAILURE_RING_FLIGHT_MS / 1000,
-                          delay: (index * FAILURE_RING_INTERVAL_MS) / 1000,
-                          ease: 'easeOut',
-                          opacity: {
+                })} onMouseLeave={() => setTooltip(null)} onClick={() => onSatelliteClick?.(sat)} onDoubleClickCapture={(event: React.MouseEvent) => event.stopPropagation()} style={{ cursor: onSatelliteClick ? 'pointer' : 'default', outline: 'none' } as any}>
+
+                {isPinging && (<g style={{ pointerEvents: 'none' }}>
+                    {Array.from({ length: FAILURE_RING_COUNT }, (_, index) => (<motion.ellipse key={index} rx={failureRingWidth(sat.lat)} ry={failureRingUnits} fill="transparent" stroke={ALARM} strokeWidth={1.4} vectorEffect="non-scaling-stroke" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: [0, 0.95, 0.6, 0] }} transition={{
                             duration: FAILURE_RING_FLIGHT_MS / 1000,
                             delay: (index * FAILURE_RING_INTERVAL_MS) / 1000,
-                            // Held bright over the first half, the way the
-                            // globe's waves are, so the two views read alike.
-                            times: [0, 0.07, 0.55, 1],
-                            ease: 'linear'
-                          }
-                        }}
-                      />
-                    ))}
-                  </g>
-                )}
+                            ease: 'easeOut',
+                            opacity: {
+                                duration: FAILURE_RING_FLIGHT_MS / 1000,
+                                delay: (index * FAILURE_RING_INTERVAL_MS) / 1000,
+                                times: [0, 0.07, 0.55, 1],
+                                ease: 'linear'
+                            }
+                        }}/>))}
+                  </g>)}
 
-                {/* The dot is 1.5px across; this is what the pointer actually hits. */}
-                <circle r={9 * k} fill="transparent" style={{ cursor: 'pointer' }} />
 
-                {isFailed ? (
-                  <g style={{ pointerEvents: 'none' }}>
-                    {palette.casing && (
-                      <g stroke={palette.casing} strokeWidth={2.6 * k} fill="none" strokeOpacity={0.75}>
-                        <circle r={4 * k} />
-                        <line x1={-2.6 * k} y1={-2.6 * k} x2={2.6 * k} y2={2.6 * k} />
-                        <line x1={-2.6 * k} y1={2.6 * k} x2={2.6 * k} y2={-2.6 * k} />
-                      </g>
-                    )}
-                    <circle r={4 * k} fill="transparent" stroke={ALARM} strokeWidth={1.2 * k} />
-                    <line x1={-2.6 * k} y1={-2.6 * k} x2={2.6 * k} y2={2.6 * k} stroke={ALARM} strokeWidth={1.2 * k} />
-                    <line x1={-2.6 * k} y1={2.6 * k} x2={2.6 * k} y2={-2.6 * k} stroke={ALARM} strokeWidth={1.2 * k} />
-                  </g>
-                ) : (
-                  <circle
-                    r={(isSelected || isActiveRoute ? 3.4 : palette.casing ? 2.4 : 2.3) * k}
-                    fill={satelliteColor(sat)}
-                    opacity={palette.casing ? 1 : 0.9}
-                    stroke={palette.casing ?? undefined}
-                    strokeWidth={palette.casing ? 1 * k : undefined}
-                    style={{ pointerEvents: 'none' }}
-                  />
-                )}
+                <circle r={9 * k} fill="transparent" style={{ cursor: 'pointer' }}/>
 
-                {isSelected && (
-                  <motion.circle
-                    r={7 * k}
-                    fill="transparent"
-                    stroke={palette.selection}
-                    strokeWidth={1.2 * k}
-                    strokeDasharray={`${1.5 * k},${1.5 * k}`}
-                    style={{ pointerEvents: 'none' }}
-                    initial={{ opacity: 0, scale: 0.4 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.22, ease: 'easeOut' }}
-                  />
-                )}
+                {isFailed ? (<g style={{ pointerEvents: 'none' }}>
+                    {palette.casing && (<g stroke={palette.casing} strokeWidth={2.6 * k} fill="none" strokeOpacity={0.75}>
+                        <circle r={4 * k}/>
+                        <line x1={-2.6 * k} y1={-2.6 * k} x2={2.6 * k} y2={2.6 * k}/>
+                        <line x1={-2.6 * k} y1={2.6 * k} x2={2.6 * k} y2={-2.6 * k}/>
+                      </g>)}
+                    <circle r={4 * k} fill="transparent" stroke={ALARM} strokeWidth={1.2 * k}/>
+                    <line x1={-2.6 * k} y1={-2.6 * k} x2={2.6 * k} y2={2.6 * k} stroke={ALARM} strokeWidth={1.2 * k}/>
+                    <line x1={-2.6 * k} y1={2.6 * k} x2={2.6 * k} y2={-2.6 * k} stroke={ALARM} strokeWidth={1.2 * k}/>
+                  </g>) : (<circle r={(isSelected || isActiveRoute ? 3.4 : palette.casing ? 2.4 : 2.3) * k} fill={satelliteColor(sat)} opacity={palette.casing ? 1 : 0.9} stroke={palette.casing ?? undefined} strokeWidth={palette.casing ? 1 * k : undefined} style={{ pointerEvents: 'none' }}/>)}
 
-                {isActiveRoute && !isSelected && (
-                  <circle
-                    r={5.5 * k}
-                    fill="transparent"
-                    stroke={palette.routeHalo}
-                    strokeWidth={0.5 * k}
-                    opacity={0.6}
-                    style={{ pointerEvents: 'none' }}
-                  />
-                )}
-              </Marker>
-            );
-          })}
+                {isSelected && (<motion.circle r={7 * k} fill="transparent" stroke={palette.selection} strokeWidth={1.2 * k} strokeDasharray={`${1.5 * k},${1.5 * k}`} style={{ pointerEvents: 'none' }} initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.22, ease: 'easeOut' }}/>)}
+
+                {isActiveRoute && !isSelected && (<circle r={5.5 * k} fill="transparent" stroke={palette.routeHalo} strokeWidth={0.5 * k} opacity={0.6} style={{ pointerEvents: 'none' }}/>)}
+              </Marker>);
+        })}
         </ZoomableGroup>
       </ComposableMap>
 
-      {tooltip && (
-        <div
-          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full pb-3"
-          style={{ left: tooltip.x, top: tooltip.y }}
-        >
+      {tooltip && (<div className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full pb-3" style={{ left: tooltip.x, top: tooltip.y }}>
           {tooltip.content}
-        </div>
-      )}
+        </div>)}
 
-      {/* The chrome follows the chart it sits on, or a dark block would float
-          over the bright map. */}
+
       <div className="absolute bottom-16 right-3 z-20 flex flex-col border border-rule-strong bg-black/85 backdrop-blur lg:bottom-[4.5rem] lg:right-6">
         {[
-          { label: t('map.zoomIn'), icon: <Plus size={14} />, onClick: handleZoomIn },
-          { label: t('map.zoomOut'), icon: <Minus size={14} />, onClick: handleZoomOut },
-          { label: t('map.reset'), icon: <RotateCcw size={13} />, onClick: handleReset },
-          {
-            label: relief ? t('map.schematic') : t('map.relief'),
-            icon: relief ? <Moon size={13} /> : <Sun size={13} />,
-            onClick: () => setRelief(value => !value),
-          },
-        ].map(control => (
-          <button
-            key={control.label}
-            type="button"
-            onClick={control.onClick}
-            title={control.label}
-            aria-label={control.label}
-            className="flex h-7 w-7 items-center justify-center border-t border-rule-strong text-zinc-500 transition-colors first:border-t-0 hover:bg-white/[0.06] hover:text-zinc-100 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none"
-          >
+            { label: t('map.zoomIn'), icon: <Plus size={14}/>, onClick: handleZoomIn },
+            { label: t('map.zoomOut'), icon: <Minus size={14}/>, onClick: handleZoomOut },
+            { label: t('map.reset'), icon: <RotateCcw size={13}/>, onClick: handleReset },
+            {
+                label: relief ? t('map.schematic') : t('map.relief'),
+                icon: relief ? <Moon size={13}/> : <Sun size={13}/>,
+                onClick: () => setRelief(value => !value),
+            },
+        ].map(control => (<button key={control.label} type="button" onClick={control.onClick} title={control.label} aria-label={control.label} className="flex h-7 w-7 items-center justify-center border-t border-rule-strong text-zinc-500 transition-colors first:border-t-0 hover:bg-white/[0.06] hover:text-zinc-100 focus-visible:bg-white/15 focus-visible:text-zinc-100 focus-visible:outline-none">
             {control.icon}
-          </button>
-        ))}
+          </button>))}
       </div>
-    </div>
-  );
+    </div>);
 };

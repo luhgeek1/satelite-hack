@@ -20,14 +20,14 @@ const range = (params: Record<string, unknown>) =>
     params.max_inclusive === false ? ')' : ']'
   }`;
 
-/**
- * One problem with a scenario file, in the reader's language.
- *
- * The server sends a stable code and the values involved; the sentence is
- * built here so the Russian interface does not show English. A code this
- * build does not know falls back to the server's own message rather than to
- * nothing.
- */
+
+
+
+
+
+
+
+
 export function describeIssue(t: Translate, issue: ScenarioIssue): string {
   const key = `issue.${issue.code}`;
   if (!isKey(key)) return issue.message;
@@ -36,8 +36,8 @@ export function describeIssue(t: Translate, issue: ScenarioIssue): string {
   const vars: Record<string, string | number> = {};
   for (const [name, value] of Object.entries(p)) vars[name] = show(value);
 
-  // JSON has one number type, so 120.0 in the file is a "number" to the server
-  // and "not an integer" is all it can say. That sentence reads as nonsense.
+
+
   if (issue.code === 'wrong_type' && p.expected === 'integer' && p.actual === 'number') {
     return t('issue.not_whole');
   }
@@ -59,7 +59,7 @@ export function describeIssue(t: Translate, issue: ScenarioIssue): string {
       break;
     case 'duplicate_id':
     case 'unknown_reference':
-      // Paths read better bare than in quotes.
+
       if (typeof p.first === 'string') vars.first = p.first;
       if (typeof p.target === 'string') vars.target = p.target;
       break;
@@ -68,7 +68,7 @@ export function describeIssue(t: Translate, issue: ScenarioIssue): string {
       break;
   }
 
-  // Numbers that are counts or seconds read better without quotes too.
+
   for (const name of ['count', 'limit', 'steps', 'start_s', 'end_s', 'horizon_s', 'step_s', 'launch_stage']) {
     if (typeof p[name] === 'number') vars[name] = p[name] as number;
   }

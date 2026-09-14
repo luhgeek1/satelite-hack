@@ -20,7 +20,7 @@ interface OutagePickerProps {
   horizonS: number;
   satellites: OutageNode[];
   gateways: OutageNode[];
-  /** `off` is the state being asked for, so a row that is already off restores. */
+
   onToggle: (target: OutageTarget, off: boolean) => void;
   onRemove: () => void;
   onClose: () => void;
@@ -31,17 +31,17 @@ const SECTIONS: Array<{ kind: OutageKind; label: 'window.gateways' | 'window.sat
   { kind: 'satellite', label: 'window.satellites' },
 ];
 
-/** As tall as the list is allowed to grow before it starts scrolling. */
+
 const LIST_MAX = 152;
 
-/**
- * What to switch off over the window the operator has just drawn.
- *
- * The two kinds of node are sections rather than one merged list: a gateway
- * outage and a satellite failure are different arguments about the network,
- * and the operator comes in knowing which one they want to make. Search sits
- * under the sections because it searches inside the section, not across both.
- */
+
+
+
+
+
+
+
+
 export function OutagePicker({
   window: span,
   horizonS,
@@ -57,13 +57,13 @@ export function OutagePicker({
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const list = useRef<HTMLUListElement>(null);
-  // One gateway and forty-eight satellites are very different heights, and the
-  // panel jumping between them reads as two panels. The list is measured and
-  // the height is animated instead, so switching section is one movement.
+
+
+
   const [height, setHeight] = useState<number | null>(null);
 
-  // What is already off over this window, read from the configuration itself
-  // so the list tells the truth after a reload or an edit made elsewhere.
+
+
   const offIds = useMemo(() => {
     const ids = new Set<string>();
     for (const failure of state.config.failures ?? []) {
@@ -229,9 +229,9 @@ export function OutagePicker({
           {matches.map((node, index) => {
             const off = offIds.has(node.id);
 
-            // A gateway is one of two or three, carries a name worth reading and
-            // takes the whole network with it — the same card the panel gives a
-            // ground site. A satellite is one of forty-eight and is a line.
+
+
+
             if (kind === 'gateway') {
               return (
                 <li key={node.id}>

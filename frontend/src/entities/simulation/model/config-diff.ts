@@ -2,7 +2,7 @@ import type { RoutingStrategy, ScenarioDocument, SimulationConfig } from '@/shar
 import type { Translate } from '@/shared/i18n';
 import { normalizeConfig } from './run-input';
 
-/** One parameter the engineer moved away from what the file says. */
+
 export interface ConfigChange {
   id: string;
   label: string;
@@ -12,12 +12,12 @@ export interface ConfigChange {
 
 const DEFAULT_STRATEGY: RoutingStrategy = 'min_hops';
 
-/**
- * Is the configuration on screen still the file as loaded?
- *
- * Cheap enough for a badge in the header: it needs the session state only, not
- * the scenario document, so it can be answered before the scenario has loaded.
- */
+
+
+
+
+
+
 export const hasConfigChanges = (config: SimulationConfig, strategy: RoutingStrategy): boolean =>
   Object.keys(normalizeConfig(config)).length > 0 || strategy !== DEFAULT_STRATEGY;
 
@@ -26,13 +26,13 @@ const degrees = (value: number) => `${value.toFixed(1)}°`;
 const profileToken = (t: Translate, profile: string | null) =>
   t(profile ? (`site.token.${profile}` as 'site.token.open') : 'site.token.open');
 
-/**
- * Everything that differs between the scenario file and the run being configured.
- *
- * The file is the reference, not the previous run: the question the engineer
- * asks after an optimizer pass or half an hour of sliders is "what have I
- * actually changed", and the answer has to survive a reload and a tab switch.
- */
+
+
+
+
+
+
+
 export function describeConfigChanges(
   scenario: ScenarioDocument | undefined,
   config: SimulationConfig,
@@ -105,9 +105,9 @@ export function describeConfigChanges(
     });
   }
 
-  // The environment block is a sensitivity study rather than a design change,
-  // but it still has to show up here — a forgotten ISL sweep silently changes
-  // every number on the screen.
+
+
+
   const environment = [
     ['isl_range_km', t('sweep.isl.label'), scenario.environment.isl_range_km],
     ['min_elevation_deg', t('sweep.elev.label'), scenario.environment.min_elevation_deg],

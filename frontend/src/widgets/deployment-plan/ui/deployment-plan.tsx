@@ -27,17 +27,17 @@ interface DeploymentPlanProps {
   onClose: () => void;
 }
 
-/**
- * The campaign at length: three launches, what each one is, and what is left
- * to decide about it.
- *
- * The group in the panel carries the same three rows and the same actions,
- * deliberately: this is the wider view of one thing, not a second thing. What
- * it adds is room — a day of connectivity per launch rather than a percentage,
- * the angles a fixed launch holds, and the spread of the rings that no single
- * stage can show. The guidance sits on the launch being worked on and nowhere
- * else, so the panel never becomes a page of prose to read past.
- */
+
+
+
+
+
+
+
+
+
+
+
 export function DeploymentPlan({
   scenario,
   runInput,
@@ -258,8 +258,8 @@ function StageBlock({
         </span>
       </div>
 
-      {/* The sentence goes where the work is. Three of them at once would be a
-          page of prose, and the two that are not being acted on are noise. */}
+
+
       {current && (
         <>
           <p className="mt-1.5 font-label text-[11px] leading-relaxed text-zinc-500">

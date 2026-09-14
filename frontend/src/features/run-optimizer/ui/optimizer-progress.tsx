@@ -7,13 +7,13 @@ import { IndeterminateBar } from '@/shared/ui';
 import { useI18n } from '@/shared/i18n';
 import type { JobStatus } from '@/shared/api';
 
-/**
- * The search reports from a fixed corner rather than from whichever panel
- * started it, so it stays legible whichever tab is open. Numbers come straight
- * from the job, so the bar, the percentage and the count never disagree; while
- * the job is still queued there is nothing to count yet and the bar says so by
- * sweeping instead of filling.
- */
+
+
+
+
+
+
+
 export function OptimizerProgress({
   status,
   remainingS,
@@ -21,7 +21,7 @@ export function OptimizerProgress({
 }: {
   status: JobStatus | undefined;
   remainingS: number | null;
-  /** Hands the cores back: the search stops after its current configuration. */
+
   onStop: () => void;
 }) {
   const { t } = useI18n();

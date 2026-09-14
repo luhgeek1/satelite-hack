@@ -41,7 +41,7 @@ class ExplosionSound {
       const now = ctx.currentTime;
       const isReset = mode === 'reset';
 
-      // 1. Pre-detonation tectonic cracking sounds
+
       const crackTimes = (isReset ? [0.5] : [0.25, 0.55, 0.85]).map(frac => frac * buildupTime);
       crackTimes.forEach(t => {
         const snap = ctx.createBufferSource();
@@ -63,7 +63,7 @@ class ExplosionSound {
         snap.start(now + t);
       });
 
-      // 2. Rising core overload whine & seismic rumble
+
       const buildupOsc = ctx.createOscillator();
       const buildupGain = ctx.createGain();
       buildupOsc.type = isReset ? 'sine' : 'sawtooth';
@@ -92,7 +92,7 @@ class ExplosionSound {
 
       const blastTime = now + buildupTime;
 
-      // 3. Blast: Supersonic initial crack transient (skip in reset for softness)
+
       if (!isReset) {
         const transient = ctx.createBufferSource();
         const tBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.08), ctx.sampleRate);
@@ -109,7 +109,7 @@ class ExplosionSound {
         transient.start(blastTime);
       }
 
-      // 4. Blast: Sub-bass punch (warm, soft low-end in reset)
+
       const subOsc = ctx.createOscillator();
       const subGain = ctx.createGain();
       subOsc.type = 'sine';
@@ -122,7 +122,7 @@ class ExplosionSound {
       subOsc.start(blastTime);
       subOsc.stop(blastTime + (isReset ? 1.1 : 3.1));
 
-      // 5. Blast: Heavy reverberant noise body (soft, lowpass muffled rumble in reset)
+
       const bufferSize = Math.floor(ctx.sampleRate * (isReset ? 1.2 : 3.5));
       const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
@@ -166,7 +166,7 @@ class ExplosionSound {
       const now = ctx.currentTime;
       const isReset = mode === 'reset';
 
-      // 1. Inverted vacuum pull (gentle smooth rising sine wave)
+
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
@@ -180,7 +180,7 @@ class ExplosionSound {
       osc.start(now);
       osc.stop(now + duration * 0.98);
 
-      // 2. Soft, warm low-end lock pulse (gentle deep velvet tap)
+
       const lockOsc = ctx.createOscillator();
       const lockGain = ctx.createGain();
       const lockFilter = ctx.createBiquadFilter();
@@ -292,7 +292,7 @@ export class PlanetExplosionController {
   private explosionStartTime = 0;
   private reassembleStartTime = 0;
 
-  // 3D Objects
+
   private chunks: ChunkData[] = [];
   private buildupCoreMesh!: THREE.Mesh;
   private tectonicCracksMesh!: THREE.LineSegments;
@@ -305,12 +305,12 @@ export class PlanetExplosionController {
   private remnantCore!: THREE.Mesh;
   private accretionDisk!: THREE.Mesh;
 
-  // Particle Systems (5,500 particles total)
+
   private particleSystemFire!: THREE.Points;
   private particleSystemSparks!: THREE.Points;
   private particleSystemSmoke!: THREE.Points;
 
-  // Particle data
+
   private firePositions!: Float32Array;
   private fireColors!: Float32Array;
   private fireVelocities!: Float32Array;
@@ -325,7 +325,7 @@ export class PlanetExplosionController {
   private smokeVelocities!: Float32Array;
   private smokeInitialPositions!: Float32Array;
 
-  // Textures and materials to dispose
+
   private textures: THREE.Texture[] = [];
   private geometries: THREE.BufferGeometry[] = [];
   private materials: THREE.Material[] = [];
@@ -338,7 +338,7 @@ export class PlanetExplosionController {
     this.ensureExplosionScene();
   }
 
-  // --- Public API ---
+
 
   start(mode: ExplosionMode = 'konami') {
     if (this.phase !== 'idle' && this.phase !== 'restored') {
@@ -353,12 +353,12 @@ export class PlanetExplosionController {
 
     this.currentMode = mode;
     if (mode === 'reset') {
-      // Ultra-fast explosive burst at start, slow graceful reassembly at end
+
       this.buildupDuration = 0.08;
       this.driftDuration = 0.32;
       this.reassembleDuration = 1.85;
     } else {
-      // Full scale timing for Konami code
+
       this.buildupDuration = 0.75;
       this.driftDuration = 4.60;
       this.reassembleDuration = 2.20;
@@ -433,7 +433,7 @@ export class PlanetExplosionController {
     const smokeTexture = createSmokeTexture();
     this.textures.push(glowTexture, sparkTexture, smokeTexture);
 
-    // 1. Pre-detonation core glow
+
     const buildupGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.01, 40, 40);
     const buildupMat = new THREE.MeshBasicMaterial({
       color: 0xff6600,
@@ -448,10 +448,10 @@ export class PlanetExplosionController {
     this.materials.push(buildupMat);
     this.rootGroup.add(this.buildupCoreMesh);
 
-    // 2. Tectonic fracture crack web (visible during buildup)
+
     this.buildTectonicCracks();
 
-    // 3. Supernova flash sphere
+
     const flashGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.05, 36, 36);
     const flashMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
@@ -466,7 +466,7 @@ export class PlanetExplosionController {
     this.materials.push(flashMat);
     this.rootGroup.add(this.flashMesh);
 
-    // 4. Expanding ionized atmosphere blast shell
+
     const atmoGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.02, 40, 40);
     const atmoMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
@@ -482,7 +482,7 @@ export class PlanetExplosionController {
     this.materials.push(atmoMat);
     this.rootGroup.add(this.atmosphereBlastSphere);
 
-    // 5. Bipolar Relativistic Plasma Jets (North & South polar gamma-ray burst)
+
     const jetGeo = new THREE.CylinderGeometry(3, 40, 850, 16, 1, true);
     jetGeo.translate(0, 425, 0);
     const jetMat = new THREE.MeshBasicMaterial({
@@ -503,7 +503,7 @@ export class PlanetExplosionController {
     this.southJet.visible = false;
     this.rootGroup.add(this.northJet, this.southJet);
 
-    // 6. Praxis shockwave rings
+
     const ring1Geo = new THREE.RingGeometry(GLOBE_RADIUS * 0.95, GLOBE_RADIUS * 1.35, 80);
     const ring1Mat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
@@ -537,7 +537,7 @@ export class PlanetExplosionController {
     this.materials.push(ring2Mat);
     this.rootGroup.add(this.shockwave2);
 
-    // 7. Central remnant micro-singularity & glowing accretion disk
+
     const remnantGeo = new THREE.SphereGeometry(14, 28, 28);
     const remnantMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
@@ -569,10 +569,10 @@ export class PlanetExplosionController {
     this.materials.push(diskMat);
     this.rootGroup.add(this.accretionDisk);
 
-    // 8. 3D Tectonic Crust Shards (280 multi-tier pieces)
+
     this.buildChunks();
 
-    // 9. Triple Particle Systems (5,500 particles total)
+
     this.buildParticles(glowTexture, sparkTexture, smokeTexture);
   }
 
@@ -1112,7 +1112,7 @@ export class PlanetExplosionController {
 
   private updateReassemble(p: number) {
     const sizeScale = this.currentMode === 'reset' ? 0.55 : 1.0;
-    // Cubic smooth acceleration and soft landing for cinematic gravitational collapse
+
     const ease = this.currentMode === 'reset'
       ? (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
       : p * p * (3 - 2 * p);

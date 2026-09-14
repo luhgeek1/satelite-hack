@@ -29,23 +29,23 @@ interface PlaybackBarProps {
   focusClientId: string | null;
   satelliteNodes: OutageNode[];
   gatewayNodes: OutageNode[];
-  /** Changes when the configuration is reset, which drops the drawn windows. */
+
   resetNonce: number;
   onToggle: () => void;
   onSpeed: (speed: number) => void;
   onSeek: (tS: number) => void;
   onSelectClient: (clientId: string) => void;
-  /** `off` says which way the switch went; the window is where it applies. */
+
   onScheduleOutage: (target: OutageTarget, window: OutageWindow, off: boolean) => void;
-  /** Puts back everything that was switched off over a span. */
+
   onClearOutages: (window: OutageWindow) => void;
 }
 
-/** Half speed for reading a gap open and close, then the two paces above it. */
+
 const SPEEDS = [0.5, 1, 4];
-/** Every sixth hour gets a label; the ruler is read, not measured. */
+
 const HOUR_MARKS = [0, 6, 12, 18, 24];
-/** Half the picker's width, so it can be centred and still clamped inside. */
+
 const PICKER_HALF = '9.75rem';
 
 
@@ -55,11 +55,11 @@ type Drag = DragKind & {
   anchorS: number;
   base: OutageWindow;
   originX: number;
-  /** Whether this window's picker was open when the press landed. */
+
   openBefore: boolean;
 };
 
-/** A window and the identity that survives being dragged into a new shape. */
+
 type DrawnWindow = OutageWindow & { id: number };
 
 let nextWindowId = 0;
@@ -90,9 +90,9 @@ function PlaybackBarView({
   const root = useRef<HTMLDivElement>(null);
   const chip = useRef<HTMLSpanElement>(null);
   const rowsBox = useRef<HTMLDivElement>(null);
-  // The rows scroll once there are more sites than the strip has room for, and
-  // a classic scrollbar takes width: the ruler and the floating layer give the
-  // same width back so the hours still sit over the instants they name.
+
+
+
   const [gutter, setGutter] = useState(0);
 
   useEffect(() => {
@@ -105,12 +105,12 @@ function PlaybackBarView({
     return () => observer.disconnect();
   }, [clients.length]);
 
-  // Drawing an outage window over the strip. The mode is the discoverable way
-  // in — a drag then works like trimming a clip — and a right-drag does the
-  // same thing without it, for the operator who already knows.
+
+
+
   const [selectMode, setSelectMode] = useState(false);
-  // Several windows at once: an operator comparing "what if the gateway is down
-  // at dawn and a plane is out at noon" needs both spans on the strip together.
+
+
   const [windows, setWindows] = useState<DrawnWindow[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [picking, setPicking] = useState(false);
@@ -121,9 +121,9 @@ function PlaybackBarView({
 
   const active = windows.find((item) => item.id === activeId) ?? null;
 
-  // Grouped once rather than scanned per row: the strip redraws on every
-  // playback tick, and a filter per site over the whole day is work the
-  // cursor should not be paying for.
+
+
+
   const bandsByClient = useMemo(() => {
     const grouped = new Map<string, OutageBand[]>();
     for (const band of bands) {
@@ -183,9 +183,9 @@ function PlaybackBarView({
     });
   };
 
-  // The pointer leaves the strip constantly while a window is drawn, so the
-  // move and the release are watched on the window rather than on the element
-  // the gesture started in.
+
+
+
   useEffect(() => {
     if (!drag) return;
 
@@ -218,21 +218,21 @@ function PlaybackBarView({
 
     const onUp = () => {
       setDrag(null);
-      // A press that never travelled is a click: on a band it asks for the
-      // picker back, on bare strip it drew nothing and leaves nothing behind.
+
+
       if (!moved.current) {
         if (drag.kind === 'new') {
           setWindows((current) => current.filter((item) => item.id !== drag.id));
           setActiveId(null);
           return;
         }
-        // A click on a band is a switch: it shows the picker, and shows it
-        // away again.
+
+
         setPicking(!drag.openBefore);
         return;
       }
-      // The mode is a one-shot tool: it hands the strip back as a scrubber the
-      // moment a window exists, and the drawn window is edited by its handles.
+
+
       setSelectMode(false);
       setPicking(true);
     };
@@ -243,7 +243,7 @@ function PlaybackBarView({
       globalThis.removeEventListener('pointermove', onMove);
       globalThis.removeEventListener('pointerup', onUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [drag, horizonS, stepS]);
 
   useEffect(() => {
@@ -256,8 +256,8 @@ function PlaybackBarView({
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [listing]);
 
-  // A click anywhere outside the bar puts the picker away; the window stays,
-  // because scrubbing into it to watch what the outage did is the whole point.
+
+
   useEffect(() => {
     if (!picking) return;
     const onPointerDown = (event: PointerEvent) => {
@@ -268,8 +268,8 @@ function PlaybackBarView({
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [picking]);
 
-  // Space is the transport control everywhere except inside something that
-  // takes typing or is itself activated by the key.
+
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.code !== 'Space' && event.key !== ' ') return;
@@ -290,9 +290,9 @@ function PlaybackBarView({
     setListing(false);
   }, [resetNonce]);
 
-  // A window owns what was declared over it: throwing the window away puts
-  // those nodes back, which is the only reading of a bin that holds up once a
-  // span carries settings of its own.
+
+
+
   const dropWindow = (id: number) => {
     const target = windows.find((item) => item.id === id);
     if (target) onClearOutages(target);
@@ -301,8 +301,8 @@ function PlaybackBarView({
     setActiveId((current) => (current === id ? null : current));
   };
 
-  // Escape is the way out wherever the focus happens to be: the picker first,
-  // then the window it belongs to. The other windows are left alone.
+
+
   useEffect(() => {
     if (!active) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -312,7 +312,7 @@ function PlaybackBarView({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [active, picking]);
 
   const clearWindows = () => {
@@ -324,8 +324,8 @@ function PlaybackBarView({
   };
 
   const cursor = horizonS ? (tS / horizonS) * 100 : 0;
-  // The cursor glides for exactly as long as a step lasts, so a slower speed
-  // reads as slower movement rather than as the same movement stuttering.
+
+
   const glideMs = Math.min(260, Math.round(playbackTickMs(stepS, horizonS, speed)));
   const placeOf = (item: OutageWindow) => ({
     left: (item.startS / horizonS) * 100,
@@ -333,10 +333,10 @@ function PlaybackBarView({
   });
   const activePlace = active && horizonS ? placeOf(active) : null;
 
-  /**
-   * A day that holds a route is the quiet state; what the eye should catch is
-   * where it breaks, and the brighter the band the worse the break.
-   */
+
+
+
+
   const legend = [
     { key: 'playback.routed' as const, tone: 'bg-zinc-700' },
     { key: 'playback.noRoute' as const, tone: 'bg-zinc-400' },
@@ -347,13 +347,13 @@ function PlaybackBarView({
     <div
       ref={root}
       onContextMenu={(event) => {
-        // The secondary button draws a window here, so the browser menu never
-        // opens over the bar — except on the search field, where the menu is
-        // how text gets pasted.
+
+
+
         if ((event.target as HTMLElement).tagName !== 'INPUT') event.preventDefault();
       }}
-      // Above the globe's own label layer, which sits at 25: the picker opens
-      // over the map, and a satellite plate must not land on top of it.
+
+
       className="relative z-30 flex-shrink-0 select-none border-t border-rule bg-black/90 px-3 py-2 backdrop-blur sm:px-4"
     >
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
@@ -430,8 +430,8 @@ function PlaybackBarView({
                   {windowClock(windows[0].endS, horizonS, formatClock)}
                 </>
               ) : (
-                // The glyph carries the noun, which keeps the chip out of the
-                // plural rules of two languages.
+
+
                 <>
                   <SquareDashedMousePointer size={11} className="text-alarm/70" aria-hidden="true" />
                   {windows.length}
@@ -495,9 +495,9 @@ function PlaybackBarView({
           </span>
         )}
 
-        {/* The row must never wrap: a second line doubles the height of the
-            bar, and on the screens where that hurts most there is least of it
-            to give. What goes first is what explains rather than reports. */}
+
+
+
         <span className="hidden items-baseline gap-2 sm:flex">
           <span className="font-label text-[12px] text-zinc-500">{t('playback.day')}</span>
           <span className="hidden font-data text-[10px] tabular-nums text-zinc-600 2xl:inline">
@@ -514,9 +514,9 @@ function PlaybackBarView({
         </div>
       </div>
 
-      {/* One row per ground site, sharing a single ruler and a single cursor:
-          the question is always "which site loses the gateway, and when", and
-          three separate strips answer it in one glance. */}
+
+
+
       <div
         role="slider"
         tabIndex={0}
@@ -532,18 +532,18 @@ function PlaybackBarView({
           if (event.key === 'Home') onSeek(0);
           if (event.key === 'End') onSeek(horizonS - stepS);
         }}
-        // The ruler, the gaps between rows and the figures at the end are all
-        // part of the same instant: a press anywhere on the strip moves the
-        // cursor there. The rows keep their own handler because they also pick
-        // the client, and the ids and the bands own their gestures.
+
+
+
+
         onPointerDown={(event) => {
           if (event.button !== 0 || selectMode) return;
           const target = event.target as HTMLElement;
           if (target.closest('button') || target.closest('[data-track]') || target.closest('[data-window]')) {
             return;
           }
-          // Only within the track column: left of it are the ids and right of
-          // it the figures, and neither edge is an instant in the day.
+
+
           const rect = tracks.current?.getBoundingClientRect();
           if (!rect || event.clientX < rect.left || event.clientX > rect.right) return;
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -555,8 +555,8 @@ function PlaybackBarView({
             if (!target.closest('[data-window]')) seekFromClientX(event.clientX);
           }
         }}
-        // The spacing is padding rather than margin so the black above and
-        // below the rows belongs to the strip and answers a click.
+
+
         className="relative -mb-2 pb-2 pt-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
       >
         <div
@@ -585,9 +585,9 @@ function PlaybackBarView({
           <span aria-hidden="true" />
         </div>
 
-        {/* Whatever hangs above the rows lives outside the scroll box, which
-            would otherwise clip it: the picker and the length of a window
-            being drawn. Same columns as the rows, pinned to where they start. */}
+
+
+
         <div
           className="pointer-events-none absolute inset-x-0 top-6 z-30 grid h-0 grid-cols-[2.6rem_1fr_2.9rem] gap-x-2"
           style={{ paddingRight: gutter }}
@@ -635,16 +635,16 @@ function PlaybackBarView({
           </div>
         </div>
 
-        {/* A fixed height however many sites the scenario has: past a handful
-            the rows scroll, and the map above keeps its room. */}
+
+
         <div ref={rowsBox} className="max-h-[9.5rem] overflow-y-auto overscroll-contain pt-1">
           <div className="grid grid-cols-[2.6rem_1fr_2.9rem] items-center gap-x-2 gap-y-1">
-            {/* The cursor spans the rows rather than repeating in each one, so the
-                same instant is one line down the whole stack. The drawn window
-                rides the same overlay, under the cursor line. */}
+
+
+
             <div
-              // Stretched on purpose: the grid centres its items, and a centred
-              // overlay collapses to nothing instead of covering the rows.
+
+
               className="pointer-events-none relative z-10 self-stretch"
               style={{ gridColumn: 2, gridRow: `1 / span ${Math.max(1, clients.length)}` }}
             >
@@ -731,9 +731,9 @@ function PlaybackBarView({
                     ref={index === 0 ? tracks : undefined}
                     data-track=""
                     onPointerDown={(event) => {
-                      // The secondary button draws a window wherever it is pressed;
-                      // the primary one only does while the mode is on, so the
-                      // strip stays a scrubber by default.
+
+
+
                       if (event.button === 2 || (event.button === 0 && selectMode)) {
                         startDrag(event, { kind: 'new' });
                         return;
@@ -746,8 +746,8 @@ function PlaybackBarView({
                     onPointerMove={(event) => {
                       if (!drag && event.buttons === 1) seekFromClientX(event.clientX);
                     }}
-                    // All three rows are readings, so none of them is dimmed to
-                    // mark focus — the id beside the bar does that.
+
+
                     className={cn(
                       'relative h-2.5 touch-none overflow-hidden',
                       selectMode ? 'cursor-crosshair' : 'cursor-pointer',
@@ -794,9 +794,9 @@ function PlaybackBarView({
   );
 }
 
-/**
- * The strip reads the settled run, not the control being moved: while a plane
- * is dragged its props do not change, and it should not re-render with the
- * rest of the studio. Memoised so a drag costs the day's bands nothing.
- */
+
+
+
+
+
 export const PlaybackBar = memo(PlaybackBarView);

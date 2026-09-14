@@ -1,7 +1,7 @@
 export type CriticalityTier = 'low' | 'medium' | 'high' | 'critical';
 
 export interface CriticalityLevel {
-  /** The tier itself; the words for it live in the dictionary. */
+
   tier: CriticalityTier;
   color: string;
 }
@@ -13,21 +13,21 @@ export const criticalityLevel = (value: number): CriticalityLevel => {
   return { tier: 'low', color: '#52525b' };
 };
 
-/** A loss this small is below what a day of two-minute steps can tell apart. */
+
 const NOTICEABLE_DROP = 0.0025;
-/** A point of availability: the loss an operator would act on. */
+
 const SERIOUS_DROP = 0.01;
 
-/**
- * The 0…100 score, on an absolute scale.
- *
- * The service scores each satellite against the worst one in the same run, so
- * the most important satellite of a healthy constellation always reads 100 and
- * red — which is how a loss of two points, with the target still met, was being
- * shown as critical across the whole globe. Here the tiers mean something fixed:
- * critical only when the loss alone breaks the target, high from one point of
- * availability, medium from a quarter of one, and low below that.
- */
+
+
+
+
+
+
+
+
+
+
 export const criticalityFromImpact = (drop: number, breaksTarget: boolean): number => {
   const loss = Math.max(0, drop);
 

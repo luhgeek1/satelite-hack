@@ -32,21 +32,21 @@ export function useSimulation(input: RunInput) {
   });
 }
 
-/**
- * The same design at every launch stage.
- *
- * A ring's angles are fixed when it flies, so one design has three answers and
- * not one. Runs are content-addressed, so the stage already on screen costs
- * nothing here and the other two are one simulation each.
- */
+
+
+
+
+
+
+
 export function useStageRuns(input: RunInput) {
   const atStage = (stage: 1 | 2 | 3): RunInput => ({
     ...input,
     config: { ...input.config, launch_stage: stage },
   });
 
-  // Three fixed calls rather than a loop: the official schema caps launch
-  // batches at three, and a hook count may not vary between renders.
+
+
   return [useSimulation(atStage(1)), useSimulation(atStage(2)), useSimulation(atStage(3))] as const;
 }
 
@@ -76,10 +76,10 @@ export function useAvailabilitySeries(runId: string | undefined) {
     queryKey: queryKeys.availability(runId ?? ''),
     queryFn: ({ signal }) => simulationsApi.availability(runId as string, signal),
     enabled: Boolean(runId),
-    // The strip is read while the planes are being moved, and every move ends
-    // in a new run id. Without this the series drops to nothing between two
-    // runs, every row blanks, and the whole timeline reads as a freeze. The
-    // day already on screen stays until the next one is in hand.
+
+
+
+
     placeholderData: keepPreviousData,
     staleTime: Infinity,
   });

@@ -7,19 +7,19 @@ import type { Variant } from '@/shared/api';
 interface VariantBoardProps {
   variants: Variant[];
   slots: [string | null, string | null];
-  /** Shown above the table while the pair is still incomplete. */
+
   hint?: string;
   onAssign: (slot: 0 | 1, variantId: string) => void;
 }
 
 const SLOTS = [0, 1] as const;
 
-/**
- * Everything saved so far, ranked by the figure the target is judged on, with
- * the compared pair marked in place. Two dropdowns hide how a variant stands
- * against the rest of the work; this is the standings, and each row is one
- * click away from being compared.
- */
+
+
+
+
+
+
 export function VariantBoard({ variants, slots, hint, onAssign }: VariantBoardProps) {
   const { t, formatDuration } = useI18n();
   const ranked = [...variants].sort((left, right) => right.worst_availability - left.worst_availability);

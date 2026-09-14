@@ -8,12 +8,12 @@ interface VerdictNoteProps {
   recommendation: Recommendation;
 }
 
-/**
- * The answer, first: which variant is ahead, whether it clears the target,
- * and why — built from the same figures the compare endpoint's own sentence
- * uses, so the page can say it in the interface language instead of switching
- * to English mid-sentence for one paragraph.
- */
+
+
+
+
+
+
 export function VerdictNote({ recommendation: reco }: VerdictNoteProps) {
   const { t } = useI18n();
   const clear = reco.meetsTarget;

@@ -3,7 +3,7 @@
 import { useI18n } from '@/shared/i18n';
 import type { ParameterDiff } from '@/shared/api';
 
-/** What was actually moved between the two variants, A value → B value. */
+
 export function ChangedParameters({ diffs }: { diffs: ParameterDiff[] }) {
   const { t } = useI18n();
 

@@ -26,7 +26,7 @@ export function useKonamiCode(onTrigger: () => void) {
   }, []);
 
   useEffect(() => {
-    // Expose console helper for testing/debugging
+
     (window as any).__explodePlanet = trigger;
     return () => {
       delete (window as any).__explodePlanet;
@@ -55,7 +55,7 @@ export function useKonamiCode(onTrigger: () => void) {
           onTriggerRef.current?.();
         }
       } else {
-        // If current key matches first key (ArrowUp), start at 1, else reset to 0
+
         if (KONAMI_SEQUENCE[0](e)) {
           indexRef.current = 1;
         } else {
